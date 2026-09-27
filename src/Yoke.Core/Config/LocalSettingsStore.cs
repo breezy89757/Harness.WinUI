@@ -9,7 +9,7 @@ namespace Yoke.Core.Config;
 
 /// <summary>
 /// Reads/writes the user-editable provider settings (endpoint, model, API key) entered through
-/// the app's Settings UI. Stored at <c>%LOCALAPPDATA%\Yoke\settings.json</c>. The endpoint and
+/// the app's Settings UI. Stored in <c>settings.json</c> in the data folder (<see cref="AppPaths"/>). The endpoint and
 /// model are plain text (not secrets); the API key is encrypted with DPAPI
 /// (<see cref="ProtectedData"/>, <see cref="DataProtectionScope.CurrentUser"/>) before it touches
 /// disk, so the file only ever contains a blob that's meaningless outside this Windows user
@@ -24,8 +24,7 @@ public static class LocalSettingsStore
 {
     private static readonly byte[] s_entropy = Encoding.UTF8.GetBytes("Yoke.ProviderApiKey.v1");
 
-    private static string SettingsPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Yoke", "settings.json");
+    private static string SettingsPath => AppPaths.Combine("settings.json");
 
     /// <summary>Loads and decrypts the saved provider, or null if nothing usable is saved.</summary>
     public static ResolvedProvider? Load()

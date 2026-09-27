@@ -20,6 +20,9 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        if (PackagedDataFolder() is { } packaged)
+            AppPaths.UseDataRoot(packaged);
+
         var preferences = AppPreferences.Load();
         Strings.Initialize(preferences.Language);
 
@@ -39,6 +42,27 @@ public partial class App : Application
 
         _window = new MainWindow(chatSession, options, startupError, needsProviderSetup, _tools);
         _window.Activate();
+    }
+
+    /// <summary>
+    /// The package's LocalState folder when running as an MSIX package (Microsoft Store), else null.
+    /// See <see cref="AppPaths"/> for why packaged data doesn't go to %LOCALAPPDATA%.
+    /// </summary>
+    private static string? PackagedDataFolder()
+    {
+        try
+        {
+            _ = Windows.ApplicationModel.Package.Current; // throws when the app has no package identity
+            return Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            return null;
+        }
     }
 
     /// <summary>Image generation reuses the chat provider's endpoint and key; no image model means no tool.</summary>

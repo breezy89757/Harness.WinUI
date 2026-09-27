@@ -51,3 +51,8 @@ release/
 *.mp4
 *.webm
 *.mov
+
+# Release packaging output, signing certificates and the Store association file
+release/
+*.pfx
+Package.StoreAssociation.xml

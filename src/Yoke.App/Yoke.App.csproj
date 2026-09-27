@@ -8,6 +8,11 @@
     <AssemblyName>Yoke.App</AssemblyName>
     <Product>Harness.WinUI</Product>
     <Description>Harness.WinUI — a lightweight AI agent for Windows, built with WinUI 3.</Description>
+    <Version>1.0.0</Version>
+    <Authors>breezy89757</Authors>
+    <Copyright>Copyright (c) 2026 breezy89757</Copyright>
+    <RepositoryUrl>https://github.com/breezy89757/Harness.WinUI</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -16,9 +21,10 @@
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
 
-    <!-- Builds unpackaged, so it runs straight from the output folder.
-         WindowsAppSDKSelfContained copies the Windows App Runtime into the output folder
-         so the app runs standalone without an installed/registered framework package. -->
+    <!-- Builds unpackaged, so development runs straight from the output folder. The Store MSIX is
+         made from the Release output with Package.appxmanifest (see build-msix.ps1).
+         WindowsAppSDKSelfContained copies the Windows App Runtime into the output folder, so neither
+         build needs an installed framework package. -->
     <WindowsPackageType>None</WindowsPackageType>
     <EnableMsixTooling>false</EnableMsixTooling>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
@@ -33,7 +39,10 @@
   <ItemGroup>
     <Content Include="Assets\Yoke.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="appsettings.local.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('appsettings.local.json')" />
+    <!-- Developer-only overlay (gitignored): never copied into Release output, which gets packaged. -->
+    <Content Include="appsettings.local.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('appsettings.local.json') And '$(Configuration)' == 'Debug'" />
+    <!-- MSIX tile / Store assets, referenced by Package.appxmanifest. -->
+    <Content Include="Images\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- Fallback content item for Yoke.MarkdownRendering's wwwroot (bundled highlight.js /

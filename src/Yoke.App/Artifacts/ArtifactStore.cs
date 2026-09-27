@@ -2,6 +2,7 @@
 
 using System.Net;
 using Yoke.Core.Artifacts;
+using Yoke.Core.Config;
 using Yoke.MarkdownRendering;
 
 namespace Yoke.App.Artifacts;
@@ -16,7 +17,7 @@ public sealed record StoredArtifact(string Id, ArtifactType Type, string Title, 
 }
 
 /// <summary>
-/// Writes completed artifacts to %LOCALAPPDATA%\Yoke\artifacts and builds a preview page for types
+/// Writes completed artifacts to the artifacts folder under the data folder (<see cref="AppPaths"/>) and builds a preview page for types
 /// that need one (SVG, Mermaid, Markdown). The folder is served to the artifact panel's own WebView2
 /// under <see cref="HostName"/> — a different origin from the chat, with no bridge to the app.
 /// </summary>
@@ -24,8 +25,7 @@ public sealed class ArtifactStore
 {
     public const string HostName = "yoke.artifacts";
 
-    public static string Folder => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Yoke", "artifacts");
+    public static string Folder => AppPaths.Combine("artifacts");
 
     private readonly Dictionary<string, StoredArtifact> _artifacts = new(StringComparer.Ordinal);
 

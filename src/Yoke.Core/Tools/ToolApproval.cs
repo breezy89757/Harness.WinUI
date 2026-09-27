@@ -2,6 +2,7 @@
 
 using System.Text.Json;
 using Microsoft.Extensions.AI;
+using Yoke.Core.Config;
 
 namespace Yoke.Core.Tools;
 
@@ -23,7 +24,7 @@ public interface IToolApprover
     Task<ToolApprovalDecision> RequestApprovalAsync(ToolApprovalRequest request, CancellationToken cancellationToken);
 }
 
-/// <summary>Persisted "always allow" choices, keyed by server + tool, in %LOCALAPPDATA%\Yoke\permissions.json.</summary>
+/// <summary>Persisted "always allow" choices, keyed by server + tool, in permissions.json in the data folder (<see cref="AppPaths"/>).</summary>
 public sealed class ToolPermissionStore
 {
     private readonly string _path;
@@ -32,8 +33,7 @@ public sealed class ToolPermissionStore
 
     public ToolPermissionStore(string? path = null)
     {
-        _path = path ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Yoke", "permissions.json");
+        _path = path ?? AppPaths.Combine("permissions.json");
 
         _alwaysAllowed = new HashSet<string>(StringComparer.Ordinal);
         try

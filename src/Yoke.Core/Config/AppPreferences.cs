@@ -5,7 +5,7 @@ using Microsoft.Extensions.AI;
 
 namespace Yoke.Core.Config;
 
-/// <summary>Non-secret app preferences, stored in %LOCALAPPDATA%\Yoke\preferences.json.</summary>
+/// <summary>Non-secret app preferences, stored in preferences.json in the data folder (<see cref="AppPaths"/>).</summary>
 public sealed record AppPreferences
 {
     public const string SystemLanguage = "system";
@@ -36,11 +36,9 @@ public sealed record AppPreferences
         _ => null,
     };
 
-    public static string DefaultSandboxFolder => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Yoke", "sandbox");
+    public static string DefaultSandboxFolder => AppPaths.Combine("sandbox");
 
-    private static string FilePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Yoke", "preferences.json");
+    private static string FilePath => AppPaths.Combine("preferences.json");
 
     public static AppPreferences Load()
     {

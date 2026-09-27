@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using Yoke.Core.Config;
 
 namespace Yoke.Core.Tools;
 
@@ -37,8 +38,7 @@ public sealed record McpServerConfig
 
 public static partial class McpConfig
 {
-    public static string DefaultPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Yoke", "mcp.json");
+    public static string DefaultPath => AppPaths.Combine("mcp.json");
 
     private static readonly JsonSerializerOptions s_json = new()
     {

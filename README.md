@@ -58,7 +58,7 @@ The screenshots show the Traditional Chinese UI; the English UI has the same lay
 
 ### Download
 
-Get the latest portable build from [Releases](https://github.com/breezy89757/Harness.WinUI/releases/latest). There is no installer: unzip and run.
+Install it from the [Microsoft Store](https://apps.microsoft.com/detail/9pfs9cggk7vb), or get the portable build from [Releases](https://github.com/breezy89757/Harness.WinUI/releases/latest). The portable build has no installer: unzip and run.
 
 | File | For |
 |---|---|
@@ -87,6 +87,14 @@ dotnet build Yoke.sln -p:Platform=x64
 ./src/Yoke.App/bin/x64/Debug/net9.0-windows10.0.19041.0/win-x64/Yoke.App.exe
 ```
 
+#### Package as MSIX (Microsoft Store)
+
+```powershell
+.\build-msix.ps1
+```
+
+Builds Release for x64 and ARM64 and produces `release\Harness.WinUI_<version>.msixbundle`, ready to upload to Partner Center. The version comes from `<Version>` in `src/Yoke.App/Yoke.App.csproj`. Before publishing your own build, set the Identity in `src/Yoke.App/Package.appxmanifest` to the values Partner Center gives you.
+
 #### Configure a model
 
 On first launch the settings dialog opens automatically. Fill in:
@@ -106,11 +114,13 @@ For development you can use a config file instead: put the endpoint and model in
 - "Make a Pomodoro timer web page" / "Draw a Mermaid diagram of this flow"
 - "Add an MCP server named mslearn at https://learn.microsoft.com/api/mcp"
 
-The sandbox defaults to `%LOCALAPPDATA%\Yoke\sandbox`. You can point it at another folder in Settings, or turn the file tools off.
+The sandbox defaults to the `sandbox` folder inside the data folder (see Data and privacy below). You can point it at another folder in Settings, or turn the file tools off.
 
 ### Data and privacy
 
-Everything is stored locally in `%LOCALAPPDATA%\Yoke\`. Nothing is sent anywhere except the model endpoint you configure (and any MCP servers you add). See the [privacy policy](PRIVACY.md).
+Everything is stored locally. Nothing is sent anywhere except the model endpoint you configure (and any MCP servers you add). See the [privacy policy](PRIVACY.md).
+
+Data folder: the portable build and builds you run yourself use `%LOCALAPPDATA%\Yoke\`; the Microsoft Store version uses the app's own folder (`%LOCALAPPDATA%\Packages\<Harness.WinUI package>\LocalState\`), which is removed when you uninstall.
 
 | File | Contents |
 |---|---|
@@ -169,7 +179,7 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 
 ### 下載
 
-到 [Releases](https://github.com/breezy89757/Harness.WinUI/releases/latest) 下載最新的免安裝版，解壓縮就能用。
+從 [Microsoft Store](https://apps.microsoft.com/detail/9pfs9cggk7vb) 安裝，或到 [Releases](https://github.com/breezy89757/Harness.WinUI/releases/latest) 下載免安裝版（解壓縮就能用）。
 
 | 檔案 | 適用 |
 |---|---|
@@ -198,6 +208,14 @@ dotnet build Yoke.sln -p:Platform=x64
 ./src/Yoke.App/bin/x64/Debug/net9.0-windows10.0.19041.0/win-x64/Yoke.App.exe
 ```
 
+#### 打包成 MSIX（Microsoft Store）
+
+```powershell
+.\build-msix.ps1
+```
+
+會建置 x64 與 ARM64 的 Release 版，產生 `release\Harness.WinUI_<版本>.msixbundle`，可直接上傳到 Partner Center。版本號取自 `src/Yoke.App/Yoke.App.csproj` 的 `<Version>`；要發佈自己的版本前，請把 `src/Yoke.App/Package.appxmanifest` 的 Identity 換成 Partner Center 提供的值。
+
 #### 設定模型
 
 第一次啟動會自動跳出設定視窗，填入：
@@ -217,11 +235,13 @@ dotnet build Yoke.sln -p:Platform=x64
 - 「做一個番茄鐘網頁」「畫一張這個流程的 Mermaid 圖」
 - 「幫我加一個 MCP server：名稱 mslearn，網址 https://learn.microsoft.com/api/mcp」
 
-沙盒預設在 `%LOCALAPPDATA%\Yoke\sandbox`，可以在設定裡改成其他資料夾，或關閉檔案工具。
+沙盒預設是資料資料夾底下的 `sandbox`（位置見下方「資料與隱私」），可以在設定裡改成其他資料夾，或關閉檔案工具。
 
 ### 資料與隱私
 
-所有資料都存在本機的 `%LOCALAPPDATA%\Yoke\`，除了你設定的模型端點（和你加入的 MCP server）之外，不會傳到任何地方。詳見[隱私權政策](PRIVACY.md)。
+所有資料都存在本機，除了你設定的模型端點（和你加入的 MCP server）之外，不會傳到任何地方。詳見[隱私權政策](PRIVACY.md)。
+
+資料夾位置：免安裝版和自行建置的版本在 `%LOCALAPPDATA%\Yoke\`；Microsoft Store 版在 App 自己的資料夾（`%LOCALAPPDATA%\Packages\<Harness.WinUI 套件>\LocalState\`），解除安裝時會一併移除。
 
 | 檔案 | 內容 |
 |---|---|
@@ -251,4 +271,4 @@ docs/                      Logo 與截圖
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). Third-party components and their licenses: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). Release history: [CHANGELOG.md](CHANGELOG.md).

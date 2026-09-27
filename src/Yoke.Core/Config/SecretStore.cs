@@ -10,7 +10,7 @@ namespace Yoke.Core.Config;
 
 /// <summary>
 /// Named secrets (e.g. an MCP server's Authorization header), each DPAPI-encrypted for the current
-/// Windows user in %LOCALAPPDATA%\Yoke\secrets.json. Config files refer to them as
+/// Windows user in secrets.json in the data folder (<see cref="AppPaths"/>). Config files refer to them as
 /// <c>${secret:name}</c> so they never hold the plaintext value.
 /// </summary>
 [SupportedOSPlatform("windows")]
@@ -19,8 +19,7 @@ public static partial class SecretStore
     private static readonly byte[] s_entropy = Encoding.UTF8.GetBytes("Yoke.Secret.v1");
     private static readonly Lock s_lock = new();
 
-    private static string StorePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Yoke", "secrets.json");
+    private static string StorePath => AppPaths.Combine("secrets.json");
 
     public static string Reference(string name) => "${secret:" + name + "}";
 

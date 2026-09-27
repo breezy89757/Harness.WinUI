@@ -3,6 +3,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
+using Yoke.Core.Config;
 
 namespace Yoke.Core.History;
 
@@ -27,7 +28,7 @@ public sealed record ConversationSummary(string Id, string Title, DateTimeOffset
 public sealed record StoredConversation(string Id, string Title, IReadOnlyList<StoredMessage> Messages, string? SessionState);
 
 /// <summary>
-/// Conversation history in a local SQLite database (%LOCALAPPDATA%\Yoke\history.db). Message text
+/// Conversation history in a local SQLite database (history.db in the data folder, see <see cref="AppPaths"/>). Message text
 /// is kept in its own column so full-text search can be added later; everything needed only to
 /// replay the transcript (reasoning, tool steps, footer) lives in a JSON <c>details</c> column.
 /// </summary>
@@ -66,8 +67,7 @@ public sealed class ConversationStore
             """);
     }
 
-    public static string DefaultPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Yoke", "history.db");
+    public static string DefaultPath => AppPaths.Combine("history.db");
 
     public IReadOnlyList<ConversationSummary> List(int limit = 100)
     {
