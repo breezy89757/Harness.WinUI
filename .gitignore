@@ -1,0 +1,53 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.log
+*.cache
+TestResults/
+build*.log
+xaml_err.log
+xaml_out.log
+
+# Working / scratch files
+23a1afd1-*/
+*.metadata.json
+*.resolved
+*.resolved.*
+
+# Local-only config overlays (endpoint/model for a dev machine; API keys never go in
+# these files either — see ApiKeyEnvVar in Yoke.Core.Config.ProviderOptions)
+appsettings.local.json
+appsettings.*.local.json
+config.local.yaml
+
+# MSIX packaging
+*.appx
+*.msix
+*.appxbundle
+*.msixbundle
+*.appxupload
+*.msixupload
+AppPackages/
+BundleArtifacts/
+
+# NuGet
+*.nupkg
+*.snupkg
+
+# Publish
+*.pubxml
+!**/PublishProfiles/*.pubxml
+
+# JetBrains
+.idea/
+*.DotSettings*
+
+# Release builds
+release/
+
+# Recordings
+*.mp4
+*.webm
+*.mov

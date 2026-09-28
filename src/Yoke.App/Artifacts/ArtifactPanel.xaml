@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Yoke.App.Artifacts.ArtifactPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:app="using:Yoke.App"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid
+        BorderThickness="1,0,0,0"
+        BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+        Background="{ThemeResource LayerFillColorDefaultBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid
+            Padding="16,8,8,8"
+            ColumnSpacing="8"
+            BorderThickness="0,0,0,1"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock x:Name="TitleText" Style="{StaticResource BodyStrongTextBlockStyle}" TextTrimming="CharacterEllipsis" />
+                <TextBlock
+                    x:Name="SubtitleText"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+
+            <SelectorBar x:Name="Tabs" Grid.Column="1" SelectionChanged="Tabs_SelectionChanged">
+                <SelectorBarItem
+                    x:Name="PreviewTab"
+                    Text="{x:Bind app:Strings.ArtifactPreview}"
+                    IsSelected="True"
+                    AutomationProperties.AutomationId="ArtifactPreviewTab" />
+                <SelectorBarItem
+                    x:Name="CodeTab"
+                    Text="{x:Bind app:Strings.ArtifactCode}"
+                    AutomationProperties.AutomationId="ArtifactCodeTab" />
+            </SelectorBar>
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <Button
+                    Padding="8"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    AutomationProperties.AutomationId="ArtifactOpenInBrowserButton"
+                    AutomationProperties.Name="{x:Bind app:Strings.ArtifactOpenInBrowser}"
+                    ToolTipService.ToolTip="{x:Bind app:Strings.ArtifactOpenInBrowser}"
+                    Click="OpenInBrowser_Click">
+                    <FontIcon FontSize="14" Glyph="&#xE774;" />
+                </Button>
+                <Button
+                    Padding="8"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    AutomationProperties.AutomationId="ArtifactSaveAsButton"
+                    AutomationProperties.Name="{x:Bind app:Strings.ArtifactSaveAs}"
+                    ToolTipService.ToolTip="{x:Bind app:Strings.ArtifactSaveAs}"
+                    Click="SaveAs_Click">
+                    <FontIcon FontSize="14" Glyph="&#xE74E;" />
+                </Button>
+                <Button
+                    Padding="8"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    AutomationProperties.AutomationId="ArtifactCloseButton"
+                    AutomationProperties.Name="{x:Bind app:Strings.ArtifactClose}"
+                    ToolTipService.ToolTip="{x:Bind app:Strings.ArtifactClose}"
+                    Click="Close_Click">
+                    <FontIcon FontSize="14" Glyph="&#xE711;" />
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- Separate WebView2 from the chat: artifact HTML runs its own scripts, so it gets its own origin
+             and no message bridge to the app. Its CoreWebView2 is only created on first use. -->
+        <controls:WebView2 x:Name="PreviewWebView" Grid.Row="1" AutomationProperties.AutomationId="ArtifactPreview" />
+        <TextBox
+            x:Name="CodeBox"
+            Grid.Row="1"
+            Visibility="Collapsed"
+            IsReadOnly="True"
+            AcceptsReturn="True"
+            TextWrapping="NoWrap"
+            BorderThickness="0"
+            FontFamily="Cascadia Mono, Consolas"
+            FontSize="13"
+            AutomationProperties.AutomationId="ArtifactCode"
+            ScrollViewer.HorizontalScrollBarVisibility="Auto"
+            ScrollViewer.VerticalScrollBarVisibility="Auto" />
+    </Grid>
+</UserControl>

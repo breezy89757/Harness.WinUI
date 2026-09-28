@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>Yoke.App</RootNamespace>
+    <AssemblyName>Yoke.App</AssemblyName>
+    <Product>Harness.WinUI</Product>
+    <Description>Harness.WinUI — a lightweight AI agent for Windows, built with WinUI 3.</Description>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\Yoke.ico</ApplicationIcon>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+
+    <!-- Builds unpackaged, so it runs straight from the output folder.
+         WindowsAppSDKSelfContained copies the Windows App Runtime into the output folder
+         so the app runs standalone without an installed/registered framework package. -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Yoke.Core\Yoke.Core.csproj" />
+    <ProjectReference Include="..\Yoke.MarkdownRendering\Yoke.MarkdownRendering.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\Yoke.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="appsettings.local.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('appsettings.local.json')" />
+  </ItemGroup>
+
+  <!-- Fallback content item for Yoke.MarkdownRendering's wwwroot (bundled highlight.js /
+       mermaid.js / github css) in case content-item propagation across the ProjectReference
+       doesn't flow into this project's own output directory. Verified needed/unneeded after
+       first build — see build notes. -->
+  <ItemGroup>
+    <Content Include="..\Yoke.MarkdownRendering\wwwroot\**" CopyToOutputDirectory="PreserveNewest" LinkBase="wwwroot" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" Version="8.2.251219" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+  </ItemGroup>
+
+</Project>

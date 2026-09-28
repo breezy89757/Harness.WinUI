@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Yoke.App.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Yoke.App"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
+    xmlns:artifacts="using:Yoke.App.Artifacts"
+    xmlns:vm="using:Yoke.App.ViewModels"
+    mc:Ignorable="d">
+
+    <Grid x:Name="RootGrid">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="ChatColumn" Width="*" MinWidth="360" />
+            <ColumnDefinition x:Name="SplitterColumn" Width="Auto" />
+            <ColumnDefinition x:Name="ArtifactColumn" Width="0" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Chat -->
+        <Grid x:Name="ChatGrid" Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <controls:WebView2
+                x:Name="ChatWebView"
+                Grid.Row="0"
+                AutomationProperties.Name="{x:Bind local:Strings.ChatTranscript}" />
+
+            <Grid
+                x:Name="ComposerGrid"
+                Grid.Row="1"
+                ColumnSpacing="12"
+                Padding="24,16,24,20"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                Background="{ThemeResource LayerFillColorDefaultBrush}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button
+                    x:Name="NewChatButton"
+                    Grid.Column="0"
+                    AutomationProperties.AutomationId="NewChatButton"
+                    AutomationProperties.Name="{x:Bind local:Strings.NewChat}"
+                    VerticalAlignment="Bottom"
+                    Padding="10,8"
+                    ToolTipService.ToolTip="{x:Bind local:Strings.NewChat}"
+                    Command="{x:Bind ViewModel.NewChatCommand}">
+                    <FontIcon FontSize="16" Glyph="&#xE710;" />
+                </Button>
+
+                <Button
+                    x:Name="HistoryButton"
+                    Grid.Column="1"
+                    Margin="-4,0,0,0"
+                    AutomationProperties.AutomationId="HistoryButton"
+                    AutomationProperties.Name="{x:Bind local:Strings.History}"
+                    VerticalAlignment="Bottom"
+                    Padding="10,8"
+                    ToolTipService.ToolTip="{x:Bind local:Strings.History}"
+                    IsEnabled="{x:Bind local:MainWindow.IsNotBusy(ViewModel.IsBusy), Mode=OneWay}">
+                    <FontIcon FontSize="16" Glyph="&#xE81C;" />
+                    <Button.Flyout>
+                        <Flyout x:Name="HistoryFlyout" Placement="TopEdgeAlignedLeft" Opening="HistoryFlyout_Opening">
+                            <Grid Width="360" MaxHeight="480" RowSpacing="8">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="{x:Bind local:Strings.History}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                <TextBlock
+                                    x:Name="HistoryEmptyText"
+                                    Grid.Row="1"
+                                    Text="{x:Bind local:Strings.NoHistory}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <ListView
+                                    x:Name="HistoryList"
+                                    Grid.Row="1"
+                                    AutomationProperties.AutomationId="HistoryList"
+                                    AutomationProperties.Name="{x:Bind local:Strings.History}"
+                                    ItemsSource="{x:Bind ViewModel.History}"
+                                    SelectionMode="None"
+                                    IsItemClickEnabled="True"
+                                    ItemClick="HistoryList_ItemClick">
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ConversationItem">
+                                            <Grid Padding="0,6" ColumnSpacing="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <Ellipse Width="6" Height="6" VerticalAlignment="Center" Fill="{ThemeResource AccentFillColorDefaultBrush}" Visibility="{x:Bind IsCurrent}" />
+                                                        <TextBlock Text="{x:Bind Title}" TextTrimming="CharacterEllipsis" />
+                                                    </StackPanel>
+                                                    <TextBlock
+                                                        Text="{x:Bind When}"
+                                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                </StackPanel>
+                                                <Button
+                                                    Grid.Column="1"
+                                                    Padding="6"
+                                                    VerticalAlignment="Center"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Tag="{x:Bind Id}"
+                                                    ToolTipService.ToolTip="{x:Bind DeleteLabel}"
+                                                    AutomationProperties.Name="{x:Bind DeleteLabel}"
+                                                    Click="DeleteConversation_Click">
+                                                    <FontIcon FontSize="12" Glyph="&#xE74D;" />
+                                                </Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </Grid>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+
+                <Button
+                    x:Name="SettingsButton"
+                    Grid.Column="2"
+                    Margin="-4,0,0,0"
+                    AutomationProperties.AutomationId="SettingsButton"
+                    AutomationProperties.Name="{x:Bind local:Strings.SettingsTooltip}"
+                    VerticalAlignment="Bottom"
+                    Padding="10,8"
+                    ToolTipService.ToolTip="{x:Bind local:Strings.SettingsTooltip}"
+                    Click="SettingsButton_Click">
+                    <FontIcon FontSize="16" Glyph="&#xE713;" />
+                </Button>
+
+                <Button
+                    x:Name="ToolsButton"
+                    Grid.Column="3"
+                    Margin="-4,0,0,0"
+                    AutomationProperties.AutomationId="ToolsButton"
+                    AutomationProperties.Name="{x:Bind local:Strings.ToolsTooltip}"
+                    VerticalAlignment="Bottom"
+                    Padding="10,8"
+                    ToolTipService.ToolTip="{x:Bind ViewModel.McpStatusText, Mode=OneWay}"
+                    Click="ToolsButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon FontSize="16" Glyph="&#xE90F;" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="{x:Bind ViewModel.McpBadgeText, Mode=OneWay}" />
+                        <FontIcon
+                            FontSize="12"
+                            Glyph="&#xE7BA;"
+                            Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                            Visibility="{x:Bind ViewModel.McpHasErrors, Mode=OneWay}" />
+                    </StackPanel>
+                </Button>
+
+                <Button
+                    x:Name="QualityButton"
+                    Grid.Column="4"
+                    Margin="-4,0,0,0"
+                    AutomationProperties.AutomationId="QualityButton"
+                    AutomationProperties.Name="{x:Bind local:Strings.ResponseQuality}"
+                    VerticalAlignment="Bottom"
+                    Padding="10,8">
+                    <FontIcon FontSize="16" Glyph="&#xE945;" />
+                    <Button.Flyout>
+                        <MenuFlyout x:Name="QualityFlyout" Placement="TopEdgeAlignedLeft" Opening="QualityFlyout_Opening">
+                            <MenuFlyoutItem Text="{x:Bind local:Strings.ReasoningEffortHeader}" IsEnabled="False" />
+                            <RadioMenuFlyoutItem x:Name="EffortAuto" GroupName="Effort" Tag="auto" Text="{x:Bind local:Strings.EffortAuto}" Click="Effort_Click" />
+                            <RadioMenuFlyoutItem x:Name="EffortLow" GroupName="Effort" Tag="low" Text="{x:Bind local:Strings.EffortLow}" Click="Effort_Click" />
+                            <RadioMenuFlyoutItem x:Name="EffortMedium" GroupName="Effort" Tag="medium" Text="{x:Bind local:Strings.EffortMedium}" Click="Effort_Click" />
+                            <RadioMenuFlyoutItem x:Name="EffortHigh" GroupName="Effort" Tag="high" Text="{x:Bind local:Strings.EffortHigh}" Click="Effort_Click" />
+                            <MenuFlyoutSeparator />
+                            <MenuFlyoutItem Text="{x:Bind local:Strings.ImageQualityHeader}" IsEnabled="False" />
+                            <RadioMenuFlyoutItem x:Name="ImageLow" GroupName="Image" Tag="low" Text="{x:Bind local:Strings.ImageLow}" Click="ImageQuality_Click" />
+                            <RadioMenuFlyoutItem x:Name="ImageMedium" GroupName="Image" Tag="medium" Text="{x:Bind local:Strings.ImageMedium}" Click="ImageQuality_Click" />
+                            <RadioMenuFlyoutItem x:Name="ImageHigh" GroupName="Image" Tag="high" Text="{x:Bind local:Strings.ImageHigh}" Click="ImageQuality_Click" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+
+                <TextBox
+                    x:Name="InputTextBox"
+                    Grid.Column="5"
+                    AutomationProperties.AutomationId="ChatInputTextBox"
+                    AutomationProperties.Name="{x:Bind local:Strings.MessageInput}"
+                    PlaceholderText="{x:Bind local:Strings.MessagePlaceholder}"
+                    AcceptsReturn="True"
+                    TextWrapping="Wrap"
+                    MaxHeight="160"
+                    VerticalAlignment="Bottom"
+                    Text="{x:Bind ViewModel.InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    IsEnabled="{x:Bind local:MainWindow.IsNotBusy(ViewModel.IsBusy), Mode=OneWay}"
+                    PreviewKeyDown="InputTextBox_PreviewKeyDown"
+                    TextCompositionStarted="InputTextBox_TextCompositionStarted"
+                    TextCompositionEnded="InputTextBox_TextCompositionEnded" />
+
+                <Button
+                    x:Name="SendButton"
+                    Grid.Column="6"
+                    AutomationProperties.AutomationId="SendButton"
+                    AutomationProperties.Name="{x:Bind local:Strings.SendMessage}"
+                    Content="{x:Bind local:Strings.Send}"
+                    Style="{StaticResource AccentButtonStyle}"
+                    VerticalAlignment="Bottom"
+                    MinWidth="88"
+                    Visibility="{x:Bind local:MainWindow.CollapsedWhen(ViewModel.IsBusy), Mode=OneWay}"
+                    Command="{x:Bind ViewModel.SendCommand}" />
+
+                <Button
+                    x:Name="StopButton"
+                    Grid.Column="6"
+                    AutomationProperties.AutomationId="StopButton"
+                    AutomationProperties.Name="{x:Bind local:Strings.Stop}"
+                    ToolTipService.ToolTip="{x:Bind local:Strings.StopTooltip}"
+                    VerticalAlignment="Bottom"
+                    MinWidth="88"
+                    Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay}"
+                    Command="{x:Bind ViewModel.StopCommand}">
+                    <Button.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="Escape" />
+                    </Button.KeyboardAccelerators>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon FontSize="12" Glyph="&#xE71A;" />
+                        <TextBlock Text="{x:Bind local:Strings.Stop}" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Grid>
+
+        <!-- Artifact panel (collapsed until the first artifact) -->
+        <toolkit:GridSplitter
+            x:Name="ArtifactSplitter"
+            Grid.Column="1"
+            Width="6"
+            ResizeBehavior="PreviousAndNext"
+            ResizeDirection="Columns"
+            Visibility="Collapsed" />
+
+        <artifacts:ArtifactPanel
+            x:Name="ArtifactPanel"
+            Grid.Column="2"
+            Visibility="Collapsed"
+            OpenRequested="ArtifactPanel_OpenRequested"
+            CloseRequested="ArtifactPanel_CloseRequested" />
+    </Grid>
+</Window>
