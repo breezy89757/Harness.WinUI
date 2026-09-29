@@ -65,7 +65,7 @@ Install it from the [Microsoft Store](https://apps.microsoft.com/detail/9pfs9cgg
 | `Harness.WinUI-<version>-win-x64.zip` | Most Intel / AMD PCs |
 | `Harness.WinUI-<version>-win-arm64.zip` | ARM PCs (e.g. Snapdragon Copilot+ PCs) |
 
-Unzip to any folder and run `Yoke.App.exe`. On first launch, enter your model endpoint and API key in Settings. The executable is not code-signed, so SmartScreen may warn you the first time: choose **More info → Run anyway**.
+Unzip to any folder and run `Harness.WinUI.exe`. On first launch, enter your model endpoint and API key in Settings. The executable is not code-signed, so SmartScreen may warn you the first time: choose **More info → Run anyway**.
 
 ### Getting started
 
@@ -80,11 +80,11 @@ The .NET runtime and the Windows App Runtime are copied into the output folder, 
 #### Build and run
 
 ```bash
-dotnet build Yoke.sln -p:Platform=x64
+dotnet build Harness.WinUI.sln -p:Platform=x64
 ```
 
 ```bash
-./src/Yoke.App/bin/x64/Debug/net9.0-windows10.0.19041.0/win-x64/Yoke.App.exe
+./src/Harness.WinUI/bin/x64/Debug/net9.0-windows10.0.19041.0/win-x64/Harness.WinUI.exe
 ```
 
 #### Package as MSIX (Microsoft Store)
@@ -93,7 +93,7 @@ dotnet build Yoke.sln -p:Platform=x64
 .\build-msix.ps1
 ```
 
-Builds Release for x64 and ARM64 and produces `release\Harness.WinUI_<version>.msixbundle`, ready to upload to Partner Center. The version comes from `<Version>` in `src/Yoke.App/Yoke.App.csproj`. Before publishing your own build, set the Identity in `src/Yoke.App/Package.appxmanifest` to the values Partner Center gives you.
+Builds Release for x64 and ARM64 and produces `release\Harness.WinUI_<version>.msixbundle`, ready to upload to Partner Center. The version comes from `<Version>` in `src/Harness.WinUI/Harness.WinUI.csproj`. Before publishing your own build, set the Identity in `src/Harness.WinUI/Package.appxmanifest` to the values Partner Center gives you.
 
 #### Configure a model
 
@@ -106,7 +106,7 @@ On first launch the settings dialog opens automatically. Fill in:
 | API Key | Encrypted with Windows DPAPI and stored locally, **never in plain text** |
 | Image model (optional) | e.g. `gpt-image-2`, using the same endpoint and key |
 
-For development you can use a config file instead: put the endpoint and model in `appsettings.local.json` (gitignored) and the API key in the `YOKE_PROVIDER_APIKEY` environment variable.
+For development you can use a config file instead: put the endpoint and model in `appsettings.local.json` (gitignored) and the API key in the `HARNESS_PROVIDER_APIKEY` environment variable.
 
 #### Try it
 
@@ -120,7 +120,7 @@ The sandbox defaults to the `sandbox` folder inside the data folder (see Data an
 
 Everything is stored locally. Nothing is sent anywhere except the model endpoint you configure (and any MCP servers you add). See the [privacy policy](PRIVACY.md).
 
-Data folder: the portable build and builds you run yourself use `%LOCALAPPDATA%\Yoke\`; the Microsoft Store version uses the app's own folder (`%LOCALAPPDATA%\Packages\<Harness.WinUI package>\LocalState\`), which is removed when you uninstall.
+Data folder: the portable build and builds you run yourself use `%LOCALAPPDATA%\Harness.WinUI\`; the Microsoft Store version uses the app's own folder (`%LOCALAPPDATA%\Packages\<Harness.WinUI package>\LocalState\`), which is removed when you uninstall.
 
 | File | Contents |
 |---|---|
@@ -137,11 +137,11 @@ The chat view never runs HTML produced by the model. Artifacts run in a separate
 
 ```
 src/
-  Yoke.Core/               Agent, model connection, MCP, built-in tools, approvals, settings encryption, history (net9.0, no UI dependency)
-  Yoke.MarkdownRendering/  Markdown → HTML, chat page, highlight.js / mermaid
-  Yoke.App/                WinUI 3 desktop app
-tools/Yoke.DevConsole/     Command-line tool for testing Core without the UI
-docs/                      Logo and screenshots
+  Harness.Core/               Agent, model connection, MCP, built-in tools, approvals, settings encryption, history (net9.0, no UI dependency)
+  Harness.MarkdownRendering/  Markdown → HTML, chat page, highlight.js / mermaid
+  Harness.WinUI/              WinUI 3 desktop app
+tools/Harness.DevConsole/     Command-line tool for testing Core without the UI
+docs/                         Logo and screenshots
 ```
 
 Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, ModelContextProtocol, Open XML SDK, PdfPig, Microsoft.Data.Sqlite, CommunityToolkit.Mvvm.
@@ -186,7 +186,7 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 | `Harness.WinUI-<版本>-win-x64.zip` | 一般 Intel / AMD 電腦（大多數人選這個） |
 | `Harness.WinUI-<版本>-win-arm64.zip` | ARM 電腦（例如 Snapdragon 的 Copilot+ PC） |
 
-解壓縮到任意資料夾，執行 `Yoke.App.exe`，第一次開啟時在設定頁填入模型端點與 API key。執行檔沒有程式碼簽章，第一次開啟時 SmartScreen 可能會跳出警告，按「其他資訊 → 仍要執行」即可。
+解壓縮到任意資料夾，執行 `Harness.WinUI.exe`，第一次開啟時在設定頁填入模型端點與 API key。執行檔沒有程式碼簽章，第一次開啟時 SmartScreen 可能會跳出警告，按「其他資訊 → 仍要執行」即可。
 
 ### 開始使用
 
@@ -201,11 +201,11 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 #### 建置與執行
 
 ```bash
-dotnet build Yoke.sln -p:Platform=x64
+dotnet build Harness.WinUI.sln -p:Platform=x64
 ```
 
 ```bash
-./src/Yoke.App/bin/x64/Debug/net9.0-windows10.0.19041.0/win-x64/Yoke.App.exe
+./src/Harness.WinUI/bin/x64/Debug/net9.0-windows10.0.19041.0/win-x64/Harness.WinUI.exe
 ```
 
 #### 打包成 MSIX（Microsoft Store）
@@ -214,7 +214,7 @@ dotnet build Yoke.sln -p:Platform=x64
 .\build-msix.ps1
 ```
 
-會建置 x64 與 ARM64 的 Release 版，產生 `release\Harness.WinUI_<版本>.msixbundle`，可直接上傳到 Partner Center。版本號取自 `src/Yoke.App/Yoke.App.csproj` 的 `<Version>`；要發佈自己的版本前，請把 `src/Yoke.App/Package.appxmanifest` 的 Identity 換成 Partner Center 提供的值。
+會建置 x64 與 ARM64 的 Release 版，產生 `release\Harness.WinUI_<版本>.msixbundle`，可直接上傳到 Partner Center。版本號取自 `src/Harness.WinUI/Harness.WinUI.csproj` 的 `<Version>`；要發佈自己的版本前，請把 `src/Harness.WinUI/Package.appxmanifest` 的 Identity 換成 Partner Center 提供的值。
 
 #### 設定模型
 
@@ -227,7 +227,7 @@ dotnet build Yoke.sln -p:Platform=x64
 | API Key | 用 Windows DPAPI 加密後存在本機，**不會以明碼存放** |
 | 生圖模型（選填） | 例如 `gpt-image-2`，沿用同一個端點和 key |
 
-開發時也可以改用設定檔：在 `appsettings.local.json`（已 gitignore）填端點和模型，API key 放在環境變數 `YOKE_PROVIDER_APIKEY`。
+開發時也可以改用設定檔：在 `appsettings.local.json`（已 gitignore）填端點和模型，API key 放在環境變數 `HARNESS_PROVIDER_APIKEY`。
 
 #### 試試看
 
@@ -241,7 +241,7 @@ dotnet build Yoke.sln -p:Platform=x64
 
 所有資料都存在本機，除了你設定的模型端點（和你加入的 MCP server）之外，不會傳到任何地方。詳見[隱私權政策](PRIVACY.md)。
 
-資料夾位置：免安裝版和自行建置的版本在 `%LOCALAPPDATA%\Yoke\`；Microsoft Store 版在 App 自己的資料夾（`%LOCALAPPDATA%\Packages\<Harness.WinUI 套件>\LocalState\`），解除安裝時會一併移除。
+資料夾位置：免安裝版和自行建置的版本在 `%LOCALAPPDATA%\Harness.WinUI\`；Microsoft Store 版在 App 自己的資料夾（`%LOCALAPPDATA%\Packages\<Harness.WinUI 套件>\LocalState\`），解除安裝時會一併移除。
 
 | 檔案 | 內容 |
 |---|---|
@@ -258,11 +258,11 @@ dotnet build Yoke.sln -p:Platform=x64
 
 ```
 src/
-  Yoke.Core/               Agent、模型連線、MCP、內建工具、核准、設定加密、對話紀錄（net9.0，不依賴 UI）
-  Yoke.MarkdownRendering/  Markdown → HTML、聊天頁面、highlight.js / mermaid
-  Yoke.App/                WinUI 3 桌面程式
-tools/Yoke.DevConsole/     不開 UI 直接測試 Core 的命令列工具
-docs/                      Logo 與截圖
+  Harness.Core/               Agent、模型連線、MCP、內建工具、核准、設定加密、對話紀錄（net9.0，不依賴 UI）
+  Harness.MarkdownRendering/  Markdown → HTML、聊天頁面、highlight.js / mermaid
+  Harness.WinUI/              WinUI 3 桌面程式
+tools/Harness.DevConsole/     不開 UI 直接測試 Core 的命令列工具
+docs/                         Logo 與截圖
 ```
 
 主要套件：Microsoft.Agents.AI、Microsoft.Extensions.AI、OpenAI .NET SDK、ModelContextProtocol、Open XML SDK、PdfPig、Microsoft.Data.Sqlite、CommunityToolkit.Mvvm。

@@ -17,7 +17,7 @@ xaml_out.log
 *.resolved.*
 
 # Local-only config overlays (endpoint/model for a dev machine; API keys never go in
-# these files either — see ApiKeyEnvVar in Yoke.Core.Config.ProviderOptions)
+# these files either — see ApiKeyEnvVar in Harness.Core.Config.ProviderOptions)
 appsettings.local.json
 appsettings.*.local.json
 config.local.yaml

@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>Harness.WinUI</RootNamespace>
+    <AssemblyName>Harness.WinUI</AssemblyName>
+    <Product>Harness.WinUI</Product>
+    <Description>Harness.WinUI — a lightweight AI agent for Windows, built with WinUI 3.</Description>
+    <Version>1.0.1</Version>
+    <Authors>breezy89757</Authors>
+    <Copyright>Copyright (c) 2026 breezy89757</Copyright>
+    <RepositoryUrl>https://github.com/breezy89757/Harness.WinUI</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\Harness.ico</ApplicationIcon>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+
+    <!-- Builds unpackaged, so development runs straight from the output folder. The Store MSIX is
+         made from the Release output with Package.appxmanifest (see build-msix.ps1).
+         WindowsAppSDKSelfContained copies the Windows App Runtime into the output folder, so neither
+         build needs an installed framework package. -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Harness.Core\Harness.Core.csproj" />
+    <ProjectReference Include="..\Harness.MarkdownRendering\Harness.MarkdownRendering.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\Harness.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Developer-only overlay (gitignored): never copied into Release output, which gets packaged. -->
+    <Content Include="appsettings.local.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('appsettings.local.json') And '$(Configuration)' == 'Debug'" />
+    <!-- MSIX tile / Store assets, referenced by Package.appxmanifest. -->
+    <Content Include="Images\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Fallback content item for Harness.MarkdownRendering's wwwroot (bundled highlight.js /
+       mermaid.js / github css) in case content-item propagation across the ProjectReference
+       doesn't flow into this project's own output directory. Verified needed/unneeded after
+       first build — see build notes. -->
+  <ItemGroup>
+    <Content Include="..\Harness.MarkdownRendering\wwwroot\**" CopyToOutputDirectory="PreserveNewest" LinkBase="wwwroot" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" Version="8.2.251219" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+  </ItemGroup>
+
+</Project>
