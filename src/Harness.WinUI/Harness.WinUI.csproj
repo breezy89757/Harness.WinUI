@@ -8,7 +8,7 @@
     <AssemblyName>Harness.WinUI</AssemblyName>
     <Product>Harness.WinUI</Product>
     <Description>Harness.WinUI — a lightweight AI agent for Windows, built with WinUI 3.</Description>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Authors>breezy89757</Authors>
     <Copyright>Copyright (c) 2026 breezy89757</Copyright>
     <RepositoryUrl>https://github.com/breezy89757/Harness.WinUI</RepositoryUrl>

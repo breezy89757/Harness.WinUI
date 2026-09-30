@@ -1,6 +1,8 @@
 // Harness.WinUI — Licensed under the MIT License.
 
 using System.ComponentModel;
+using System.Net;
+using System.Net.Sockets;
 using System.Runtime.Versioning;
 using Microsoft.Extensions.AI;
 using Harness.Core.Config;
@@ -26,9 +28,12 @@ public static class McpServerManager
             throw new ArgumentException("Name must be 1-40 characters: letters, digits, '-' or '_'.", nameof(name));
 
         if (!Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri) ||
-            !(uri.Scheme == Uri.UriSchemeHttps || (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)))
+            !(uri.Scheme == Uri.UriSchemeHttps ||
+              (uri.Scheme == Uri.UriSchemeHttp && await IsLocalOrPrivateHostAsync(uri, cancellationToken).ConfigureAwait(false))))
         {
-            throw new ArgumentException("URL must be https:// (plain http:// is only allowed for localhost).", nameof(url));
+            throw new ArgumentException(
+                "URL must be https://. Plain http:// is only allowed for servers on this PC or the internal network " +
+                "(the host must resolve to a loopback or private address).", nameof(url));
         }
 
         SecretStore.RemoveByPrefix(SecretPrefix(name));
@@ -104,7 +109,7 @@ public static class McpServerManager
         var add = AIFunctionFactory.Create(
             async (
                 [Description("Short identifier for the server: letters, digits, '-' or '_' (max 40).")] string name,
-                [Description("The server's Streamable HTTP endpoint URL (https://...).")] string url,
+                [Description("The server's Streamable HTTP endpoint URL: https://..., or http://... for a server on this PC or the internal network.")] string url,
                 [Description("Optional auth header name, e.g. \"Authorization\" or \"X-API-Key\". Defaults to Authorization when a value is given.")] string? auth_header_name,
                 [Description("Optional auth header value, e.g. \"Bearer <token>\". Stored encrypted.")] string? auth_header_value,
                 CancellationToken cancellationToken) =>
@@ -132,4 +137,41 @@ public static class McpServerManager
     }
 
     private static string SecretPrefix(string serverName) => $"mcp/{serverName}/";
+
+    /// <summary>
+    /// True when every address the host resolves to is loopback or private (RFC 1918, link-local, IPv6 ULA):
+    /// plain http is fine inside the internal network, but an auth header must not cross the internet in clear text.
+    /// </summary>
+    private static async Task<bool> IsLocalOrPrivateHostAsync(Uri uri, CancellationToken cancellationToken)
+    {
+        if (uri.IsLoopback)
+            return true;
+        try
+        {
+            var addresses = IPAddress.TryParse(uri.DnsSafeHost, out var literal)
+                ? [literal]
+                : await Dns.GetHostAddressesAsync(uri.DnsSafeHost, cancellationToken).ConfigureAwait(false);
+            return addresses.Length > 0 && addresses.All(IsLocalOrPrivate);
+        }
+        catch (SocketException)
+        {
+            return false;
+        }
+    }
+
+    private static bool IsLocalOrPrivate(IPAddress address)
+    {
+        if (address.IsIPv4MappedToIPv6)
+            address = address.MapToIPv4();
+        if (IPAddress.IsLoopback(address))
+            return true;
+        if (address.AddressFamily == AddressFamily.InterNetworkV6)
+            return address.IsIPv6LinkLocal || address.IsIPv6UniqueLocal || address.IsIPv6SiteLocal;
+
+        var b = address.GetAddressBytes();
+        return b[0] == 10                                  // 10.0.0.0/8
+            || (b[0] == 172 && b[1] >= 16 && b[1] <= 31)   // 172.16.0.0/12
+            || (b[0] == 192 && b[1] == 168)                // 192.168.0.0/16
+            || (b[0] == 169 && b[1] == 254);               // 169.254.0.0/16 link-local
+    }
 }

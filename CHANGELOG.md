@@ -1,5 +1,12 @@
 # Harness.WinUI - Changelog
 
+## [1.0.2] - 2026-09-30
+
+### Changed
+- Remote MCP servers can use plain `http://` on the internal network, not just on this PC: allowed
+  when the host resolves to a private address (10.x, 172.16-31.x, 192.168.x, link-local, IPv6 ULA).
+  Servers on the public internet still need `https://`
+
 ## [1.0.1] - 2026-09-29
 
 ### Fixed
