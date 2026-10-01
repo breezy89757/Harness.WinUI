@@ -1,6 +1,6 @@
 # Harness.WinUI - Changelog
 
-## [Unreleased]
+## [1.0.3] - 2026-10-01
 
 ### Added
 - MCP Apps (`io.modelcontextprotocol/ui`, spec 2026-01-26): a tool's `ui://` view is shown in the chat
