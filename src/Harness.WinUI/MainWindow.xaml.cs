@@ -320,6 +320,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
             ChatShell.ImagesHostName, ImageGenerationTool.OutputDirectory, CoreWebView2HostResourceAccessKind.Allow);
 
         core.WebMessageReceived += OnWebMessageReceived;
+        ConfigureMcpApps(core);
 
         // The chat page must never be replaced: anything that tries to navigate goes to the user's
         // browser instead — and only when the user actually clicked something.
@@ -357,6 +358,9 @@ public sealed partial class MainWindow : Window, IChatMessageSink
                     break;
                 case "openArtifact":
                     _ = ArtifactPanel.ShowAsync(message.GetProperty("id").GetString() ?? string.Empty);
+                    break;
+                case "mcpApp":
+                    OnAppMessage(message.GetProperty("view").GetString() ?? string.Empty, message.GetProperty("message").Clone());
                     break;
             }
         }
@@ -484,6 +488,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         RunOnUIThreadAsync(async () =>
         {
             CloseArtifactPanel();
+            await TeardownAppViewsAsync();
             await ExecuteShellScriptAsync("clearMessages();");
             InputTextBox.Focus(FocusState.Programmatic);
         });

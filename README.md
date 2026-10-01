@@ -39,6 +39,7 @@ Harness.WinUI reads and writes files, plugs into MCP tools, and previews what it
 - **Built-in file tools, confined to a sandbox**: list, read, search, write and exact replace. Reads text from `.docx`, `.xlsx`, `.pptx` and `.pdf`, and **creates real Word and Excel files**.
 - **You approve anything with side effects**: writing files or changing settings shows a confirmation card: Allow once, Always allow, or Deny.
 - **MCP**: stdio and Streamable HTTP servers. Manage them in the UI, or just ask the agent to add one in the chat.
+- **MCP Apps**: tools that come with their own UI (`io.modelcontextprotocol/ui`) render it right in the chat, e.g. a database query shown as an interactive table. Each app runs in an isolated, sandboxed frame with the CSP it declares; the model sees only the tool's text summary.
 - **Image generation**: works with gpt-image models; images show up right in the conversation.
 - **Conversation history**: stored locally in SQLite; reopening the app restores the model's context too.
 - **Stop anytime, tune quality**: stop a reply mid-stream (or press Esc). Switch reasoning effort and image quality whenever you like.
@@ -162,6 +163,7 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 - **內建檔案工具，只能在沙盒內動作**：列出、讀取、搜尋、寫入、精確取代。可以讀 `.docx`、`.xlsx`、`.pptx`、`.pdf` 的文字，也能**直接產生真正的 Word / Excel 檔**。
 - **有副作用的動作都要你核准**：寫檔、改設定前會跳出確認卡片，可選「允許一次」、「永遠允許」或「拒絕」。
 - **MCP**：支援 stdio 和 Streamable HTTP 兩種 server。可以在介面上管理，也能直接在對話裡請 agent 幫你新增。
+- **MCP Apps**：自帶介面的工具（`io.modelcontextprotocol/ui`）會直接在對話裡顯示，例如把資料庫查詢結果呈現成可操作的表格。每個 App 在獨立的沙盒框架中執行，只套用它宣告的 CSP；模型只會看到工具的文字摘要。
 - **生圖**：接 gpt-image 系列模型，圖片直接顯示在對話裡。
 - **對話紀錄**：存在本機 SQLite，重新打開時連模型的上下文一起接回來。
 - **隨時停止、可調品質**：回覆進行中可以按停止（或 Esc）。推理強度和生圖品質可以隨時切換。

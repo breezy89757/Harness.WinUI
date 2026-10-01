@@ -1,8 +1,10 @@
 // Harness.WinUI — Licensed under the MIT License.
 
 using System.Runtime.Versioning;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.AI;
+using ModelContextProtocol;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using Harness.Core.Config;
@@ -92,11 +94,21 @@ public sealed partial class McpHost : IAsyncDisposable
         {
             client = await McpClient.CreateAsync(
                 CreateTransport(name, config),
-                new McpClientOptions { ClientInfo = new Implementation { Name = "Harness.WinUI", Version = "1.0.0" } },
+                new McpClientOptions
+                {
+                    ClientInfo = new Implementation { Name = "Harness.WinUI", Version = "1.0.0" },
+                    // MCP Apps: tools may come with an HTML view, rendered next to the tool call.
+                    Capabilities = new ClientCapabilities
+                    {
+                        Extensions = new Dictionary<string, object> { [McpApps.ExtensionId] = McpApps.ClientCapability },
+                    },
+                },
                 cancellationToken: timeout.Token).ConfigureAwait(false);
 
             tools = await client.ListToolsAsync(cancellationToken: timeout.Token).ConfigureAwait(false);
-            status = new McpServerStatus(name, McpServerState.Connected, tools.Count, null, summary);
+            // Count what the model gets: tools only an MCP App view may call aren't offered to it.
+            var modelToolCount = tools.Count(t => McpApps.GetToolUi(t.ProtocolTool) is not { VisibleToModel: false });
+            status = new McpServerStatus(name, McpServerState.Connected, modelToolCount, null, summary);
         }
         catch (Exception ex)
         {
@@ -150,6 +162,7 @@ public sealed partial class McpHost : IAsyncDisposable
     private void RebuildTools()
     {
         var tools = new List<AITool>();
+        var appTools = new Dictionary<string, McpAppTool>(StringComparer.Ordinal);
         if (_approver is { } approver && _permissions is { } permissions)
         {
             var exposedNames = new HashSet<string>(StringComparer.Ordinal);
@@ -159,6 +172,11 @@ public sealed partial class McpHost : IAsyncDisposable
 
             foreach (var (server, tool) in all)
             {
+                // MCP Apps: tools only an app view may call are never offered to the model.
+                var ui = McpApps.GetToolUi(tool.ProtocolTool);
+                if (ui is { VisibleToModel: false })
+                    continue;
+
                 // OpenAI-style function names allow only [A-Za-z0-9_-]{1,64}; on a clash between
                 // servers, the later one gets the server name as a prefix.
                 var exposed = SanitizeName(tool.Name);
@@ -169,14 +187,121 @@ public sealed partial class McpHost : IAsyncDisposable
                 }
 
                 AIFunction function = exposed == tool.Name ? tool : tool.WithName(exposed);
+                if (ui?.ResourceUri is { } resourceUri)
+                {
+                    appTools[exposed] = new McpAppTool(server, tool.ProtocolTool, resourceUri);
+                    function = new AppToolFunction(function, this);
+                }
+
                 var readOnly = tool.ProtocolTool.Annotations?.ReadOnlyHint == true;
                 tools.Add(new ApprovalGatedFunction(function, server, tool.Name, readOnly, approver, permissions));
             }
         }
 
+        Volatile.Write(ref _appTools, appTools);
         Volatile.Write(ref _tools, tools);
         Changed?.Invoke(this, EventArgs.Empty);
     }
+
+    #region MCP Apps
+
+    private IReadOnlyDictionary<string, McpAppTool> _appTools = new Dictionary<string, McpAppTool>();
+
+    // Full results of app tool calls, by call id, until the chat UI picks them up for the view.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, JsonElement> _appResults = new();
+
+    /// <summary>The full result (with structuredContent) of an app tool call; null if there is none.</summary>
+    public JsonElement? TakeAppResult(string callId) =>
+        _appResults.TryRemove(callId, out var result) ? result : null;
+
+    /// <summary>
+    /// An MCP App tool as the model sees it. As in MCP Apps hosts like Goose, the model gets the result's
+    /// <c>content</c> only: <c>structuredContent</c> (e.g. every row of a query) is for the view, and is
+    /// kept for it here instead of filling the model's context.
+    /// </summary>
+    private sealed class AppToolFunction(AIFunction inner, McpHost host) : DelegatingAIFunction(inner)
+    {
+        protected override async ValueTask<object?> InvokeCoreAsync(AIFunctionArguments arguments, CancellationToken cancellationToken)
+        {
+            var result = await base.InvokeCoreAsync(arguments, cancellationToken).ConfigureAwait(false);
+            if (result is not JsonElement { ValueKind: JsonValueKind.Object } full)
+                return result;
+
+            if (FunctionInvokingChatClient.CurrentContext?.CallContent.CallId is { } callId)
+                host._appResults[callId] = full;
+
+            var forModel = new System.Text.Json.Nodes.JsonObject();
+            if (full.TryGetProperty("content", out var content))
+                forModel["content"] = System.Text.Json.Nodes.JsonNode.Parse(content.GetRawText());
+            if (full.TryGetProperty("isError", out var isError))
+                forModel["isError"] = System.Text.Json.Nodes.JsonNode.Parse(isError.GetRawText());
+            return JsonSerializer.SerializeToElement(forModel);
+        }
+    }
+
+    /// <summary>The MCP App view behind a tool, by the name the model called it with; null if it has none.</summary>
+    public McpAppTool? FindAppTool(string exposedName) =>
+        Volatile.Read(ref _appTools).TryGetValue(exposedName, out var tool) ? tool : null;
+
+    /// <summary>Reads a tool's <c>ui://</c> view from its server.</summary>
+    public async Task<McpAppResource?> ReadAppResourceAsync(McpAppTool tool, CancellationToken cancellationToken = default)
+    {
+        var result = await ClientFor(tool.ServerName).ReadResourceAsync(tool.ResourceUri, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return McpApps.ParseResource(result);
+    }
+
+    /// <summary>
+    /// A <c>tools/call</c> from a view, proxied to the view's own server. Only tools whose visibility
+    /// includes "app" may be called. A tool the model can also call goes through the same approval
+    /// as a model call unless it is read-only or always-allowed; app-only tools are part of the view.
+    /// </summary>
+    public async Task<JsonElement> CallToolForAppAsync(
+        string serverName, string toolName, IReadOnlyDictionary<string, object?>? arguments,
+        Func<IReadOnlyDictionary<string, object?>, Task<bool>> approve, CancellationToken cancellationToken = default)
+    {
+        McpClient client;
+        McpClientTool? tool;
+        lock (_lock)
+        {
+            if (!_entries.TryGetValue(serverName, out var entry) || entry.Client is null)
+                throw new InvalidOperationException($"MCP server '{serverName}' is not connected.");
+            client = entry.Client;
+            tool = entry.Tools.FirstOrDefault(t => t.Name == toolName);
+        }
+
+        var ui = tool is null ? null : McpApps.GetToolUi(tool.ProtocolTool);
+        if (tool is null || ui is { VisibleToApp: false })
+            throw new ArgumentException($"Tool '{toolName}' is not available to this app.");
+
+        arguments ??= new Dictionary<string, object?>();
+        var needsApproval = (ui?.VisibleToModel ?? true) &&
+            tool.ProtocolTool.Annotations?.ReadOnlyHint != true &&
+            !(_permissions?.IsAlwaysAllowed(serverName, toolName) ?? false);
+        if (needsApproval && !await approve(arguments).ConfigureAwait(false))
+            throw new InvalidOperationException("The user declined to run this tool.");
+
+        var result = await client.CallToolAsync(toolName, arguments, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return JsonSerializer.SerializeToElement(result, McpJsonUtilities.DefaultOptions);
+    }
+
+    /// <summary>A <c>resources/read</c> from a view, proxied to the view's own server.</summary>
+    public async Task<JsonElement> ReadResourceForAppAsync(string serverName, string uri, CancellationToken cancellationToken = default)
+    {
+        var result = await ClientFor(serverName).ReadResourceAsync(uri, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return JsonSerializer.SerializeToElement(result, McpJsonUtilities.DefaultOptions);
+    }
+
+    private McpClient ClientFor(string serverName)
+    {
+        lock (_lock)
+        {
+            return _entries.TryGetValue(serverName, out var entry) && entry.Client is { } client
+                ? client
+                : throw new InvalidOperationException($"MCP server '{serverName}' is not connected.");
+        }
+    }
+
+    #endregion
 
     private static IClientTransport CreateTransport(string name, McpServerConfig config)
     {

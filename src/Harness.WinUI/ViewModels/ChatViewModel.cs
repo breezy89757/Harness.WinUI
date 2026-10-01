@@ -72,6 +72,12 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
     /// <summary>"auto", "low", "medium" or "high" — sent with every turn (see <see cref="AppPreferences.ParseEffort"/>).</summary>
     public string ReasoningEffort { get; set; } = "auto";
 
+    /// <summary>
+    /// Context from MCP App views to add to the next message for the model (taken, so it's sent once);
+    /// null when there is none. Called on the UI thread.
+    /// </summary>
+    public Func<string?>? AppContextProvider { get; set; }
+
     /// <summary>Default image quality, for the status line's time estimate (the tool reads its own copy).</summary>
     public string ImageQuality { get; set; } = "low";
 
@@ -241,7 +247,23 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
             return;
 
         InputText = string.Empty;
+        await SendMessageAsync(userMessage).ConfigureAwait(true);
+    }
 
+    /// <summary>
+    /// Sends <paramref name="text"/> as the user's next message on behalf of an MCP App view (ui/message),
+    /// leaving whatever the user is typing alone. False while a reply is in progress.
+    /// </summary>
+    public bool TrySendFromApp(string text)
+    {
+        if (IsBusy || string.IsNullOrWhiteSpace(text))
+            return false;
+        _ = SendMessageAsync(text.Trim());
+        return true;
+    }
+
+    private async Task SendMessageAsync(string userMessage)
+    {
         var userHtml = ChatMarkdownRenderer.RenderBody(userMessage);
         await _messageSink.AppendMessageAsync(NextMessageId(), "user", userHtml).ConfigureAwait(true);
 
@@ -320,7 +342,11 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
             // result), which would break the next turn; a stopped turn rolls back to this snapshot.
             stateBeforeTurn = (true, await session.SaveStateAsync(cancellation.Token).ConfigureAwait(true));
 
-            await foreach (var evt in session.SendAsync(userMessage, AppPreferences.ParseEffort(ReasoningEffort), cancellation.Token))
+            // MCP App views may have told us what the user did in them (ui/update-model-context); the model
+            // gets that with this message, the transcript shows only what the user typed.
+            var forModel = AppContextProvider?.Invoke() is { } appContext ? appContext + "\n\n" + userMessage : userMessage;
+
+            await foreach (var evt in session.SendAsync(forModel, AppPreferences.ParseEffort(ReasoningEffort), cancellation.Token))
             {
                 switch (evt)
                 {
@@ -374,6 +400,8 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
                                 id, ChatMarkup.ToolStepId(done.CallId),
                                 ChatMarkup.ToolStepHtml(call, note: done.Exception?.Message, result: result),
                                 done.Exception is null ? StepState.Done : StepState.Error).ConfigureAwait(true);
+                            if (done.Exception is null)
+                                await _messageSink.PresentToolAppAsync(id, call, done.Result).ConfigureAwait(true);
                         }
                         await SetStatusAsync(ThinkingStatus).ConfigureAwait(true);
                         break;

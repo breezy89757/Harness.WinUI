@@ -1,5 +1,7 @@
 // Harness.WinUI — Licensed under the MIT License.
 
+using Harness.Core.Agent;
+
 namespace Harness.WinUI.ViewModels;
 
 /// <summary>
@@ -32,6 +34,12 @@ public interface IChatMessageSink
     /// <see cref="Harness.Core.Artifacts.ArtifactSegment.IsComplete"/> — saved and rendered.
     /// </summary>
     Task PresentArtifactAsync(Harness.Core.Artifacts.ArtifactSegment artifact);
+
+    /// <summary>
+    /// Called when a tool call succeeds: if the tool comes with an MCP App view, shows it in the reply.
+    /// <paramref name="result"/> is what the tool returned (for MCP tools, the CallToolResult as JSON).
+    /// </summary>
+    Task PresentToolAppAsync(string id, ToolCallStarted call, object? result);
 
     /// <summary>Removes every message from the transcript and closes the artifact panel.</summary>
     Task ClearConversationAsync();

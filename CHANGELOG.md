@@ -1,5 +1,15 @@
 # Harness.WinUI - Changelog
 
+## [Unreleased]
+
+### Added
+- MCP Apps (`io.modelcontextprotocol/ui`, spec 2026-01-26): a tool's `ui://` view is shown in the chat
+  under its step, in a sandboxed frame on its own origin with the CSP the view declares
+  - Views can call their server's tools (app-only tools are hidden from the model; others need
+    approval unless read-only), read its resources, open links, and send messages to the chat
+  - The model gets a tool's text `content` only; `structuredContent` goes to the view
+  - `ui/update-model-context`: what the user does in a view is added to their next message
+
 ## [1.0.2] - 2026-09-30
 
 ### Changed

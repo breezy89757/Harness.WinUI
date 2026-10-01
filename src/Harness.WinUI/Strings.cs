@@ -209,4 +209,9 @@ public static class Strings
     public static string OpenMcpJsonFailed(string message) => T($"Couldn't open mcp.json: {message}", $"無法開啟 mcp.json：{message}");
     public static string Reloading => T("Reloading…", "重新載入中…");
     public static string Reloaded => T("Reloaded from mcp.json.", "已從 mcp.json 重新載入。");
+
+    // MCP Apps
+    public static string AppToolApprovalTitle(string server) => T($"An app from {server} wants to run a tool", $"{server} 的 App 想要執行工具");
+    public static string AppToolApprovalBody(string tool) => T($"Allow \"{tool}\" to run with these arguments?", $"要允許執行「{tool}」嗎？參數如下：");
+    public static string AppUnavailable(string tool, string message) => T($"Couldn't show the app for {tool}: {message}", $"無法顯示 {tool} 的 App：{message}");
 }

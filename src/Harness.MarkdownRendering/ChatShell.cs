@@ -33,6 +33,12 @@ public static class ChatShell
     /// <summary>Host the app maps to the generated-images folder, so tool results can show them.</summary>
     public const string ImagesHostName = "harness.images";
 
+    /// <summary>
+    /// Parent domain for MCP App views: each view gets its own origin (<c>https://{viewId}.harness.apps</c>),
+    /// so views can't reach each other or the chat page.
+    /// </summary>
+    public const string AppsHostSuffix = "harness.apps";
+
     public static string GetShellHtml(int fontSize = 14)
     {
         // Only our own nonce'd inline scripts and bundled assets may run: blocks inline event
@@ -45,7 +51,8 @@ public static class ChatShell
         sb.Append("<!DOCTYPE html><html><head><meta charset='utf-8'>");
         sb.Append($"<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; " +
                   $"script-src 'nonce-{nonce}' {assets}; style-src 'unsafe-inline' {assets}; " +
-                  $"img-src data: {assets} https://{ImagesHostName}; font-src data: {assets}; base-uri 'none'; form-action 'none'\">");
+                  $"img-src data: {assets} https://{ImagesHostName}; font-src data: {assets}; frame-src https://*.{AppsHostSuffix}; " +
+                  "base-uri 'none'; form-action 'none'\">");
         sb.Append(GetStyles(fontSize));
         sb.Append("</head><body>");
         sb.Append("<div id='messages'></div>");
@@ -85,8 +92,13 @@ public static class ChatShell
         .turn.assistant .message { background: var(--bubble-assistant-bg); }
         /* Bubbles shrink to fit their text, but diagrams/code/tables have no intrinsic width of their own —
            a Mermaid SVG at width:100% of a narrow bubble renders tiny. Give those replies the full column. */
-        .turn.assistant:has(.mermaid, [data-mermaid-hash], pre, table, .artifact-card) { align-self: stretch; }
-        .turn.assistant:has(.mermaid, [data-mermaid-hash], pre, table, .artifact-card) .message { width: 100%; }
+        .turn.assistant:has(.mermaid, [data-mermaid-hash], pre, table, .artifact-card, .mcp-app) { align-self: stretch; }
+        .turn.assistant:has(.mermaid, [data-mermaid-hash], pre, table, .artifact-card, .mcp-app) .message { width: 100%; }
+        .apps { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+        /* content-box: the height the view reports is its content; a border must not eat into it. */
+        .mcp-app { display: block; box-sizing: content-box; width: 100%; height: 160px; border: 0; border-radius: 10px; background: transparent; }
+        .mcp-app.bordered { width: calc(100% - 2px); }
+        .mcp-app.bordered { border: 1px solid var(--border-color); }
         .mermaid svg { max-width: 100%; height: auto; }
         .content:empty { display: none; }
 
@@ -193,8 +205,53 @@ public static class ChatShell
         function clearMessages() {
             statusTimers.forEach(t => { if (t.handle) clearInterval(t.handle); });
             statusTimers.clear();
+            appViews.clear();
             document.getElementById('messages').replaceChildren();
         }
+
+        // MCP App views: sandboxed iframes, each on its own origin, served by the host. This page only
+        // relays JSON-RPC between a view and the host, and only for the view's own frame and origin.
+        const appViews = new Map();
+
+        function appendAppView(id, viewId, origin, prefersBorder) {
+            const t = turn(id);
+            if (!t) return;
+            withStickyScroll(() => {
+                let box = t.querySelector('.apps');
+                if (!box) {
+                    box = document.createElement('div');
+                    box.className = 'apps';
+                    t.querySelector('.content').before(box);
+                }
+                const frame = document.createElement('iframe');
+                frame.className = 'mcp-app' + (prefersBorder ? ' bordered' : '');
+                frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+                frame.setAttribute('referrerpolicy', 'no-referrer');
+                frame.title = 'MCP App';
+                frame.src = origin + '/';
+                box.appendChild(frame);
+                appViews.set(viewId, { frame, origin });
+            });
+        }
+
+        function deliverToApp(viewId, message) {
+            const view = appViews.get(viewId);
+            if (view && view.frame.contentWindow) view.frame.contentWindow.postMessage(message, view.origin);
+        }
+
+        function setAppHeight(viewId, height) {
+            const view = appViews.get(viewId);
+            if (view) withStickyScroll(() => { view.frame.style.height = Math.max(40, Math.min(height, 1600)) + 'px'; });
+        }
+
+        window.addEventListener('message', e => {
+            for (const [viewId, view] of appViews) {
+                if (e.source !== view.frame.contentWindow) continue;
+                if (e.origin === view.origin && e.data && typeof e.data === 'object')
+                    post({ type: 'mcpApp', view: viewId, message: e.data });
+                return;
+            }
+        });
 
         function withStickyScroll(fn) {
             const stick = isNearBottom();
