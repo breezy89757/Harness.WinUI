@@ -76,6 +76,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
 
         ConfigureZoom();
         ConfigureAttachments();
+        ConfigureToolbar();
         ResizeWindow(960, 720);
         InitializeAsync();
     }

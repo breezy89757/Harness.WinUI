@@ -252,6 +252,11 @@ public static class Strings
     public static string NotifyApprovalTitle => T("Waiting for your approval", "等待你的核准");
     public static string NotifyApprovalBody(string tool) => T($"Harness.WinUI wants to run {tool}.", $"Harness.WinUI 想要執行 {tool}。");
 
+    // Toolbar
+    public static string MoreTooltip => T("More", "更多");
+    public static string CustomizeToolbar => T("Customize toolbar", "自訂工具列");
+    public static string ShowOnToolbar => T("Show on toolbar", "顯示在工具列上");
+
     // Attachments (paste / drag and drop)
     public static string Attachments => T("Attachments", "附件");
     public static string RemoveAttachment => T("Remove attachment", "移除附件");

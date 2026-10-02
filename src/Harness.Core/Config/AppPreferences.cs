@@ -39,6 +39,9 @@ public sealed record AppPreferences
     /// <summary>Skills (by name) the user turned off; every other discovered skill is offered to the model.</summary>
     public List<string>? DisabledSkills { get; init; }
 
+    /// <summary>Composer toolbar buttons (by id) the user moved into the More menu.</summary>
+    public List<string>? HiddenToolbarButtons { get; init; }
+
     /// <summary>The price set for <paramref name="model"/> (names compare case-insensitively), or null.</summary>
     public Usage.ModelPrice? PriceFor(string? model) =>
         model is null ? null : ModelPrices?.FirstOrDefault(p => string.Equals(p.Key, model, StringComparison.OrdinalIgnoreCase)).Value;
