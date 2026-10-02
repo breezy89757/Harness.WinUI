@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Windows.AppNotifications;
 using Microsoft.Windows.AppNotifications.Builder;
+using Microsoft.Win32;
+using Windows.UI.Notifications;
 
 namespace Harness.WinUI;
 
@@ -11,12 +13,17 @@ namespace Harness.WinUI;
 /// Gets the user's attention when Harness.WinUI isn't the foreground window: a Windows app notification
 /// (which the user can turn off per app in Windows Settings › Notifications) and a flashing taskbar
 /// button until the window is brought back. Clicking the notification brings the window to the front.
+/// The Store package uses the Windows App SDK's app notifications (its manifest declares the activator);
+/// the portable build can't — they need the Windows App Runtime's shared packages, which a self-contained
+/// app doesn't install — so it registers an AppUserModelID for the current user and shows Windows toasts.
 /// </summary>
 public sealed class AttentionNotifier : IDisposable
 {
     private readonly nint _hwnd;
     private readonly Action _activate;
     private readonly bool _notificationsAvailable;
+    private readonly ToastNotifier? _toastNotifier;
+    private const string PortableAppId = "Harness.WinUI";
 
     /// <param name="activate">Brings the window to the front; called on the UI thread's dispatcher by the caller.</param>
     /// <param name="packaged">True when running as an MSIX package (Microsoft Store).</param>
@@ -26,21 +33,26 @@ public sealed class AttentionNotifier : IDisposable
         _activate = activate;
         try
         {
-            AppNotificationManager.Default.NotificationInvoked += (_, _) => _activate();
             if (packaged)
             {
                 // Name, icon and the toast activator come from Package.appxmanifest.
+                AppNotificationManager.Default.NotificationInvoked += (_, _) => _activate();
                 AppNotificationManager.Default.Register();
+                _notificationsAvailable = AppNotificationManager.IsSupported();
             }
             else
             {
-                // Unpackaged: tell Windows what to show as the sender.
-                var icon = Path.Combine(AppContext.BaseDirectory, "Images", "Square44x44Logo.targetsize-256_altform-unplated.png");
-                AppNotificationManager.Default.Register("Harness.WinUI", new Uri(icon));
+                // Portable: what Windows shows as the sender (name and icon) for this AppUserModelID.
+                using (var key = Registry.CurrentUser.CreateSubKey($@"Software\Classes\AppUserModelId\{PortableAppId}"))
+                {
+                    key.SetValue("DisplayName", "Harness.WinUI");
+                    key.SetValue("IconUri", Path.Combine(AppContext.BaseDirectory, "Images", "Square44x44Logo.targetsize-256_altform-unplated.png"));
+                }
+                _toastNotifier = ToastNotificationManager.CreateToastNotifier(PortableAppId);
+                _notificationsAvailable = true;
             }
-            _notificationsAvailable = AppNotificationManager.IsSupported();
         }
-        catch (Exception ex) when (ex is COMException or InvalidOperationException or NotSupportedException)
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or NotSupportedException or UnauthorizedAccessException or IOException)
         {
             // Notifications unavailable (e.g. policy): the taskbar flash still works.
             Debug.WriteLine($"App notifications unavailable: {ex.Message}");
@@ -59,11 +71,25 @@ public sealed class AttentionNotifier : IDisposable
         Flash();
         if (!_notificationsAvailable)
             return;
+        body = body.Length > 200 ? body[..200] + "…" : body;
         try
         {
+            if (_toastNotifier is not null)
+            {
+                var content = ToastNotificationManager.GetTemplateContent(ToastTemplateType.ToastText02);
+                var texts = content.GetElementsByTagName("text");
+                texts[0].InnerText = title;
+                texts[1].InnerText = body;
+                var toast = new ToastNotification(content);
+                // Clicks while Harness.WinUI is running arrive here; afterwards the toast just closes.
+                toast.Activated += (_, _) => _activate();
+                _toastNotifier.Show(toast);
+                return;
+            }
+
             var notification = new AppNotificationBuilder()
                 .AddText(title)
-                .AddText(body.Length > 200 ? body[..200] + "…" : body)
+                .AddText(body)
                 .BuildNotification();
             AppNotificationManager.Default.Show(notification);
         }
@@ -79,7 +105,7 @@ public sealed class AttentionNotifier : IDisposable
         {
             cbSize = (uint)Marshal.SizeOf<FLASHWINFO>(),
             hwnd = _hwnd,
-            dwFlags = FLASHW_TRAY | FLASHW_TIMERNOFG, // flash the taskbar button until the window comes to the foreground
+            dwFlags = FLASHW_ALL | FLASHW_TIMERNOFG, // flash the title bar and taskbar button until the window comes to the foreground
             uCount = uint.MaxValue,
         };
         FlashWindowEx(ref info);
@@ -87,7 +113,7 @@ public sealed class AttentionNotifier : IDisposable
 
     public void Dispose()
     {
-        if (!_notificationsAvailable)
+        if (!_notificationsAvailable || _toastNotifier is not null)
             return;
         try
         {
@@ -98,7 +124,7 @@ public sealed class AttentionNotifier : IDisposable
         }
     }
 
-    private const uint FLASHW_TRAY = 0x2;
+    private const uint FLASHW_ALL = 0x3;
     private const uint FLASHW_TIMERNOFG = 0xC;
 
     [StructLayout(LayoutKind.Sequential)]
