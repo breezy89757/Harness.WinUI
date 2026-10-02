@@ -20,8 +20,11 @@ public interface IChatMessageSink
     /// </summary>
     Task UpdateMessageContentAsync(string id, string html, bool isFinal);
 
-    /// <summary>Shows the animated working line (with live elapsed time); null or empty hides it.</summary>
-    Task SetMessageStatusAsync(string id, string? status);
+    /// <summary>
+    /// Shows the animated working line (with live elapsed time); null or empty hides it.
+    /// <paramref name="paused"/> stops the elapsed time (e.g. while waiting for the user) until the next unpaused status.
+    /// </summary>
+    Task SetMessageStatusAsync(string id, string? status, bool paused = false);
 
     /// <summary>Adds or updates a step row (tool call / reasoning). <paramref name="html"/> must already be encoded.</summary>
     Task UpsertMessageStepAsync(string id, string stepId, string html, StepState state);

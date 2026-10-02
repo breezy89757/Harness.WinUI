@@ -156,6 +156,7 @@ public sealed partial class MainWindow : IMcpAppHost
     public Task<bool> ApproveToolCallAsync(string serverName, string toolName, IReadOnlyDictionary<string, object?> arguments)
     {
         var decided = new TaskCompletionSource<bool>();
+        _attention.Notify(Strings.NotifyApprovalTitle, Strings.NotifyApprovalBody(toolName));
         DispatcherQueue.TryEnqueue(async () =>
         {
             try

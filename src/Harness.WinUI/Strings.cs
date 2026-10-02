@@ -210,6 +210,12 @@ public static class Strings
     public static string Reloading => T("Reloading…", "重新載入中…");
     public static string Reloaded => T("Reloaded from mcp.json.", "已從 mcp.json 重新載入。");
 
+    // Notifications (when the window is in the background)
+    public static string NotifyReplyDone => T("Reply finished", "已完成回覆");
+    public static string NotifyReplyFailed => T("The reply failed", "回覆時發生錯誤");
+    public static string NotifyApprovalTitle => T("Waiting for your approval", "等待你的核准");
+    public static string NotifyApprovalBody(string tool) => T($"Harness.WinUI wants to run {tool}.", $"Harness.WinUI 想要執行 {tool}。");
+
     // MCP Apps
     public static string AppToolApprovalTitle(string server) => T($"An app from {server} wants to run a tool", $"{server} 的 App 想要執行工具");
     public static string AppToolApprovalBody(string tool) => T($"Allow \"{tool}\" to run with these arguments?", $"要允許執行「{tool}」嗎？參數如下：");

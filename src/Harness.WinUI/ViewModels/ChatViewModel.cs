@@ -52,6 +52,23 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
     // Cancels the reply in progress (Stop button / Esc).
     private CancellationTokenSource? _turnCancellation;
 
+    // Times the reply in progress; paused while approvals wait (several can wait at once with parallel tool calls).
+    private Stopwatch? _turnStopwatch;
+    private int _waitingApprovals;
+    private readonly Lock _timerLock = new();
+
+    private void PauseTurnTimer(bool pause)
+    {
+        lock (_timerLock)
+        {
+            _waitingApprovals += pause ? 1 : -1;
+            if (pause && _waitingApprovals == 1)
+                _turnStopwatch?.Stop();
+            else if (!pause && _waitingApprovals == 0)
+                _turnStopwatch?.Start();
+        }
+    }
+
     // Field-backed [ObservableProperty] form. Tried the partial-property form (recommended for
     // AOT/WinRT marshalling — MVVMTK0045 / WindowsAppSDK analyzer WUI3001) first, including with
     // an explicit LangVersion 13.0, but the CommunityToolkit.Mvvm 8.4.2 generator would not emit
@@ -168,11 +185,21 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         try
         {
             await _messageSink.UpsertMessageStepAsync(messageId, ChatMarkup.ToolStepId(request.CallId), ChatMarkup.ApprovalStepHtml(request), StepState.Waiting);
-            await _messageSink.SetMessageStatusAsync(messageId, Strings.WaitingForApproval);
+            // Time spent waiting for the user isn't the agent's: freeze the live counter and the reply's timer.
+            await _messageSink.SetMessageStatusAsync(messageId, Strings.WaitingForApproval, paused: true);
+            PauseTurnTimer(true);
+            ApprovalRequested?.Invoke(this, request.ToolName);
 
             ToolApprovalDecision decision;
-            using (cancellationToken.Register(() => pending.TrySetCanceled(cancellationToken)))
-                decision = await pending.Task;
+            try
+            {
+                using (cancellationToken.Register(() => pending.TrySetCanceled(cancellationToken)))
+                    decision = await pending.Task;
+            }
+            finally
+            {
+                PauseTurnTimer(false);
+            }
 
             var call = new ToolCallStarted(request.CallId, request.ToolName, request.Arguments.ToDictionary());
             if (decision == ToolApprovalDecision.Deny)
@@ -278,6 +305,11 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         IsBusy = true;
         var id = NextMessageId();
         var stopwatch = Stopwatch.StartNew();
+        lock (_timerLock)
+        {
+            _turnStopwatch = stopwatch;
+            _waitingApprovals = 0;
+        }
         TimeSpan? firstTextAt = null;
         UsageReported? usage = null;
         var text = new StringBuilder();
@@ -468,7 +500,11 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         }
         finally
         {
-            stopwatch.Stop();
+            lock (_timerLock)
+            {
+                stopwatch.Stop();
+                _turnStopwatch = null;
+            }
             _activeAssistantId = null;
             _turnCancellation = null;
             await _messageSink.SetMessageStatusAsync(id, null).ConfigureAwait(true);
@@ -487,8 +523,18 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
                 meta, tooltip);
             await SaveTurnAsync(session, new StoredMessage("user", userMessage), reply).ConfigureAwait(true);
             IsBusy = false;
+
+            // A stop is the user's own doing; anything else may be worth a notification.
+            if (!stopped)
+                TurnFinished?.Invoke(this, new TurnFinishedEventArgs(errorText is null, errorText ?? text.ToString()));
         }
     }
+
+    /// <summary>Raised when a reply finishes or fails (not when the user stopped it).</summary>
+    public event EventHandler<TurnFinishedEventArgs>? TurnFinished;
+
+    /// <summary>Raised (possibly off the UI thread) when a tool call waits for the user's approval; the argument is the tool name.</summary>
+    public event EventHandler<string>? ApprovalRequested;
 
     #region History
 
@@ -628,3 +674,7 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
     // when setting the DOM element id, so the id minted here is the bare suffix.
     private string NextMessageId() => $"{++_messageCounter}-{Guid.NewGuid():N}";
 }
+
+/// <param name="Succeeded">False when the reply failed with an error.</param>
+/// <param name="Text">The reply (or the error message).</param>
+public sealed record TurnFinishedEventArgs(bool Succeeded, string Text);

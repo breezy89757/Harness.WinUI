@@ -9,7 +9,9 @@
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap rescap">
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  IgnorableNamespaces="uap rescap com desktop">
 
   <Identity
     Name="breezy89757.Harness.WinUI"
@@ -43,6 +45,19 @@
         <uap:DefaultTile Wide310x150Logo="Images\Wide310x150Logo.png" />
         <uap:SplashScreen Image="Images\SplashScreen.png" />
       </uap:VisualElements>
+      <!-- App notifications (finished replies, pending approvals): the activator Windows calls when one is clicked. -->
+      <Extensions>
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:ExeServer Executable="Harness.WinUI.exe" DisplayName="Harness.WinUI" Arguments="----AppNotificationActivated:">
+              <com:Class Id="1AE32632-C96D-4599-83B8-F544310D49C6" />
+            </com:ExeServer>
+          </com:ComServer>
+        </com:Extension>
+        <desktop:Extension Category="windows.toastNotificationActivation">
+          <desktop:ToastNotificationActivation ToastActivatorCLSID="1AE32632-C96D-4599-83B8-F544310D49C6" />
+        </desktop:Extension>
+      </Extensions>
     </Application>
   </Applications>
 

@@ -41,7 +41,10 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         if (PackagedDataFolder() is { } packaged)
+        {
+            IsPackaged = true;
             AppPaths.UseDataRoot(packaged);
+        }
         else
             AppPaths.MigrateLegacyDataRoot();
 
@@ -70,6 +73,9 @@ public partial class App : Application
     /// The package's LocalState folder when running as an MSIX package (Microsoft Store), else null.
     /// See <see cref="AppPaths"/> for why packaged data doesn't go to %LOCALAPPDATA%.
     /// </summary>
+    /// <summary>True when running as an MSIX package (Microsoft Store); set at launch.</summary>
+    public static bool IsPackaged { get; private set; }
+
     private static string? PackagedDataFolder()
     {
         try

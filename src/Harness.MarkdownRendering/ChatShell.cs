@@ -300,29 +300,27 @@ public static class ChatShell
         }
 
         // Shows the animated "working" line with a live elapsed counter; pass '' to hide it.
-        // The counter measures from the first time a status is shown for this message.
-        function setMessageStatus(id, text) {
+        // The counter measures from the first status shown for this message. Hiding the line doesn't stop
+        // the clock (the reply is still being written); paused=true does, e.g. while waiting for an approval.
+        function setMessageStatus(id, text, paused) {
             const t = turn(id);
             if (!t) return;
             const status = t.querySelector('.status');
-            if (!text) {
-                status.hidden = true;
-                const timer = statusTimers.get(id);
-                if (timer) { clearInterval(timer.handle); timer.handle = null; }
-                return;
-            }
+            let clock = statusTimers.get(id);
+            if (!clock) { clock = { base: 0, start: performance.now(), handle: null }; statusTimers.set(id, clock); }
+            const elapsedMs = () => clock.base + (clock.start === null ? 0 : performance.now() - clock.start);
+            if (paused && clock.start !== null) { clock.base = elapsedMs(); clock.start = null; }
+            if (!paused && clock.start === null) clock.start = performance.now();
+            if (clock.handle) { clearInterval(clock.handle); clock.handle = null; }
+            if (!text) { status.hidden = true; return; }
             withStickyScroll(() => {
                 status.querySelector('.status-text').textContent = text;
                 status.hidden = false;
             });
-            let timer = statusTimers.get(id);
-            if (!timer) { timer = { start: performance.now(), handle: null }; statusTimers.set(id, timer); }
-            if (!timer.handle) {
-                const elapsed = status.querySelector('.elapsed');
-                const tick = () => { elapsed.textContent = ((performance.now() - timer.start) / 1000).toFixed(1) + 's'; };
-                tick();
-                timer.handle = setInterval(tick, 100);
-            }
+            const elapsed = status.querySelector('.elapsed');
+            const tick = () => { elapsed.textContent = (elapsedMs() / 1000).toFixed(1) + 's'; };
+            tick();
+            if (clock.start !== null) clock.handle = setInterval(tick, 100);
         }
 
         // Adds or updates one step row (tool call / reasoning). state: running | done | error.

@@ -67,8 +67,33 @@ public sealed partial class MainWindow : Window, IChatMessageSink
                 DispatcherQueue.TryEnqueue(() => InputTextBox.Focus(FocusState.Programmatic));
         };
 
+        // Finished replies and pending approvals notify the user when they're in another window.
+        _attention = new AttentionNotifier(WindowHandle, App.IsPackaged, () => DispatcherQueue.TryEnqueue(BringToFront));
+        Closed += (_, _) => _attention.Dispose();
+        ViewModel.TurnFinished += (_, e) => _attention.Notify(
+            e.Succeeded ? Strings.NotifyReplyDone : Strings.NotifyReplyFailed, PlainPreview(e.Text));
+        ViewModel.ApprovalRequested += (_, tool) => _attention.Notify(Strings.NotifyApprovalTitle, Strings.NotifyApprovalBody(tool));
+
         ResizeWindow(960, 720);
         InitializeAsync();
+    }
+
+    private readonly AttentionNotifier _attention;
+
+    private void BringToFront()
+    {
+        if (AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
+            presenter.Restore();
+        Activate();
+    }
+
+    /// <summary>A reply as one line of plain text for a notification (no Markdown symbols or artifact markup).</summary>
+    private static string PlainPreview(string text)
+    {
+        var plain = System.Text.RegularExpressions.Regex.Replace(text, @"<artifact\b[\s\S]*?(</artifact>|$)", "");
+        plain = System.Text.RegularExpressions.Regex.Replace(plain, @"[#*_`>|]+", "");
+        plain = System.Text.RegularExpressions.Regex.Replace(plain, @"\s+", " ").Trim();
+        return plain.Length > 0 ? plain : Strings.NotifyReplyDone;
     }
 
     /// <summary>History is optional: if the database can't be opened (locked, corrupt), chat still works.</summary>
@@ -477,8 +502,8 @@ public sealed partial class MainWindow : Window, IChatMessageSink
     public Task UpdateMessageContentAsync(string id, string html, bool isFinal) =>
         ExecuteShellScriptAsync($"updateMessageContent({ToJs(id)}, {ToJs(html)}, {(isFinal ? "true" : "false")});");
 
-    public Task SetMessageStatusAsync(string id, string? status) =>
-        ExecuteShellScriptAsync($"setMessageStatus({ToJs(id)}, {ToJs(status)});");
+    public Task SetMessageStatusAsync(string id, string? status, bool paused = false) =>
+        ExecuteShellScriptAsync($"setMessageStatus({ToJs(id)}, {ToJs(status)}, {(paused ? "true" : "false")});");
 
     public Task UpsertMessageStepAsync(string id, string stepId, string html, StepState state) =>
         ExecuteShellScriptAsync(
