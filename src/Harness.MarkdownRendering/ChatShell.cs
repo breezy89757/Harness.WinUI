@@ -94,6 +94,15 @@ public static class ChatShell
            a Mermaid SVG at width:100% of a narrow bubble renders tiny. Give those replies the full column. */
         .turn.assistant:has(.mermaid, [data-mermaid-hash], pre, table, .artifact-card, .mcp-app) { align-self: stretch; }
         .turn.assistant:has(.mermaid, [data-mermaid-hash], pre, table, .artifact-card, .mcp-app) .message { width: 100%; }
+        .attachments { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; justify-content: flex-end; align-items: flex-start; }
+        .attachment-image { max-width: 240px; max-height: 180px; border-radius: 8px; border: 1px solid var(--border-color); }
+        .attachment-file { font-size: 0.85em; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border-color);
+                           background: var(--bg-color); white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+        /* Shown while files are dragged over the conversation. */
+        #drop-hint { position: fixed; inset: 8px; border: 2px dashed var(--accent); border-radius: 12px; display: none;
+                     align-items: center; justify-content: center; font-size: 1.1em; color: var(--accent);
+                     background: color-mix(in srgb, var(--bg-color) 85%, transparent); z-index: 100; pointer-events: none; }
+        body.dragging #drop-hint { display: flex; }
         .apps { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
         /* content-box: the height the view reports is its content; a border must not eat into it. */
         .mcp-app { display: block; box-sizing: content-box; width: 100%; height: 160px; border: 0; border-radius: 10px; background: transparent; }
@@ -368,6 +377,43 @@ public static class ChatShell
         function post(message) {
             if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(message);
         }
+
+        // Files dragged onto the conversation become attachments: the page reads each dropped file and
+        // hands its bytes to the host (which decides what can be attached). Nothing else may be dropped here.
+        let dragDepth = 0;
+        const hasFiles = e => Array.from(e.dataTransfer?.types || []).includes('Files');
+        function setDropHint(text) {
+            let hint = document.getElementById('drop-hint');
+            if (!hint) { hint = document.createElement('div'); hint.id = 'drop-hint'; document.body.appendChild(hint); }
+            hint.textContent = text;
+        }
+        document.addEventListener('dragenter', e => {
+            if (!hasFiles(e)) return;
+            e.preventDefault();
+            dragDepth++;
+            document.body.classList.add('dragging');
+        });
+        document.addEventListener('dragover', e => {
+            if (!hasFiles(e)) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        });
+        document.addEventListener('dragleave', e => {
+            if (!hasFiles(e)) return;
+            if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); }
+        });
+        document.addEventListener('drop', async e => {
+            e.preventDefault();
+            dragDepth = 0;
+            document.body.classList.remove('dragging');
+            for (const file of Array.from(e.dataTransfer?.files || [])) {
+                if (file.size > 20 * 1024 * 1024) { post({ type: 'dropTooLarge', name: file.name }); continue; }
+                const bytes = new Uint8Array(await file.arrayBuffer());
+                let binary = '';
+                for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+                post({ type: 'dropFile', name: file.name, data: btoa(binary) });
+            }
+        });
 
         // Text size: the host owns the level (shared with the composer and remembered); this page only
         // applies it and forwards the shortcuts it receives while focused (Ctrl + / - / 0, Ctrl + wheel).

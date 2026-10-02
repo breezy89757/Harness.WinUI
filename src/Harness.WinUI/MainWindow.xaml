@@ -10,6 +10,7 @@
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     xmlns:artifacts="using:Harness.WinUI.Artifacts"
     xmlns:vm="using:Harness.WinUI.ViewModels"
+    xmlns:agent="using:Harness.Core.Agent"
     mc:Ignorable="d">
 
     <Grid x:Name="RootGrid">
@@ -23,6 +24,7 @@
         <Grid x:Name="ChatGrid" Grid.Column="0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
@@ -48,9 +50,78 @@
                 <TextBlock x:Name="ZoomIndicatorText" Style="{StaticResource BodyStrongTextBlockStyle}" />
             </Border>
 
+            <!-- Pasted / dropped attachments, sent with the next message. -->
+            <Border
+                x:Name="AttachmentStrip"
+                Grid.Row="1"
+                Padding="24,10,24,0"
+                Visibility="Collapsed"
+                AllowDrop="True"
+                DragOver="Composer_DragOver"
+                Drop="Composer_Drop"
+                Background="{ThemeResource LayerFillColorDefaultBrush}"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+                <ItemsControl x:Name="AttachmentList" AutomationProperties.Name="{x:Bind local:Strings.Attachments}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="8" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="agent:Attachment">
+                            <Grid
+                                Height="56"
+                                Padding="6"
+                                ColumnSpacing="8"
+                                CornerRadius="{StaticResource ControlCornerRadius}"
+                                BorderThickness="1"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                ToolTipService.ToolTip="{x:Bind Name}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Image
+                                    Width="44"
+                                    Height="44"
+                                    Stretch="UniformToFill"
+                                    Source="{x:Bind local:MainWindow.Thumbnail(Image)}"
+                                    Visibility="{x:Bind IsImage}" />
+                                <FontIcon FontSize="20" Glyph="&#xE8A5;" Visibility="{x:Bind local:MainWindow.CollapsedWhen(IsImage)}" />
+                                <TextBlock
+                                    Grid.Column="1"
+                                    MaxWidth="160"
+                                    VerticalAlignment="Center"
+                                    TextTrimming="CharacterEllipsis"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="{x:Bind Name}" />
+                                <Button
+                                    Grid.Column="2"
+                                    Padding="4"
+                                    VerticalAlignment="Center"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Tag="{x:Bind}"
+                                    AutomationProperties.Name="{x:Bind local:Strings.RemoveAttachment}"
+                                    ToolTipService.ToolTip="{x:Bind local:Strings.RemoveAttachment}"
+                                    Click="RemoveAttachment_Click">
+                                    <FontIcon FontSize="10" Glyph="&#xE711;" />
+                                </Button>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+
             <Grid
                 x:Name="ComposerGrid"
-                Grid.Row="1"
+                Grid.Row="2"
+                AllowDrop="True"
+                DragOver="Composer_DragOver"
+                Drop="Composer_Drop"
                 ColumnSpacing="12"
                 Padding="24,16,24,20"
                 BorderThickness="0,1,0,0"
@@ -248,6 +319,7 @@
                     Text="{x:Bind ViewModel.InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                     IsEnabled="{x:Bind local:MainWindow.IsNotBusy(ViewModel.IsBusy), Mode=OneWay}"
                     PreviewKeyDown="InputTextBox_PreviewKeyDown"
+                    Paste="InputTextBox_Paste"
                     TextCompositionStarted="InputTextBox_TextCompositionStarted"
                     TextCompositionEnded="InputTextBox_TextCompositionEnded" />
 

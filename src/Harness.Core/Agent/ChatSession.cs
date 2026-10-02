@@ -74,10 +74,12 @@ public sealed class ChatSession
     /// </summary>
     /// <param name="effort">Reasoning effort for this turn; null leaves it to the model's default
     /// (safe for providers/models that reject the parameter).</param>
+    /// <param name="attachments">Pasted or dropped images and files sent along with the message.</param>
     public async IAsyncEnumerable<ChatStreamEvent> SendAsync(
         string userMessage,
         ReasoningEffort? effort = null,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default,
+        IReadOnlyList<Attachment>? attachments = null)
     {
         _session ??= await _agent.CreateSessionAsync(cancellationToken).ConfigureAwait(false);
 
@@ -89,8 +91,10 @@ public sealed class ChatSession
             ? new ChatClientAgentRunOptions(new ChatOptions { Tools = tools is { Count: > 0 } ? [.. tools] : null, Reasoning = reasoningOptions })
             : null;
 
-        await foreach (var update in _agent.RunStreamingAsync(userMessage, _session, runOptions, cancellationToken)
-                           .WithCancellation(cancellationToken).ConfigureAwait(false))
+        var updates = attachments is { Count: > 0 }
+            ? _agent.RunStreamingAsync([Attachment.BuildMessage(userMessage, attachments)], _session, runOptions, cancellationToken)
+            : _agent.RunStreamingAsync(userMessage, _session, runOptions, cancellationToken);
+        await foreach (var update in updates.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             foreach (var content in update.Contents)
             {

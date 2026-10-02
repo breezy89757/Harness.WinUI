@@ -243,7 +243,28 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         return _messageSink.AppendMessageAsync(NextMessageId(), "system", html);
     }
 
-    private bool CanSend() => !IsBusy && !string.IsNullOrWhiteSpace(InputText);
+    private bool CanSend() => !IsBusy && (!string.IsNullOrWhiteSpace(InputText) || Attachments.Count > 0);
+
+    public const int MaxAttachments = 10;
+
+    /// <summary>Images and files pasted or dropped into the composer, sent with the next message.</summary>
+    public ObservableCollection<Attachment> Attachments { get; } = [];
+
+    /// <summary>Adds an attachment; false when there are already <see cref="MaxAttachments"/>.</summary>
+    public bool AddAttachment(Attachment attachment)
+    {
+        if (Attachments.Count >= MaxAttachments)
+            return false;
+        Attachments.Add(attachment);
+        SendCommand.NotifyCanExecuteChanged();
+        return true;
+    }
+
+    public void RemoveAttachment(Attachment attachment)
+    {
+        Attachments.Remove(attachment);
+        SendCommand.NotifyCanExecuteChanged();
+    }
 
     /// <summary>
     /// Starts over: the model's context grows with every turn (slower, costlier replies, eventually the
@@ -357,11 +378,13 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
     private async Task SendAsync()
     {
         var userMessage = InputText.Trim();
-        if (userMessage.Length == 0)
+        var attachments = Attachments.ToList();
+        if (userMessage.Length == 0 && attachments.Count == 0)
             return;
 
         InputText = string.Empty;
-        await SendMessageAsync(userMessage).ConfigureAwait(true);
+        Attachments.Clear();
+        await SendMessageAsync(userMessage, attachments).ConfigureAwait(true);
     }
 
     /// <summary>
@@ -376,9 +399,10 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         return true;
     }
 
-    private async Task SendMessageAsync(string userMessage)
+    private async Task SendMessageAsync(string userMessage, IReadOnlyList<Attachment>? attachments = null)
     {
-        var userHtml = ChatMarkdownRenderer.RenderBody(userMessage);
+        attachments ??= [];
+        var userHtml = ChatMarkdownRenderer.RenderBody(userMessage) + ChatMarkup.AttachmentsHtml(attachments);
         await _messageSink.AppendMessageAsync(NextMessageId(), "user", userHtml).ConfigureAwait(true);
 
         // Captured once so a settings change mid-reply doesn't swap sessions under this turn.
@@ -465,7 +489,7 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
             // gets that with this message, the transcript shows only what the user typed.
             var forModel = AppContextProvider?.Invoke() is { } appContext ? appContext + "\n\n" + userMessage : userMessage;
 
-            await foreach (var evt in session.SendAsync(forModel, AppPreferences.ParseEffort(ReasoningEffort), cancellation.Token))
+            await foreach (var evt in session.SendAsync(forModel, AppPreferences.ParseEffort(ReasoningEffort), cancellation.Token, attachments))
             {
                 switch (evt)
                 {
@@ -609,7 +633,7 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
                 reasoning.Length > 0 ? reasoning.ToString() : null,
                 steps.Count > 0 ? [.. steps.Values] : null,
                 meta, tooltip);
-            await SaveTurnAsync(session, new StoredMessage("user", userMessage), reply).ConfigureAwait(true);
+            await SaveTurnAsync(session, new StoredMessage("user", ChatMarkup.WithAttachmentNames(userMessage, attachments)), reply).ConfigureAwait(true);
             IsBusy = false;
 
             // A stop is the user's own doing; anything else may be worth a notification.

@@ -200,6 +200,27 @@ internal static class ChatMarkup
 
     private static string Truncate(string text, int max) => text.Length <= max ? text : text[..max] + "\n…";
 
+    /// <summary>A user bubble's attachments: image thumbnails (data: URLs) and file chips.</summary>
+    public static string AttachmentsHtml(IReadOnlyList<Harness.Core.Agent.Attachment> attachments)
+    {
+        if (attachments.Count == 0)
+            return string.Empty;
+        var html = new System.Text.StringBuilder("<div class='attachments'>");
+        foreach (var attachment in attachments)
+        {
+            var name = WebUtility.HtmlEncode(attachment.Name);
+            html.Append(attachment.Image is { } image
+                ? $"<img class='attachment-image' alt='{name}' title='{name}' src='data:{attachment.MediaType};base64,{Convert.ToBase64String(image)}'>"
+                : $"<span class='attachment-file' title='{name}'>&#x1F4C4; {name}</span>");
+        }
+        return html.Append("</div>").ToString();
+    }
+
+    /// <summary>The user's text as saved in history: attachments listed by name (their content isn't kept there).</summary>
+    public static string WithAttachmentNames(string text, IReadOnlyList<Harness.Core.Agent.Attachment> attachments) =>
+        attachments.Count == 0 ? text
+        : (text.Length > 0 ? text + "\n\n" : string.Empty) + string.Join("  ", attachments.Select(a => "📎 " + a.Name));
+
     /// <summary>
     /// An amount with its ISO currency code ("USD 0.0042"): unambiguous where "$" isn't, and with enough
     /// decimals for the fractions of a cent a single call costs.

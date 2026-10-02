@@ -252,6 +252,17 @@ public static class Strings
     public static string NotifyApprovalTitle => T("Waiting for your approval", "等待你的核准");
     public static string NotifyApprovalBody(string tool) => T($"Harness.WinUI wants to run {tool}.", $"Harness.WinUI 想要執行 {tool}。");
 
+    // Attachments (paste / drag and drop)
+    public static string Attachments => T("Attachments", "附件");
+    public static string RemoveAttachment => T("Remove attachment", "移除附件");
+    public static string DropHint => T("Drop to attach", "放開以附加檔案");
+    public static string AttachCaption => T("Attach", "附加");
+    public static string TooManyAttachments => T($"Up to {ViewModels.ChatViewModel.MaxAttachments} attachments per message.", $"每則訊息最多 {ViewModels.ChatViewModel.MaxAttachments} 個附件。");
+    public static string AttachmentTooLarge(string name) => T($"{name} is too large to attach.", $"{name} 太大，無法附加。");
+    public static string AttachmentFailed(string name, string message) => T($"Couldn't attach {name}: {message}", $"無法附加 {name}：{message}");
+    public static string AttachmentUnsupported(string name) => T($"{name} isn't a text, image, Office or PDF file.", $"{name} 不是文字、圖片、Office 或 PDF 檔。");
+    public static string AttachmentUnreadable(string name) => T($"Couldn't read {name}.", $"無法讀取 {name}。");
+
     // MCP Apps
     public static string AppToolApprovalTitle(string server) => T($"An app from {server} wants to run a tool", $"{server} 的 App 想要執行工具");
     public static string AppToolApprovalBody(string tool) => T($"Allow \"{tool}\" to run with these arguments?", $"要允許執行「{tool}」嗎？參數如下：");

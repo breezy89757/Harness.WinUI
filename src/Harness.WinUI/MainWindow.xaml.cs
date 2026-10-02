@@ -75,6 +75,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         ViewModel.ApprovalRequested += (_, tool) => _attention.Notify(Strings.NotifyApprovalTitle, Strings.NotifyApprovalBody(tool));
 
         ConfigureZoom();
+        ConfigureAttachments();
         ResizeWindow(960, 720);
         InitializeAsync();
     }
@@ -132,6 +133,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         ConfigureChatWebView();
         await LoadShellAsync();
         await ApplyZoomAsync();
+        await ExecuteShellScriptAsync($"setDropHint({JsonSerializer.Serialize(Strings.DropHint)});");
         await ViewModel.InitializeAsync();
         InputTextBox.Focus(FocusState.Programmatic);
 
@@ -401,6 +403,12 @@ public sealed partial class MainWindow : Window, IChatMessageSink
                     break;
                 case "zoom":
                     StepZoom(message.GetProperty("step").GetInt32());
+                    break;
+                case "dropFile":
+                    OnDroppedFile(message.GetProperty("name").GetString() ?? "file", message.GetProperty("data").GetString() ?? string.Empty);
+                    break;
+                case "dropTooLarge":
+                    ShowHint(Strings.AttachmentTooLarge(message.GetProperty("name").GetString() ?? "file"), 3000);
                     break;
                 case "mcpApp":
                     OnAppMessage(message.GetProperty("view").GetString() ?? string.Empty, message.GetProperty("message").Clone());

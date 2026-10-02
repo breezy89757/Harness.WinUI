@@ -54,7 +54,7 @@ public sealed partial class MainWindow
             _ = ApplyZoomAsync();
             (AppPreferences.Load() with { TextZoom = _zoom }).Save();
         }
-        ShowZoomIndicator();
+        ShowHint($"{_zoom}%");
     }
 
     /// <summary>Applies the current size to the chat page (after it loads, and on every change) and the composer.</summary>
@@ -64,14 +64,15 @@ public sealed partial class MainWindow
         return ExecuteShellScriptAsync($"setTextZoom({_zoom});");
     }
 
-    private void ShowZoomIndicator()
+    /// <summary>A short-lived message over the conversation (text size, why a file couldn't be attached).</summary>
+    private void ShowHint(string text, int milliseconds = 1100)
     {
-        ZoomIndicatorText.Text = $"{_zoom}%";
+        ZoomIndicatorText.Text = text;
         _zoomFade?.Stop();
         var fade = new DoubleAnimationUsingKeyFrames();
         fade.KeyFrames.Add(new LinearDoubleKeyFrame { KeyTime = TimeSpan.FromMilliseconds(120), Value = 1 });
-        fade.KeyFrames.Add(new LinearDoubleKeyFrame { KeyTime = TimeSpan.FromMilliseconds(1100), Value = 1 });
-        fade.KeyFrames.Add(new LinearDoubleKeyFrame { KeyTime = TimeSpan.FromMilliseconds(1500), Value = 0 });
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame { KeyTime = TimeSpan.FromMilliseconds(milliseconds), Value = 1 });
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame { KeyTime = TimeSpan.FromMilliseconds(milliseconds + 400), Value = 0 });
         Storyboard.SetTarget(fade, ZoomIndicator);
         Storyboard.SetTargetProperty(fade, nameof(UIElement.Opacity));
         _zoomFade = new Storyboard { Children = { fade } };
