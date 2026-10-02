@@ -45,6 +45,7 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
@@ -194,9 +195,32 @@
                     </Button.Flyout>
                 </Button>
 
+                <Button
+                    x:Name="UsageButton"
+                    Grid.Column="5"
+                    Margin="-4,0,0,0"
+                    AutomationProperties.AutomationId="UsageButton"
+                    AutomationProperties.Name="{x:Bind local:Strings.UsageTooltip}"
+                    VerticalAlignment="Bottom"
+                    Padding="10,8"
+                    ToolTipService.ToolTip="{x:Bind local:Strings.UsageTooltip}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon FontSize="16" Glyph="&#xE8EF;" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="{x:Bind ViewModel.ConversationCostText, Mode=OneWay}" />
+                    </StackPanel>
+                    <Button.Flyout>
+                        <Flyout Placement="TopEdgeAlignedLeft" Opening="UsageFlyout_Opening">
+                            <Grid x:Name="UsageGrid" MinWidth="300" ColumnSpacing="16" RowSpacing="10" />
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+
                 <TextBox
                     x:Name="InputTextBox"
-                    Grid.Column="5"
+                    Grid.Column="6"
                     AutomationProperties.AutomationId="ChatInputTextBox"
                     AutomationProperties.Name="{x:Bind local:Strings.MessageInput}"
                     PlaceholderText="{x:Bind local:Strings.MessagePlaceholder}"
@@ -212,7 +236,7 @@
 
                 <Button
                     x:Name="SendButton"
-                    Grid.Column="6"
+                    Grid.Column="7"
                     AutomationProperties.AutomationId="SendButton"
                     AutomationProperties.Name="{x:Bind local:Strings.SendMessage}"
                     Content="{x:Bind local:Strings.Send}"
@@ -224,7 +248,7 @@
 
                 <Button
                     x:Name="StopButton"
-                    Grid.Column="6"
+                    Grid.Column="7"
                     AutomationProperties.AutomationId="StopButton"
                     AutomationProperties.Name="{x:Bind local:Strings.Stop}"
                     ToolTipService.ToolTip="{x:Bind local:Strings.StopTooltip}"

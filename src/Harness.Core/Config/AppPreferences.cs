@@ -27,6 +27,16 @@ public sealed record AppPreferences
     /// <summary>Default generate_image quality: "low" (~20s), "medium" (~50s) or "high" (~2 min).</summary>
     public string ImageQuality { get; init; } = "low";
 
+    /// <summary>ISO 4217 code the model prices are in (and costs are shown in).</summary>
+    public string Currency { get; init; } = "USD";
+
+    /// <summary>Prices per million tokens by model name; a model without one shows tokens only.</summary>
+    public Dictionary<string, Usage.ModelPrice>? ModelPrices { get; init; }
+
+    /// <summary>The price set for <paramref name="model"/> (names compare case-insensitively), or null.</summary>
+    public Usage.ModelPrice? PriceFor(string? model) =>
+        model is null ? null : ModelPrices?.FirstOrDefault(p => string.Equals(p.Key, model, StringComparison.OrdinalIgnoreCase)).Value;
+
     /// <summary>The effort to send with each turn; null for "auto" or anything unrecognized.</summary>
     public static ReasoningEffort? ParseEffort(string? effort) => effort?.Trim().ToLowerInvariant() switch
     {

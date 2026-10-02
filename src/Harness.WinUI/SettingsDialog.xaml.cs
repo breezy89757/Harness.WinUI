@@ -56,6 +56,12 @@ public sealed partial class SettingsDialog : ContentDialog
         _initialSandbox = preferences.SandboxFolder ?? string.Empty;
         SandboxTextBox.Text = _initialSandbox;
 
+        CurrencyTextBox.Text = preferences.Currency;
+        var price = preferences.PriceFor(initialModel);
+        PriceInputBox.Value = price is null ? double.NaN : (double)price.Input;
+        PriceCachedBox.Value = price is null ? double.NaN : (double)price.CachedInput;
+        PriceOutputBox.Value = price is null ? double.NaN : (double)price.Output;
+
         UpdateSaveButtonState();
     }
 
@@ -135,14 +141,28 @@ public sealed partial class SettingsDialog : ContentDialog
             }
         }
 
+        var currency = (CurrencyTextBox.Text ?? string.Empty).Trim().ToUpperInvariant();
+        if (!System.Text.RegularExpressions.Regex.IsMatch(currency, "^[A-Z]{3}$"))
+        {
+            args.Cancel = true;
+            ShowError(Strings.CurrencyInvalid);
+            return;
+        }
+
         try
         {
             LocalSettingsStore.Save(endpoint, model, apiKeyToSave, api, imageModel);
 
             var language = SelectedTag(LanguageComboBox);
             LanguageChanged = !string.Equals(language, _initialLanguage, StringComparison.OrdinalIgnoreCase);
-            if (LanguageChanged || sandboxChanged)
-                (AppPreferences.Load() with { Language = language, SandboxFolder = sandbox }).Save();
+            var current = AppPreferences.Load();
+            (current with
+            {
+                Language = language,
+                SandboxFolder = sandboxChanged ? sandbox : current.SandboxFolder,
+                Currency = currency,
+                ModelPrices = PricesWith(current.ModelPrices, model),
+            }).Save();
             if (sandboxChanged)
                 NewSandboxFolder = sandbox;
         }
@@ -154,6 +174,26 @@ public sealed partial class SettingsDialog : ContentDialog
         }
 
         Saved = new ResolvedProvider(endpoint, model, apiKeyToSave, api, ProviderSource.LocalEncryptedSettings, imageModel);
+    }
+
+    /// <summary>
+    /// The saved prices with this model's entry set from the three boxes (removed when all are empty).
+    /// An empty cached price means no cache discount: cached tokens cost the same as input.
+    /// </summary>
+    private Dictionary<string, Harness.Core.Usage.ModelPrice>? PricesWith(Dictionary<string, Harness.Core.Usage.ModelPrice>? saved, string model)
+    {
+        var prices = new Dictionary<string, Harness.Core.Usage.ModelPrice>(saved ?? [], StringComparer.OrdinalIgnoreCase);
+        foreach (var key in prices.Keys.Where(k => string.Equals(k, model, StringComparison.OrdinalIgnoreCase)).ToList())
+            prices.Remove(key);
+
+        static decimal? Read(NumberBox box) => double.IsNaN(box.Value) ? null : (decimal)Math.Max(0, box.Value);
+        var input = Read(PriceInputBox);
+        var cached = Read(PriceCachedBox);
+        var output = Read(PriceOutputBox);
+        if (input is not null || cached is not null || output is not null)
+            prices[model] = new Harness.Core.Usage.ModelPrice(input ?? 0, cached ?? input ?? 0, output ?? 0);
+
+        return prices.Count == 0 ? null : prices;
     }
 
     private void ShowError(string message)

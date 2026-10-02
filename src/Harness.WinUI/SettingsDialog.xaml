@@ -85,6 +85,47 @@
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                 Style="{StaticResource CaptionTextBlockStyle}" />
 
+            <!-- Pricing (for the cost shown under replies) -->
+            <TextBlock Margin="0,8,0,0" Text="{x:Bind local:Strings.PricingHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
+            <TextBlock
+                Text="{x:Bind local:Strings.PricingNote}"
+                TextWrapping="Wrap"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Style="{StaticResource CaptionTextBlockStyle}" />
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBox
+                    x:Name="CurrencyTextBox"
+                    Width="72"
+                    MaxLength="3"
+                    CharacterCasing="Upper"
+                    Header="{x:Bind local:Strings.Currency}"
+                    AutomationProperties.AutomationId="SettingsCurrencyTextBox" />
+                <NumberBox
+                    x:Name="PriceInputBox"
+                    Grid.Column="1"
+                    Minimum="0"
+                    Header="{x:Bind local:Strings.PriceInput}"
+                    AutomationProperties.AutomationId="SettingsPriceInput" />
+                <NumberBox
+                    x:Name="PriceCachedBox"
+                    Grid.Column="2"
+                    Minimum="0"
+                    Header="{x:Bind local:Strings.PriceCachedInput}"
+                    AutomationProperties.AutomationId="SettingsPriceCached" />
+                <NumberBox
+                    x:Name="PriceOutputBox"
+                    Grid.Column="3"
+                    Minimum="0"
+                    Header="{x:Bind local:Strings.PriceOutput}"
+                    AutomationProperties.AutomationId="SettingsPriceOutput" />
+            </Grid>
+
             <!-- Sandbox folder -->
             <TextBlock Margin="0,8,0,0" Text="{x:Bind local:Strings.SandboxHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
             <Grid ColumnSpacing="8">

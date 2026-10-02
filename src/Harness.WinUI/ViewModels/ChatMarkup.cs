@@ -200,7 +200,32 @@ internal static class ChatMarkup
 
     private static string Truncate(string text, int max) => text.Length <= max ? text : text[..max] + "\n…";
 
-    public static (string Meta, string Tooltip) FormatMeta(string? model, UsageReported? usage, TimeSpan? firstText, TimeSpan total)
+    /// <summary>
+    /// An amount with its ISO currency code ("USD 0.0042"): unambiguous where "$" isn't, and with enough
+    /// decimals for the fractions of a cent a single call costs.
+    /// </summary>
+    public static string FormatCost(decimal amount, string currency)
+    {
+        var format = amount == 0 ? "0" : amount < 0.01m ? "0.0000" : amount < 1 ? "0.000" : "#,0.00";
+        return $"{currency.ToUpperInvariant()} {amount.ToString(format, System.Globalization.CultureInfo.CurrentCulture)}";
+    }
+
+    /// <summary>Compact token count: 950, 12.3k, 1.25M.</summary>
+    public static string FormatTokens(long tokens) => tokens switch
+    {
+        < 1_000 => tokens.ToString(System.Globalization.CultureInfo.CurrentCulture),
+        < 1_000_000 => (tokens / 1_000d).ToString("0.#", System.Globalization.CultureInfo.CurrentCulture) + "k",
+        _ => (tokens / 1_000_000d).ToString("0.##", System.Globalization.CultureInfo.CurrentCulture) + "M",
+    };
+
+    /// <summary>Totals in a few characters: the cost when there is one, otherwise the token count.</summary>
+    public static string FormatTotalsShort(Harness.Core.Usage.UsageTotals totals) =>
+        totals.Replies == 0 ? string.Empty
+        : totals.Cost.Count > 0 ? string.Join(" + ", totals.Cost.Select(c => FormatCost(c.Value, c.Key)))
+        : Strings.TokensShort(FormatTokens(totals.InputTokens + totals.OutputTokens));
+
+    public static (string Meta, string Tooltip) FormatMeta(
+        string? model, UsageReported? usage, TimeSpan? firstText, TimeSpan total, string? cost = null, string? costTooltip = null)
     {
         var parts = new List<string>();
         var tip = new List<string>();
@@ -217,6 +242,11 @@ internal static class ChatMarkup
             tip.Add(Strings.MetaInput(usage.InputTokens.Value, usage.CachedInputTokens));
             tip.Add(Strings.MetaOutput(usage.OutputTokens.Value, usage.ReasoningTokens));
         }
+
+        if (cost is not null)
+            parts.Add(cost);
+        if (costTooltip is not null)
+            tip.Add(costTooltip);
 
         parts.Add($"{total.TotalSeconds:F1}s");
         if (firstText is not null)

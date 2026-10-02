@@ -210,6 +210,32 @@ public static class Strings
     public static string Reloading => T("Reloading…", "重新載入中…");
     public static string Reloaded => T("Reloaded from mcp.json.", "已從 mcp.json 重新載入。");
 
+    // Usage and cost
+    public static string TokensShort(string tokens) => T($"{tokens} tokens", $"{tokens} tokens");
+    public static string CostTooltip(string cost, decimal input, decimal cached, decimal output, string currency) =>
+        T($"Cost: {cost} (per 1M tokens: input {input}, cached input {cached}, output {output} {currency})",
+          $"費用：{cost}（每 100 萬 token：輸入 {input}、快取輸入 {cached}、輸出 {output} {currency}）");
+    public static string NoPriceTooltip(string model) =>
+        T($"No price set for {model}: add one in Settings to see costs.", $"尚未設定 {model} 的價格：在設定中填入後即可顯示費用。");
+    public static string UsageTooltip => T("Usage and cost", "用量與費用");
+    public static string UsageThisConversation => T("This conversation", "本次對話");
+    public static string UsageToday => T("Today", "今天");
+    public static string UsageThisMonth => T("This month", "本月");
+    public static string UsageAllTime => T("All time", "全部");
+    public static string UsageReplies(int n) => T($"{n} replies", $"{n} 次回覆");
+    public static string UsageTokens(string input, string output) => T($"in {input} · out {output}", $"輸入 {input} · 輸出 {output}");
+    public static string UsageUnpriced(int n) => T($"{n} without a price", $"{n} 次未設定價格");
+    public static string UsageNone => T("No usage yet.", "還沒有用量紀錄。");
+    public static string UsageUnavailable => T("Usage tracking is unavailable.", "無法記錄用量。");
+    public static string PricingHeader => T("Pricing", "費用");
+    public static string PricingNote => T("Prices per 1M tokens for the model above. Leave empty to show tokens only.",
+                                          "上方模型每 100 萬 token 的價格。留空則只顯示 token 數。");
+    public static string Currency => T("Currency", "幣別");
+    public static string PriceInput => T("Input", "輸入");
+    public static string PriceCachedInput => T("Cached input", "快取輸入");
+    public static string PriceOutput => T("Output", "輸出");
+    public static string CurrencyInvalid => T("Currency must be a 3-letter code such as USD or TWD.", "幣別必須是 3 個英文字母的代碼，例如 USD 或 TWD。");
+
     // Notifications (when the window is in the background)
     public static string NotifyReplyDone => T("Reply finished", "已完成回覆");
     public static string NotifyReplyFailed => T("The reply failed", "回覆時發生錯誤");

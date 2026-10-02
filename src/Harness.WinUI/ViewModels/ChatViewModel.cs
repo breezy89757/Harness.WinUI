@@ -12,6 +12,7 @@ using Harness.Core.Artifacts;
 using Harness.Core.Config;
 using Harness.Core.History;
 using Harness.Core.Tools;
+using Harness.Core.Usage;
 using Harness.MarkdownRendering;
 
 namespace Harness.WinUI.ViewModels;
@@ -255,10 +256,96 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         _conversationId = null;
         _conversationTitle = null;
         _resumedFromHistory = false;
+        ConversationCostText = string.Empty;
         await _messageSink.ClearConversationAsync().ConfigureAwait(true);
     }
 
     private bool CanStartNewChat() => !IsBusy;
+
+    #region Usage and cost
+
+    // Null if usage.db can't be opened: chat works, costs just aren't tracked.
+    private readonly UsageLedger? _ledger = OpenLedger();
+
+    private static UsageLedger? OpenLedger()
+    {
+        try
+        {
+            return new UsageLedger();
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException or UnauthorizedAccessException)
+        {
+            Debug.WriteLine($"Usage ledger unavailable: {ex}");
+            return null;
+        }
+    }
+
+    /// <summary>This conversation's total so far (cost, or tokens when no price is set), for the usage button.</summary>
+    [ObservableProperty]
+    private string _conversationCostText = string.Empty;
+
+    /// <summary>Records one reply's usage and returns its cost text for the reply's footer (null when the model has no price).</summary>
+    private async Task<(string? Cost, string? Tooltip)> RecordUsageAsync(string? model, UsageReported? usage)
+    {
+        if (usage is not { InputTokens: { } input, OutputTokens: { } output })
+            return (null, null);
+
+        var preferences = AppPreferences.Load();
+        var price = preferences.PriceFor(model);
+        var cached = usage.CachedInputTokens ?? 0;
+        var cost = price?.Cost(input, cached, output);
+        _conversationId ??= Guid.NewGuid().ToString("N"); // usage is tracked even when history isn't saved
+        var entry = new UsageEntry(DateTimeOffset.Now, _conversationId, model, input, cached, output, cost, preferences.Currency);
+
+        if (_ledger is { } ledger)
+        {
+            try
+            {
+                await Task.Run(() => ledger.Record(entry)).ConfigureAwait(true);
+            }
+            catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException)
+            {
+                Debug.WriteLine($"Couldn't record usage: {ex}");
+            }
+        }
+        await RefreshConversationCostAsync().ConfigureAwait(true);
+
+        return cost is { } amount && price is not null
+            ? (ChatMarkup.FormatCost(amount, preferences.Currency), Strings.CostTooltip(
+                ChatMarkup.FormatCost(amount, preferences.Currency), price.Input, price.CachedInput, price.Output, preferences.Currency))
+            : (null, model is null ? null : Strings.NoPriceTooltip(model));
+    }
+
+    private async Task RefreshConversationCostAsync()
+    {
+        if (_ledger is not { } ledger || _conversationId is not { } id)
+        {
+            ConversationCostText = string.Empty;
+            return;
+        }
+        var totals = await Task.Run(() => ledger.Totals(conversationId: id)).ConfigureAwait(true);
+        ConversationCostText = ChatMarkup.FormatTotalsShort(totals);
+    }
+
+    /// <summary>Totals for the usage flyout: this conversation, today, this month, all time.</summary>
+    public async Task<IReadOnlyList<(string Label, UsageTotals Totals)>> UsageReportAsync()
+    {
+        if (_ledger is not { } ledger)
+            return [];
+        var id = _conversationId;
+        var now = DateTimeOffset.Now;
+        var today = new DateTimeOffset(now.Date, now.Offset);
+        var month = new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, now.Offset);
+        return await Task.Run(() => (IReadOnlyList<(string, UsageTotals)>)
+        [
+            (Strings.UsageThisConversation, id is null ? UsageTotals.Empty : ledger.Totals(conversationId: id)),
+            (Strings.UsageToday, ledger.Totals(since: today)),
+            (Strings.UsageThisMonth, ledger.Totals(since: month)),
+            (Strings.UsageAllTime, ledger.Totals()),
+        ]).ConfigureAwait(true);
+    }
+
+    #endregion
 
     /// <summary>Stops the reply in progress; what has streamed so far stays visible.</summary>
     [RelayCommand(CanExecute = nameof(CanStop))]
@@ -508,7 +595,8 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
             _activeAssistantId = null;
             _turnCancellation = null;
             await _messageSink.SetMessageStatusAsync(id, null).ConfigureAwait(true);
-            var (meta, tooltip) = ChatMarkup.FormatMeta(session.ConfiguredModelId, usage, firstTextAt, stopwatch.Elapsed);
+            var (cost, costTooltip) = await RecordUsageAsync(session.ConfiguredModelId, usage).ConfigureAwait(true);
+            var (meta, tooltip) = ChatMarkup.FormatMeta(session.ConfiguredModelId, usage, firstTextAt, stopwatch.Elapsed, cost, costTooltip);
             if (stopped)
             {
                 meta = string.IsNullOrEmpty(meta) ? Strings.Stopped : $"{Strings.Stopped} · {meta}";
@@ -590,6 +678,7 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
             _conversationId = conversation.Id;
             _conversationTitle = conversation.Title;
             _resumedFromHistory = false;
+            await RefreshConversationCostAsync().ConfigureAwait(true);
             if (_chatSession is not null)
             {
                 try
