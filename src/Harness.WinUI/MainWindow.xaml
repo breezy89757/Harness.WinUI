@@ -31,6 +31,23 @@
                 Grid.Row="0"
                 AutomationProperties.Name="{x:Bind local:Strings.ChatTranscript}" />
 
+            <!-- Text size feedback (Ctrl + / - / 0, Ctrl + wheel): fades in, then out. -->
+            <Border
+                x:Name="ZoomIndicator"
+                Grid.Row="0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                Margin="0,0,0,20"
+                Padding="16,8"
+                CornerRadius="{StaticResource OverlayCornerRadius}"
+                Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                Opacity="0"
+                IsHitTestVisible="False">
+                <TextBlock x:Name="ZoomIndicatorText" Style="{StaticResource BodyStrongTextBlockStyle}" />
+            </Border>
+
             <Grid
                 x:Name="ComposerGrid"
                 Grid.Row="1"

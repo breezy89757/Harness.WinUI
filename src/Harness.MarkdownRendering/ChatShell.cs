@@ -369,6 +369,25 @@ public static class ChatShell
             if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(message);
         }
 
+        // Text size: the host owns the level (shared with the composer and remembered); this page only
+        // applies it and forwards the shortcuts it receives while focused (Ctrl + / - / 0, Ctrl + wheel).
+        const baseFontPx = parseFloat(getComputedStyle(document.body).fontSize);
+        function setTextZoom(percent) {
+            withStickyScroll(() => { document.body.style.fontSize = (baseFontPx * percent / 100) + 'px'; });
+        }
+        document.addEventListener('keydown', e => {
+            if (!e.ctrlKey || e.altKey || e.metaKey) return;
+            const step = (e.key === '+' || e.key === '=') ? 1 : e.key === '-' ? -1 : e.key === '0' ? 0 : null;
+            if (step === null) return;
+            e.preventDefault();
+            post({ type: 'zoom', step });
+        });
+        window.addEventListener('wheel', e => {
+            if (!e.ctrlKey) return;
+            e.preventDefault();
+            post({ type: 'zoom', step: e.deltaY < 0 ? 1 : -1 });
+        }, { passive: false });
+
         function openArtifactFrom(target) {
             const card = target.closest('.artifact-card[data-artifact]');
             if (card) post({ type: 'openArtifact', id: card.dataset.artifact });

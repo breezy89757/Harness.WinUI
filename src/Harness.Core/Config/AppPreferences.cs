@@ -27,6 +27,9 @@ public sealed record AppPreferences
     /// <summary>Default generate_image quality: "low" (~20s), "medium" (~50s) or "high" (~2 min).</summary>
     public string ImageQuality { get; init; } = "low";
 
+    /// <summary>Text size of the conversation and composer, in percent (80-200).</summary>
+    public int TextZoom { get; init; } = 100;
+
     /// <summary>ISO 4217 code the model prices are in (and costs are shown in).</summary>
     public string Currency { get; init; } = "USD";
 

@@ -74,6 +74,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
             e.Succeeded ? Strings.NotifyReplyDone : Strings.NotifyReplyFailed, PlainPreview(e.Text));
         ViewModel.ApprovalRequested += (_, tool) => _attention.Notify(Strings.NotifyApprovalTitle, Strings.NotifyApprovalBody(tool));
 
+        ConfigureZoom();
         ResizeWindow(960, 720);
         InitializeAsync();
     }
@@ -130,6 +131,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         await ChatWebView.EnsureCoreWebView2Async();
         ConfigureChatWebView();
         await LoadShellAsync();
+        await ApplyZoomAsync();
         await ViewModel.InitializeAsync();
         InputTextBox.Focus(FocusState.Programmatic);
 
@@ -396,6 +398,9 @@ public sealed partial class MainWindow : Window, IChatMessageSink
                     break;
                 case "openArtifact":
                     _ = ArtifactPanel.ShowAsync(message.GetProperty("id").GetString() ?? string.Empty);
+                    break;
+                case "zoom":
+                    StepZoom(message.GetProperty("step").GetInt32());
                     break;
                 case "mcpApp":
                     OnAppMessage(message.GetProperty("view").GetString() ?? string.Empty, message.GetProperty("message").Clone());
