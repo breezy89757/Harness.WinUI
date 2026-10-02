@@ -2,6 +2,7 @@
 
 using System.Collections.ObjectModel;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Harness.Core.Tools;
@@ -40,17 +41,86 @@ public sealed class McpServerRow(McpServerStatus status)
 public sealed partial class McpDialog : ContentDialog
 {
     private readonly McpHost _host;
+    private readonly AgentTools _tools;
     private readonly ObservableCollection<McpServerRow> _rows = [];
 
-    public McpDialog(McpHost host)
+    public McpDialog(AgentTools tools)
     {
         InitializeComponent();
-        _host = host;
+        _tools = tools;
+        _host = tools.Mcp;
         ServerList.ItemsSource = _rows;
         Refresh();
+        RefreshSkillList();
 
         _host.Changed += OnHostChanged;
-        Closed += (_, _) => _host.Changed -= OnHostChanged;
+        _tools.Changed += OnToolsChanged;
+        Closed += (_, _) =>
+        {
+            _host.Changed -= OnHostChanged;
+            _tools.Changed -= OnToolsChanged;
+        };
+    }
+
+    private void OnToolsChanged(object? sender, EventArgs e) => DispatcherQueue.TryEnqueue(RefreshSkillList);
+
+    /// <summary>One row per skill (toggle, name, description, where it came from), then any SKILL.md that couldn't be used.</summary>
+    private void RefreshSkillList()
+    {
+        SkillList.Children.Clear();
+        var secondary = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+        var caption = (Style)Application.Current.Resources["CaptionTextBlockStyle"];
+
+        if (_tools.Skills.Count == 0)
+            SkillList.Children.Add(new TextBlock { Text = Strings.SkillsEmpty, TextWrapping = TextWrapping.Wrap, Style = caption });
+
+        foreach (var skill in _tools.Skills)
+        {
+            var toggle = new ToggleSwitch { IsOn = AgentTools.IsSkillEnabled(skill.Name), OnContent = "", OffContent = "", MinWidth = 0, VerticalAlignment = VerticalAlignment.Center };
+            AutomationProperties.SetName(toggle, skill.Name);
+            var name = skill.Name;
+            toggle.Toggled += (_, _) =>
+            {
+                var enable = toggle.IsOn; // read on the UI thread
+                _ = Task.Run(() => _tools.SetSkillEnabled(name, enable));
+            };
+
+            var text = new StackPanel { Spacing = 2 };
+            text.Children.Add(new TextBlock { Text = skill.Name, Style = (Style)Application.Current.Resources["BodyStrongTextBlockStyle"] });
+            text.Children.Add(new TextBlock { Text = skill.Description, TextWrapping = TextWrapping.Wrap, MaxLines = 3, TextTrimming = TextTrimming.CharacterEllipsis, Style = caption });
+            text.Children.Add(new TextBlock { Text = skill.Source, Style = caption, Foreground = secondary });
+
+            var row = new Grid { ColumnSpacing = 12 };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.Children.Add(text);
+            Grid.SetColumn(toggle, 1);
+            row.Children.Add(toggle);
+            SkillList.Children.Add(row);
+        }
+
+        foreach (var problem in _tools.SkillProblems)
+        {
+            SkillList.Children.Add(new TextBlock
+            {
+                Text = Strings.SkillProblem(problem.Path, problem.Message),
+                TextWrapping = TextWrapping.Wrap,
+                Style = caption,
+                Foreground = (Brush)Application.Current.Resources["SystemFillColorCautionBrush"],
+            });
+        }
+    }
+
+    private void OpenSkillsFolder_Click(object sender, RoutedEventArgs e)
+    {
+        Directory.CreateDirectory(Harness.Core.Skills.SkillCatalog.AppSkillsFolder);
+        ShellLauncher.OpenLocalPath(Harness.Core.Skills.SkillCatalog.AppSkillsFolder);
+    }
+
+    private async void RefreshSkills_Click(object sender, RoutedEventArgs e)
+    {
+        await Task.Run(_tools.RefreshSkills);
+        RefreshSkillList();
     }
 
     private void OnHostChanged(object? sender, EventArgs e) => DispatcherQueue.TryEnqueue(Refresh);

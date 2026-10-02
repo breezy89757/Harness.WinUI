@@ -131,6 +131,18 @@
                 <HyperlinkButton Padding="0" Content="{x:Bind local:Strings.EditMcpJson}" Click="EditJson_Click" />
                 <HyperlinkButton Padding="0" Content="{x:Bind local:Strings.ReloadFromFile}" Click="Reload_Click" />
             </StackPanel>
+
+            <!-- Skills (Agent Skills: folders with a SKILL.md) -->
+            <TextBlock Margin="0,12,0,0" Text="{x:Bind local:Strings.SkillsHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
+            <TextBlock
+                Text="{x:Bind local:Strings.SkillsIntro}"
+                TextWrapping="Wrap"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            <StackPanel x:Name="SkillList" Spacing="8" AutomationProperties.Name="{x:Bind local:Strings.SkillsHeader}" />
+            <StackPanel Orientation="Horizontal" Spacing="16">
+                <HyperlinkButton Padding="0" Content="{x:Bind local:Strings.OpenSkillsFolder}" Click="OpenSkillsFolder_Click" />
+                <HyperlinkButton Padding="0" Content="{x:Bind local:Strings.Refresh}" Click="RefreshSkills_Click" />
+            </StackPanel>
         </StackPanel>
     </ScrollViewer>
 </ContentDialog>

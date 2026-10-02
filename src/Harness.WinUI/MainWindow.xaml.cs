@@ -179,7 +179,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
     {
         if (IsDialogOpen)
             return;
-        var dialog = new McpDialog(_tools.Mcp) { XamlRoot = Content.XamlRoot };
+        var dialog = new McpDialog(_tools) { XamlRoot = Content.XamlRoot };
         await dialog.ShowAsync();
     }
 

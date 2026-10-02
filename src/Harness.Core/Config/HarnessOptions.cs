@@ -49,5 +49,9 @@ public sealed record HarnessOptions
           never RTF, HTML or CSV stand-ins unless the user asks for that format.
         - Harness.WinUI shows an "Open file" link on the tool step, so refer to created files by name only; don't
           write download or sandbox: links to them.
+
+        Skills:
+        - load_skill lists the user's skills (instructions for specific kinds of work). When a request matches
+          one, load it before starting and follow it.
         """;
 }

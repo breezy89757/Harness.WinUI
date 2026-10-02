@@ -236,6 +236,16 @@ public static class Strings
     public static string PriceOutput => T("Output", "輸出");
     public static string CurrencyInvalid => T("Currency must be a 3-letter code such as USD or TWD.", "幣別必須是 3 個英文字母的代碼，例如 USD 或 TWD。");
 
+    // Skills
+    public static string SkillsHeader => T("Skills", "技能（Skills）");
+    public static string SkillsIntro => T(
+        "Folders with a SKILL.md that teach the agent a kind of task. Found in Harness.WinUI's skills folder, ~/.agents/skills, ~/.claude/skills and the sandbox's .agents/skills; the agent loads one when a request matches it.",
+        "資料夾內放一份 SKILL.md，教 agent 做某一類工作。會從 Harness.WinUI 的技能資料夾、~/.agents/skills、~/.claude/skills 與沙盒的 .agents/skills 讀取；請求符合時 agent 會自動載入。");
+    public static string SkillsEmpty => T("No skills yet. Open the skills folder and add one (a folder with a SKILL.md).", "還沒有技能。開啟技能資料夾，新增一個含 SKILL.md 的資料夾即可。");
+    public static string SkillProblem(string path, string message) => T($"Skipped {path}: {message}", $"略過 {path}：{message}");
+    public static string OpenSkillsFolder => T("Open skills folder", "開啟技能資料夾");
+    public static string Refresh => T("Refresh", "重新整理");
+
     // Notifications (when the window is in the background)
     public static string NotifyReplyDone => T("Reply finished", "已完成回覆");
     public static string NotifyReplyFailed => T("The reply failed", "回覆時發生錯誤");

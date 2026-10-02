@@ -2,7 +2,9 @@
 
 using System.Runtime.Versioning;
 using Microsoft.Extensions.AI;
+using Harness.Core.Config;
 using Harness.Core.Files;
+using Harness.Core.Skills;
 
 namespace Harness.Core.Tools;
 
@@ -64,8 +66,69 @@ public sealed class AgentTools : IAsyncDisposable
             _sandbox = new Sandbox(folder);
         }
 
+        // The sandbox may hold project skills (.agents/skills).
+        RefreshSkills();
+    }
+
+    #region Skills
+
+    private IReadOnlyList<Skill> _skills = [];
+    private IReadOnlyList<SkillProblem> _skillProblems = [];
+    private readonly List<FileSystemWatcher> _skillWatchers = [];
+    private Timer? _skillRefreshTimer;
+
+    /// <summary>Every skill found (enabled or not); see <see cref="SkillCatalog.Roots"/>.</summary>
+    public IReadOnlyList<Skill> Skills => Volatile.Read(ref _skills);
+
+    /// <summary>SKILL.md files that couldn't be used, and why.</summary>
+    public IReadOnlyList<SkillProblem> SkillProblems => Volatile.Read(ref _skillProblems);
+
+    public static bool IsSkillEnabled(string name) => AppPreferences.Load().DisabledSkills?.Contains(name) != true;
+
+    public void SetSkillEnabled(string name, bool enabled)
+    {
+        var preferences = AppPreferences.Load();
+        var disabled = new HashSet<string>(preferences.DisabledSkills ?? [], StringComparer.Ordinal);
+        if (enabled ? !disabled.Remove(name) : !disabled.Add(name))
+            return;
+        (preferences with { DisabledSkills = disabled.Count == 0 ? null : [.. disabled.Order()] }).Save();
         Rebuild();
     }
+
+    /// <summary>Re-reads the skill folders and watches them, so adding or editing a skill applies without a restart.</summary>
+    public void RefreshSkills()
+    {
+        Directory.CreateDirectory(SkillCatalog.AppSkillsFolder);
+        var (skills, problems) = SkillCatalog.Discover(SandboxRoot);
+        Volatile.Write(ref _skills, skills);
+        Volatile.Write(ref _skillProblems, problems);
+
+        lock (_skillWatchers)
+        {
+            foreach (var watcher in _skillWatchers)
+                watcher.Dispose();
+            _skillWatchers.Clear();
+            foreach (var (folder, _) in SkillCatalog.Roots(SandboxRoot).Where(r => Directory.Exists(r.Folder)))
+            {
+                var watcher = new FileSystemWatcher(folder) { IncludeSubdirectories = true, EnableRaisingEvents = true };
+                watcher.Changed += OnSkillFolderChanged;
+                watcher.Created += OnSkillFolderChanged;
+                watcher.Deleted += OnSkillFolderChanged;
+                watcher.Renamed += OnSkillFolderChanged;
+                _skillWatchers.Add(watcher);
+            }
+        }
+        Rebuild();
+    }
+
+    // Editors save in bursts (temp file, rename, write): refresh once things settle.
+    private void OnSkillFolderChanged(object sender, FileSystemEventArgs e)
+    {
+        _skillRefreshTimer?.Dispose();
+        _skillRefreshTimer = new Timer(_ => RefreshSkills(), null, TimeSpan.FromMilliseconds(500), Timeout.InfiniteTimeSpan);
+    }
+
+    #endregion
 
     private void Rebuild()
     {
@@ -73,6 +136,7 @@ public sealed class AgentTools : IAsyncDisposable
             return;
 
         var tools = new List<AITool>();
+        tools.AddRange(SkillCatalog.CreateTools(() => Skills.Where(s => IsSkillEnabled(s.Name)).ToList()));
         if (_sandbox is not null)
             tools.AddRange(FileTools.Create(_sandbox, _approver, _permissions));
         tools.AddRange(McpServerManager.CreateAgentTools(Mcp, _approver, _permissions));
@@ -83,5 +147,15 @@ public sealed class AgentTools : IAsyncDisposable
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    public ValueTask DisposeAsync() => Mcp.DisposeAsync();
+    public ValueTask DisposeAsync()
+    {
+        lock (_skillWatchers)
+        {
+            foreach (var watcher in _skillWatchers)
+                watcher.Dispose();
+            _skillWatchers.Clear();
+        }
+        _skillRefreshTimer?.Dispose();
+        return Mcp.DisposeAsync();
+    }
 }

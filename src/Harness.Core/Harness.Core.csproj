@@ -18,6 +18,7 @@
     <PackageReference Include="OpenAI" Version="2.13.0" />
     <PackageReference Include="PdfPig" Version="0.1.16" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
+    <PackageReference Include="YamlDotNet" Version="18.1.0" />
   </ItemGroup>
 
 </Project>
