@@ -16,7 +16,27 @@ public partial class App : Application
     // Configured and started by MainWindow once the chat shell is up; sessions read its tools on every turn.
     private readonly AgentTools _tools = new();
 
-    public App() => InitializeComponent();
+    public App()
+    {
+        InitializeComponent();
+        // A crash in XAML only leaves 0xc000027b in the event log; keep the actual exception.
+        UnhandledException += (_, e) => LogCrash(e.Exception);
+    }
+
+    private static void LogCrash(Exception exception)
+    {
+        try
+        {
+            Directory.CreateDirectory(AppPaths.DataRoot);
+            File.AppendAllText(AppPaths.Combine("crash.log"), $"[{DateTimeOffset.Now:O}] {exception}\n\n");
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {

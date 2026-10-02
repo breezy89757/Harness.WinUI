@@ -152,9 +152,18 @@ public sealed partial class MainWindow : Window, IChatMessageSink
 
     private async void ToolsButton_Click(object sender, RoutedEventArgs e)
     {
+        if (IsDialogOpen)
+            return;
         var dialog = new McpDialog(_tools.Mcp) { XamlRoot = Content.XamlRoot };
         await dialog.ShowAsync();
     }
+
+    /// <summary>
+    /// WinUI allows one ContentDialog at a time and throws (crashing the app) on a second, e.g. the
+    /// settings or MCP button clicked while an MCP App approval is showing.
+    /// </summary>
+    private bool IsDialogOpen =>
+        Microsoft.UI.Xaml.Media.VisualTreeHelper.GetOpenPopupsForXamlRoot(Content.XamlRoot).Any(p => p.Child is ContentDialog);
 
     /// <summary>
     /// Shown automatically after the shell loads when nothing is configured anywhere. Saving builds a
@@ -166,7 +175,11 @@ public sealed partial class MainWindow : Window, IChatMessageSink
             await ViewModel.NotifyNotConfiguredAsync();
     }
 
-    private async void SettingsButton_Click(object sender, RoutedEventArgs e) => await ShowSettingsAsync();
+    private async void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!IsDialogOpen)
+            await ShowSettingsAsync();
+    }
 
     #region Response quality
 

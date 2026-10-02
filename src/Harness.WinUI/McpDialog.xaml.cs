@@ -72,8 +72,15 @@ public sealed partial class McpDialog : ContentDialog
             return; // initial binding, not a user change
         }
 
-        row.Enabled = toggle.IsOn;
-        await RunAsync(() => McpServerManager.SetEnabledAsync(_host, name, toggle.IsOn));
+        // Read the control here: RunAsync runs the operation on a worker thread, where touching
+        // the ToggleSwitch throws (wrong thread) and the change was silently never applied.
+        var enable = toggle.IsOn;
+        row.Enabled = enable;
+        if (!await RunAsync(() => McpServerManager.SetEnabledAsync(_host, name, enable)))
+        {
+            row.Enabled = !enable;
+            toggle.IsOn = !enable;
+        }
     }
 
     /// <summary>Asks for confirmation in a small flyout (built in code: x:Bind inside a templated flyout crashes the XAML compiler).</summary>
@@ -175,7 +182,8 @@ public sealed partial class McpDialog : ContentDialog
         }
         catch (Exception ex)
         {
-            ShowMessage(ex.Message, isError: true);
+            // Some exceptions (e.g. COMException) come with an empty message; never show a blank error.
+            ShowMessage(string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().Name : ex.Message, isError: true);
             return false;
         }
     }
