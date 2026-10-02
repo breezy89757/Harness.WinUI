@@ -1,5 +1,25 @@
 # Harness.WinUI - Changelog
 
+## [1.0.4] - 2026-10-02
+
+### Added
+- Attachments: paste a screenshot or copied files into the message box (Ctrl+V), or drag files onto the
+  window. Images are sent to the model as images; text, Office and PDF files as text. Up to 10 per message
+- Cost: each reply shows its token cost; a usage button shows totals for the conversation, today, this
+  month and all time. Set prices per 1M tokens (and the currency) in Settings
+- Notifications: when Harness.WinUI is in the background, a Windows notification and a flashing taskbar
+  button tell you a reply finished or a tool call is waiting for approval
+- Agent Skills: folders with a `SKILL.md` (in Harness.WinUI's skills folder, `~/.agents/skills`,
+  `~/.claude/skills` or the sandbox's `.agents/skills`) teach the agent a kind of task; it loads one when a
+  request matches. Turn skills on or off in the MCP & tools dialog
+- Text size: Ctrl + plus / minus / 0, or Ctrl + mouse wheel, for the conversation and the message box
+- Customizable toolbar: right-click it to choose which buttons show; the rest are in the More (…) menu
+
+### Fixed
+- Turning an MCP server off or on in the dialog didn't take effect
+- The reply timer kept running while a tool call waited for your approval
+- Opening a second dialog while one was open could close the app
+
 ## [1.0.3] - 2026-10-01
 
 ### Added

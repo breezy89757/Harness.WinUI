@@ -41,8 +41,13 @@ Harness.WinUI reads and writes files, plugs into MCP tools, and previews what it
 - **MCP**: stdio and Streamable HTTP servers. Manage them in the UI, or just ask the agent to add one in the chat.
 - **MCP Apps**: tools that come with their own UI (`io.modelcontextprotocol/ui`) render it right in the chat, e.g. a database query shown as an interactive table. Each app runs in an isolated, sandboxed frame with the CSP it declares; the model sees only the tool's text summary.
 - **Image generation**: works with gpt-image models; images show up right in the conversation.
+- **Agent Skills**: drop a folder with a `SKILL.md` into `~/.claude/skills`, `~/.agents/skills` or Harness.WinUI's skills folder, and the agent loads it when a request matches.
+- **Paste and drop attachments**: paste a screenshot or copied files with Ctrl+V, or drag files onto the window. Images go to the model as images; text, Office and PDF files as text.
+- **Know what it costs**: every reply shows its tokens and cost; the usage button totals the conversation, today, this month and all time. Set prices per 1M tokens in Settings.
+- **Notifications**: when the window is in the background, a Windows notification and a flashing taskbar button tell you a reply finished or something needs your approval.
 - **Conversation history**: stored locally in SQLite; reopening the app restores the model's context too.
 - **Stop anytime, tune quality**: stop a reply mid-stream (or press Esc). Switch reasoning effort and image quality whenever you like.
+- **Make it yours**: Ctrl + plus / minus (or Ctrl + wheel) changes the text size; right-click the toolbar to choose which buttons show.
 - **English and Traditional Chinese UI**: the model replies in the language you write in.
 
 ### Screenshots
@@ -130,6 +135,9 @@ Data folder: the portable build and builds you run yourself use `%LOCALAPPDATA%\
 | `mcp.json` | MCP server configuration |
 | `permissions.json` | Tools you chose to "Always allow" |
 | `history.db` | Conversation history |
+| `usage.db` | Token usage and cost per reply |
+| `preferences.json` | Language, sandbox, prices, text size, toolbar and other preferences |
+| `skills\` | Your skills (`SKILL.md` folders) |
 | `artifacts\` | Artifact files |
 
 The chat view never runs HTML produced by the model. Artifacts run in a separate WebView with no message channel to the app, and only links you click yourself open in your external browser.
@@ -165,8 +173,13 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 - **MCP**：支援 stdio 和 Streamable HTTP 兩種 server。可以在介面上管理，也能直接在對話裡請 agent 幫你新增。
 - **MCP Apps**：自帶介面的工具（`io.modelcontextprotocol/ui`）會直接在對話裡顯示，例如把資料庫查詢結果呈現成可操作的表格。每個 App 在獨立的沙盒框架中執行，只套用它宣告的 CSP；模型只會看到工具的文字摘要。
 - **生圖**：接 gpt-image 系列模型，圖片直接顯示在對話裡。
+- **Agent Skills**：把含 `SKILL.md` 的資料夾放進 `~/.claude/skills`、`~/.agents/skills` 或 Harness.WinUI 的技能資料夾，請求符合時 agent 會自動載入。
+- **貼上、拖曳附件**：Ctrl+V 貼上截圖或複製的檔案，或直接把檔案拖進視窗。圖片以圖片送給模型，文字、Office、PDF 檔轉成文字。
+- **費用一目了然**：每則回覆都顯示 token 數和費用；用量按鈕可看本次對話、今天、本月和全部的累計。每 100 萬 token 的價格在設定中填入。
+- **通知**：視窗在背景時，回覆完成或需要你核准，會跳出 Windows 通知並閃爍工作列按鈕。
 - **對話紀錄**：存在本機 SQLite，重新打開時連模型的上下文一起接回來。
 - **隨時停止、可調品質**：回覆進行中可以按停止（或 Esc）。推理強度和生圖品質可以隨時切換。
+- **依你的習慣調整**：Ctrl + 加號 / 減號（或 Ctrl + 滾輪）調整字型大小；在工具列按右鍵可選擇要顯示哪些按鈕。
 - **繁體中文與英文介面**：介面可選繁中或英文。模型會用你輸入的語言回覆，中文一律用台灣用語的繁體中文。
 
 ### 截圖
@@ -252,6 +265,9 @@ dotnet build Harness.WinUI.sln -p:Platform=x64
 | `mcp.json` | MCP server 設定 |
 | `permissions.json` | 你選了「永遠允許」的工具 |
 | `history.db` | 對話紀錄 |
+| `usage.db` | 每則回覆的 token 用量與費用 |
+| `preferences.json` | 語言、沙盒、價格、字型大小、工具列等偏好設定 |
+| `skills\` | 你的技能（含 `SKILL.md` 的資料夾） |
 | `artifacts\` | 成品檔案 |
 
 聊天畫面不會直接執行模型輸出的 HTML。成品在另一個獨立的 WebView 裡執行，與 App 之間沒有訊息通道；而且只有你親手點擊的連結才會用外部瀏覽器開啟。
