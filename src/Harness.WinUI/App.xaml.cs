@@ -63,6 +63,7 @@ public partial class App : Application
         }
         _tools.SetSandbox(preferences.SandboxFolder);
         Traces = OpenTraces(preferences);
+        ApplyExport(preferences);
 
         var (chatSession, options, startupError, needsProviderSetup) = BuildChatSession();
 
@@ -79,6 +80,24 @@ public partial class App : Application
 
     /// <summary>The observability recorder (recording only when the user turned it on); null if trace.db can't be opened.</summary>
     public static Harness.Core.Observability.TraceRecorder? Traces { get; private set; }
+
+    /// <summary>OTLP export, when the user set it up (observability window › Export).</summary>
+    public static Harness.Core.Observability.TraceExporter Exporter { get; } = new();
+
+    /// <summary>Applies the saved export settings; returns the error if they couldn't be applied.</summary>
+    public static string? ApplyExport(AppPreferences preferences)
+    {
+        try
+        {
+            Exporter.Configure(preferences.OtlpSettings());
+            return null;
+        }
+        catch (Exception ex) when (ex is ArgumentException or UriFormatException or InvalidOperationException or NotSupportedException)
+        {
+            Exporter.Configure(null);
+            return ex.Message;
+        }
+    }
 
     private static Harness.Core.Observability.TraceRecorder? OpenTraces(AppPreferences preferences)
     {

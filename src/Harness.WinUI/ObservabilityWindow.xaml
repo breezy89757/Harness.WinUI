@@ -111,6 +111,11 @@
                                 Content="{x:Bind local:Strings.TraceClear}"
                                 AutomationProperties.AutomationId="TraceClearButton"
                                 Click="Clear_Click" />
+                            <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                            <Button
+                                Content="{x:Bind local:Strings.ExportSettings}"
+                                AutomationProperties.AutomationId="TraceExportButton"
+                                Click="Export_Click" />
                         </StackPanel>
                     </Flyout>
                 </Button.Flyout>

@@ -21,10 +21,29 @@ public static partial class Telemetry
     public static ActivitySource Source { get; } = new(SourceName);
 
     /// <summary>
-    /// Whether message content is recorded: prompts, replies, tool arguments and results, HTTP bodies
-    /// (Settings). Timing, tokens and status always are. Read on every span, so it applies at once.
+    /// Whether message content is recorded and exported: prompts, replies, tool arguments and results,
+    /// HTTP bodies. Timing, tokens and status always are. Applies at once, to clients already built too.
     /// </summary>
-    public static bool CaptureContent { get; set; } = true;
+    public static bool CaptureContent
+    {
+        get => s_captureContent;
+        set
+        {
+            s_captureContent = value;
+            lock (s_instrumented)
+            {
+                s_instrumented.RemoveAll(r => !r.TryGetTarget(out _));
+                foreach (var reference in s_instrumented)
+                {
+                    if (reference.TryGetTarget(out var client))
+                        client.EnableSensitiveData = value;
+                }
+            }
+        }
+    }
+
+    private static bool s_captureContent = true;
+    private static readonly List<WeakReference<OpenTelemetryChatClient>> s_instrumented = [];
 
     // Operation names (Activity.OperationName). chat / execute_tool / orchestrate_tools come from MEAI.
     public const string OpTurn = "turn";
@@ -79,13 +98,21 @@ public static partial class Telemetry
 
     /// <summary>
     /// Adds the GenAI instrumentation (spans and metrics, on <see cref="SourceName"/>) to a chat client.
-    /// Content attributes are always produced while something listens; <see cref="TraceRecorder"/> drops
-    /// them when <see cref="CaptureContent"/> is off, so that setting needs no new client.
+    /// Message content is included while <see cref="CaptureContent"/> is on (tool calls follow the same
+    /// setting); nothing is produced at all while no recorder or exporter listens.
     /// </summary>
-    public static IChatClient Instrument(IChatClient client) =>
-        client.AsBuilder()
-            .UseOpenTelemetry(sourceName: SourceName, configure: c => c.EnableSensitiveData = true)
+    public static IChatClient Instrument(IChatClient client)
+    {
+        var instrumented = client.AsBuilder()
+            .UseOpenTelemetry(sourceName: SourceName, configure: c => c.EnableSensitiveData = CaptureContent)
             .Build();
+        if (instrumented.GetService<OpenTelemetryChatClient>() is { } otel)
+        {
+            lock (s_instrumented)
+                s_instrumented.Add(new WeakReference<OpenTelemetryChatClient>(otel));
+        }
+        return instrumented;
+    }
 
     /// <summary>The HttpClient model calls go through, so each one's raw HTTP exchange is recorded too.</summary>
     public static HttpClient HttpClient { get; } = new(new TracingHttpHandler()) { Timeout = Timeout.InfiniteTimeSpan };
@@ -105,6 +132,7 @@ public static partial class Telemetry
         if (turn is null)
             return;
         turn.SetTag(TagConversation, conversationId);
+        turn.SetTag("session.id", conversationId); // groups a conversation's turns in tools such as Langfuse
         if (CaptureContent)
             turn.SetTag(TagReply, reply);
         if (error is not null)

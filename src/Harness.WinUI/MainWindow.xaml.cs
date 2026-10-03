@@ -60,6 +60,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         RefreshToolStatus();
         ApplyQualityPreferences(AppPreferences.Load());
         Closed += async (_, _) => await _tools.DisposeAsync();
+        Closed += (_, _) => App.Exporter.Dispose(); // sends what's still queued
         ViewModel.PropertyChanged += (_, e) =>
         {
             // The input box is disabled while a reply streams, which drops focus; hand it back.

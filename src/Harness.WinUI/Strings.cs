@@ -360,6 +360,29 @@ public static class Strings
         "請分析這段期間：時間花在哪裡（慢的模型呼叫、工具、等待核准）、失敗與原因、成本，以及工具與技能的使用情況，並給出具體建議。");
     public static string AnalysisNoModel => T("No model is configured. Set one up in Settings first.", "尚未設定模型，請先到設定中填入。");
     public static string AnalysisFailed(string message) => T($"The analysis failed: {message}", $"分析失敗：{message}");
+    public static string ExportSettings => T("OTLP export…", "OTLP 匯出…");
+    public static string ExportTitle => T("OTLP export", "OTLP 匯出");
+    public static string ExportIntro => T(
+        "Also send the records to an OpenTelemetry backend you run or use, such as Aspire Dashboard, Langfuse or an OpenTelemetry Collector. Off unless you set it up here.",
+        "把紀錄另外送到你自己架設或使用的 OpenTelemetry 後台，例如 Aspire Dashboard、Langfuse 或 OpenTelemetry Collector。沒在這裡設定就不會送出。");
+    public static string ExportEnabled => T("Export", "匯出");
+    public static string ExportEndpoint => T("Endpoint", "端點");
+    public static string ExportEndpointHelp => T(
+        "HTTP: the base URL (e.g. http://localhost:4318, or Langfuse's …/api/public/otel); /v1/traces is added. gRPC: the address, e.g. http://localhost:4317.",
+        "HTTP：填基本網址（例如 http://localhost:4318，或 Langfuse 的 …/api/public/otel），會自動加上 /v1/traces。gRPC：填位址，例如 http://localhost:4317。");
+    public static string ExportProtocol => T("Protocol", "協定");
+    public static string ExportHeaders => T("Headers", "Headers");
+    public static string ExportHeadersHelp => T(
+        "name=value pairs separated by commas, e.g. Authorization=Basic … for Langfuse. Saved encrypted for your Windows account.",
+        "以逗號分隔的 name=value，例如 Langfuse 的 Authorization=Basic …。會加密保存，只有你的 Windows 帳號能解開。");
+    public static string ExportHeadersSaved => T("Saved — leave empty to keep", "已儲存（留空則保留）");
+    public static string ExportHeadersRemove => T("Remove saved headers", "移除已儲存的 headers");
+    public static string ExportMetrics => T("Also export metrics (token usage, durations) — not every backend accepts them", "同時匯出指標（token 用量、耗時）；不是每個後台都支援");
+    public static string ExportContentNote => T(
+        "What is exported follows the recording settings: message content only when \"Record message content\" is on. Raw HTTP exchanges stay on this PC.",
+        "匯出的內容與記錄設定相同：只有開啟「記錄訊息內容」時才會包含訊息內容。原始 HTTP 內容只留在這台電腦。");
+    public static string ExportEndpointInvalid => T("Enter a full URL, e.g. http://localhost:4318.", "請輸入完整網址，例如 http://localhost:4318。");
+    public static string ExportFailed(string message) => T($"Couldn't start the export: {message}", $"無法開始匯出：{message}");
     public static string Chars(string n) => T($"{n} chars", $"{n} 字元");
     public static string TraceTtft(string seconds) => T($"first token {seconds}", $"首字 {seconds}");
 

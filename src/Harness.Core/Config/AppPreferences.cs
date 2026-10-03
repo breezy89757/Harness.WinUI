@@ -51,6 +51,37 @@ public sealed record AppPreferences
     /// <summary>Days recorded traces are kept.</summary>
     public int TraceRetentionDays { get; init; } = 30;
 
+    /// <summary>Send telemetry over OTLP to <see cref="OtlpEndpoint"/> (off by default; headers are in the secret store).</summary>
+    public bool OtlpEnabled { get; init; }
+
+    public string? OtlpEndpoint { get; init; }
+
+    /// <summary>"http" (HTTP/protobuf) or "grpc".</summary>
+    public string OtlpProtocol { get; init; } = "http";
+
+    public bool OtlpMetrics { get; init; }
+
+    /// <summary>Secret-store name of the OTLP headers.</summary>
+    public const string OtlpHeadersSecret = "otlp.headers";
+
+    /// <summary>The export settings to apply, or null when export is off or incomplete.</summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public Observability.OtlpSettings? OtlpSettings()
+    {
+        if (!OtlpEnabled || !Uri.TryCreate(OtlpEndpoint?.Trim(), UriKind.Absolute, out _))
+            return null;
+        string? headers;
+        try
+        {
+            headers = SecretStore.Resolve(SecretStore.Reference(OtlpHeadersSecret));
+        }
+        catch (InvalidOperationException)
+        {
+            headers = null; // none saved
+        }
+        return new Observability.OtlpSettings(OtlpEndpoint!.Trim(), OtlpProtocol == "grpc", headers, OtlpMetrics);
+    }
+
     /// <summary>The price set for <paramref name="model"/> (names compare case-insensitively), or null.</summary>
     public Usage.ModelPrice? PriceFor(string? model) =>
         model is null ? null : ModelPrices?.FirstOrDefault(p => string.Equals(p.Key, model, StringComparison.OrdinalIgnoreCase)).Value;
