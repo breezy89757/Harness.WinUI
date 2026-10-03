@@ -43,6 +43,12 @@ public static partial class Telemetry
     public const string TagHttpRequestBody = "harness.http.request_body";
     public const string TagHttpResponseBody = "harness.http.response_body";
 
+    // Derived when a span is recorded (kept even when content isn't), for the statistics.
+    public const string TagToolsOffered = "harness.tools_offered";
+    public const string TagToolDefinitionsChars = "harness.tool_definitions_chars";
+    public const string TagResultChars = "harness.tool.result_chars";
+    public const string TagSkill = "harness.skill";
+
     // GenAI semantic conventions (as Microsoft.Extensions.AI writes them).
     public const string TagRequestModel = "gen_ai.request.model";
     public const string TagResponseModel = "gen_ai.response.model";

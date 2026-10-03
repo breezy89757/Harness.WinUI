@@ -304,6 +304,50 @@ public static class Strings
     };
     public static string TraceFailed => T("Failed", "失敗");
     public static string TraceTokens(string tokens) => T($"{tokens} tok", $"{tokens} tok");
+    public static string TraceViewLog => T("Log", "紀錄");
+    public static string TraceViewStats => T("Statistics", "統計");
+    public static string StatTurns => T("Turns", "回合");
+    public static string StatFailed => T("Failed", "失敗");
+    public static string StatModelCalls => T("Model calls", "模型呼叫");
+    public static string StatToolCalls => T("Tool calls", "工具呼叫");
+    public static string StatTokens => T("Tokens in / out", "Token 輸入 / 輸出");
+    public static string StatCost => T("Cost", "費用");
+    public static string StatAverageTurn => T("Average turn", "平均回合時間");
+    public static string StatModels => T("Models", "模型");
+    public static string StatTools => T("Tools", "工具");
+    public static string StatToolsNote => T(
+        "Offered: model calls the tool was sent with (its definition costs input tokens every time). Tools offered but never called are candidates to turn off.",
+        "提供：送給模型時附上這個工具的次數（每次都會占用輸入 token）。常被提供卻從未呼叫的工具，可以考慮關閉。");
+    public static string StatSkills => T("Skills", "技能");
+    public static string StatMcpServers => T("MCP servers", "MCP 伺服器");
+    public static string StatApprovals => T("Approvals", "核准");
+    public static string StatNone => T("Nothing recorded in this period.", "這段期間沒有資料。");
+    public static string ColModel => T("Model", "模型");
+    public static string ColCalls => T("Calls", "呼叫");
+    public static string ColFailures => T("Failed", "失敗");
+    public static string ColP50 => T("Median", "中位數");
+    public static string ColP95 => T("P95", "P95");
+    public static string ColTtft => T("First token", "首字");
+    public static string ColInput => T("Input", "輸入");
+    public static string ColOutput => T("Output", "輸出");
+    public static string ColCost => T("Cost", "費用");
+    public static string ColToolDefs => T("Tool definitions", "工具定義大小");
+    public static string ColTool => T("Tool", "工具");
+    public static string ColSource => T("Source", "來源");
+    public static string ColOffered => T("Offered", "提供");
+    public static string ColUseRate => T("Called / offered", "呼叫率");
+    public static string ColAverage => T("Average", "平均耗時");
+    public static string ColMax => T("Slowest", "最慢");
+    public static string ColResultSize => T("Result size", "結果大小");
+    public static string ColSkill => T("Skill", "技能");
+    public static string ColLoads => T("Loads", "載入");
+    public static string ColFileReads => T("Files read", "讀取檔案");
+    public static string ColLastUsed => T("Last used", "最後使用");
+    public static string ColServer => T("Server", "伺服器");
+    public static string ColDecision => T("Decision", "決定");
+    public static string ColCount => T("Count", "次數");
+    public static string ColWait => T("Average wait", "平均等待");
+    public static string Chars(string n) => T($"{n} chars", $"{n} 字元");
     public static string TraceTtft(string seconds) => T($"first token {seconds}", $"首字 {seconds}");
 
     // Toolbar

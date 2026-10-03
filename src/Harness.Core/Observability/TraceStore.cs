@@ -30,7 +30,7 @@ public sealed record TurnSummary(
 /// (it is most of the size: every model call carries the conversation so far). Old traces are removed
 /// after the retention period.
 /// </summary>
-public sealed class TraceStore
+public sealed partial class TraceStore
 {
     private readonly string _connectionString;
 

@@ -21,14 +21,20 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
+            <SelectorBar x:Name="ViewTabs" VerticalAlignment="Center" SelectionChanged="ViewTabs_SelectionChanged">
+                <SelectorBarItem x:Name="LogTab" Text="{x:Bind local:Strings.TraceViewLog}" IsSelected="True" />
+                <SelectorBarItem x:Name="StatsTab" Text="{x:Bind local:Strings.TraceViewStats}" />
+            </SelectorBar>
             <ComboBox
                 x:Name="RangeBox"
+                Grid.Column="1"
                 MinWidth="150"
                 VerticalAlignment="Center"
                 AutomationProperties.AutomationId="TraceRangeBox"
@@ -40,14 +46,14 @@
             </ComboBox>
             <CheckBox
                 x:Name="FailedOnlyBox"
-                Grid.Column="1"
+                Grid.Column="2"
                 VerticalAlignment="Center"
                 Content="{x:Bind local:Strings.TraceFailedOnly}"
                 AutomationProperties.AutomationId="TraceFailedOnly"
                 Click="Filter_Changed" />
             <TextBox
                 x:Name="SearchBox"
-                Grid.Column="2"
+                Grid.Column="3"
                 MaxWidth="420"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Center"
@@ -56,7 +62,7 @@
                 AutomationProperties.Name="{x:Bind local:Strings.TraceSearch}"
                 TextChanged="SearchBox_TextChanged" />
             <Button
-                Grid.Column="3"
+                Grid.Column="4"
                 Padding="10,8"
                 VerticalAlignment="Center"
                 AutomationProperties.AutomationId="TraceRefreshButton"
@@ -67,7 +73,7 @@
             </Button>
             <ToggleSwitch
                 x:Name="RecordToggle"
-                Grid.Column="4"
+                Grid.Column="5"
                 MinWidth="0"
                 VerticalAlignment="Center"
                 OnContent="{x:Bind local:Strings.TraceRecording}"
@@ -76,7 +82,7 @@
                 AutomationProperties.Name="{x:Bind local:Strings.TraceRecording}"
                 Toggled="RecordToggle_Toggled" />
             <Button
-                Grid.Column="5"
+                Grid.Column="6"
                 Padding="10,8"
                 VerticalAlignment="Center"
                 AutomationProperties.AutomationId="TraceSettingsButton"
@@ -111,7 +117,17 @@
             </Button>
         </Grid>
 
-        <Grid Grid.Row="1" BorderThickness="0,1,0,0" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+        <!-- Statistics: totals per model, tool, skill, MCP server and approval decision -->
+        <ScrollViewer
+            x:Name="StatsView"
+            Grid.Row="1"
+            Visibility="Collapsed"
+            BorderThickness="0,1,0,0"
+            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+            <StackPanel x:Name="StatsPanel" Padding="24,16" Spacing="12" MaxWidth="1200" HorizontalAlignment="Left" />
+        </ScrollViewer>
+
+        <Grid x:Name="LogView" Grid.Row="1" BorderThickness="0,1,0,0" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="380" MinWidth="240" />
                 <ColumnDefinition Width="Auto" />

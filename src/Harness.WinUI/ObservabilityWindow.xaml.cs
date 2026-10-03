@@ -105,6 +105,11 @@ public sealed partial class ObservabilityWindow : Window
         }
 
         var days = int.Parse((string)((ComboBoxItem)RangeBox.SelectedItem).Tag, CultureInfo.InvariantCulture);
+        if (ShowingStats)
+        {
+            await RefreshStatsAsync(recorder, days);
+            return;
+        }
         var search = SearchBox.Text;
         var failedOnly = FailedOnlyBox.IsChecked == true;
         IReadOnlyList<TurnSummary> turns;

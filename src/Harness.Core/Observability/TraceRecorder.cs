@@ -2,6 +2,7 @@
 
 using System.Diagnostics;
 using System.Globalization;
+using System.Text.Json;
 using System.Threading.Channels;
 using Harness.Core.Config;
 using Harness.Core.Files;
@@ -100,6 +101,8 @@ public sealed class TraceRecorder : IDisposable
                 attributes[key] = text;
         }
 
+        AddDerived(activity, attributes);
+
         // MEAI names its spans "chat {model}" / "execute_tool {name}"; the operation is in gen_ai.operation.name.
         var operation = attributes.GetValueOrDefault("gen_ai.operation.name") ?? activity.OperationName;
         var model = attributes.GetValueOrDefault(Telemetry.TagRequestModel) ?? attributes.GetValueOrDefault(Telemetry.TagResponseModel);
@@ -131,6 +134,49 @@ public sealed class TraceRecorder : IDisposable
             conversation, model, input, output, cached, Number(attributes, Telemetry.TagReasoningTokens), ttft, cost, currency,
             toolName, toolName is null ? null : ToolSource(toolName, attributes.GetValueOrDefault(Telemetry.TagToolSource)),
             attributes, content);
+    }
+
+    /// <summary>
+    /// Facts the statistics need that would otherwise only be in the content (which may not be kept):
+    /// which tools a model call was offered and how large their definitions were, how large a tool's
+    /// result was, and which skill a skill tool used.
+    /// </summary>
+    private static void AddDerived(Activity activity, Dictionary<string, string> attributes)
+    {
+        if (activity.GetTagItem(Telemetry.TagToolDefinitions) is string definitions)
+        {
+            attributes[Telemetry.TagToolDefinitionsChars] = definitions.Length.ToString(CultureInfo.InvariantCulture);
+            try
+            {
+                using var document = JsonDocument.Parse(definitions);
+                if (document.RootElement.ValueKind == JsonValueKind.Array)
+                {
+                    attributes[Telemetry.TagToolsOffered] = string.Join(",", document.RootElement.EnumerateArray()
+                        .Select(t => t.TryGetProperty("name", out var name) ? name.GetString() : null)
+                        .Where(n => n is not null));
+                }
+            }
+            catch (JsonException)
+            {
+            }
+        }
+
+        if (activity.GetTagItem(Telemetry.TagToolResult) is string result)
+            attributes[Telemetry.TagResultChars] = result.Length.ToString(CultureInfo.InvariantCulture);
+
+        if (activity.GetTagItem(Telemetry.TagToolName) is "load_skill" or "read_skill_file" &&
+            activity.GetTagItem(Telemetry.TagToolArguments) is string arguments)
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(arguments);
+                if (document.RootElement.TryGetProperty("name", out var name) && name.ValueKind == JsonValueKind.String)
+                    attributes[Telemetry.TagSkill] = name.GetString()!;
+            }
+            catch (JsonException)
+            {
+            }
+        }
     }
 
     /// <summary>"built-in", "skill" or "mcp:{server}".</summary>
