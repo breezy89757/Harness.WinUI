@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/demo-artifact.gif" width="860" alt="Asking Harness.WinUI for a Pomodoro timer page: the reply streams in while the side panel previews the page as it is written">
+  <img src="docs/screenshots/demo.gif" width="900" alt="Asking Harness.WinUI to turn a CSV file into an interactive revenue chart: it lists and reads the file with its tools, then the side panel previews the page as it is written">
 </p>
 
 ---
@@ -59,9 +59,17 @@ The screenshots show the Traditional Chinese UI; the English UI has the same lay
 |---|---|
 | ![File tools](docs/screenshots/file-tools.png) | ![Tool approval](docs/screenshots/tool-approval.png) |
 
-| Artifact panel: live preview | Stop / response quality |
+| Paste or drop a screenshot and ask about it | MCP Apps: a tool's own interactive UI in the chat |
 |---|---|
-| ![Artifact panel](docs/screenshots/artifact-panel.png) | ![Stop](docs/screenshots/stop.png)<br>![Response quality](docs/screenshots/quality-menu.png) |
+| ![Attachments](docs/screenshots/attachments.png) | ![MCP Apps](docs/screenshots/mcp-apps.png) |
+
+| Artifact panel: live preview |
+|---|
+| ![Artifact panel](docs/screenshots/artifact-panel.png) |
+
+| Observability: each turn as a timeline, with what the model saw | Statistics, and AI analysis of the records |
+|---|---|
+| ![Observability](docs/screenshots/observability.png) | ![Observability statistics and AI analysis](docs/screenshots/observability-ai.png) |
 
 ### Download
 
@@ -191,9 +199,17 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 |---|---|
 | ![檔案工具](docs/screenshots/file-tools.png) | ![工具核准](docs/screenshots/tool-approval.png) |
 
-| 成品面板：即時預覽 | 停止回應 / 回應品質 |
+| 貼上或拖入截圖直接提問 | MCP Apps：工具自帶的互動介面直接顯示在對話裡 |
 |---|---|
-| ![成品面板](docs/screenshots/artifact-panel.png) | ![停止](docs/screenshots/stop.png)<br>![回應品質](docs/screenshots/quality-menu.png) |
+| ![附件](docs/screenshots/attachments.png) | ![MCP Apps](docs/screenshots/mcp-apps.png) |
+
+| 成品面板：即時預覽 |
+|---|
+| ![成品面板](docs/screenshots/artifact-panel.png) |
+
+| 可觀測性：每個回合的時間軸，以及模型實際看到的內容 | 統計與 AI 分析 |
+|---|---|
+| ![觀測](docs/screenshots/observability.png) | ![統計與 AI 分析](docs/screenshots/observability-ai.png) |
 
 ### 下載
 

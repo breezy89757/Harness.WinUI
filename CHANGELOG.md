@@ -17,6 +17,11 @@
 - Built on Microsoft.Extensions.AI's OpenTelemetry instrumentation (GenAI semantic conventions); with
   recording off it adds no work
 
+### Fixed
+- With the artifact panel open (or a narrow window) the toolbar squeezed the message box to a sliver;
+  buttons that don't fit now move into the More (…) menu until there's room
+- Tables in replies had no borders; they now have a frame, header divider, row lines and shading
+
 ## [1.0.4] - 2026-10-02
 
 ### Added
