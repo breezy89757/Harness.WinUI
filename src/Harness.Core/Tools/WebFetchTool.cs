@@ -3,6 +3,7 @@
 using System.ComponentModel;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.Versioning;
 using System.Text;
 using Microsoft.Extensions.AI;
 using Harness.Core.Files;
@@ -16,6 +17,7 @@ namespace Harness.Core.Tools;
 /// is made on the IP actually connected to, so neither DNS tricks nor a redirect from a public page can
 /// reach an internal address unapproved.
 /// </summary>
+[SupportedOSPlatform("windows")]
 public static class WebFetchTool
 {
     public const string Name = "fetch_url";
@@ -133,10 +135,10 @@ public static class WebFetchTool
     {
         var converter = new ReverseMarkdown.Converter(new ReverseMarkdown.Config
         {
-            UnknownTags = ReverseMarkdown.Config.UnknownTagsOption.Bypass,
             GithubFlavored = true,
-            RemoveComments = true,
-            SmartHrefHandling = true,
+            Tags = { Unknown = ReverseMarkdown.Config.UnknownTagsOption.Bypass },
+            Formatting = { RemoveComments = true },
+            Links = { SmartHref = true },
         });
 
         var article = new SmartReader.Reader(uri.ToString(), html).GetArticle();

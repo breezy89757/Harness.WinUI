@@ -5,7 +5,7 @@
 <h1 align="center">Harness.WinUI</h1>
 
 <p align="center">
-  A lightweight, native Windows AI agent — WinUI 3 + .NET 9, works with any OpenAI-compatible endpoint.
+  A lightweight, native Windows AI agent — WinUI 3 + .NET 10, works with any OpenAI-compatible endpoint.
 </p>
 
 <p align="center">
@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/.NET-9.0-purple" alt=".NET 9">
+  <img src="https://img.shields.io/badge/.NET-10.0-purple" alt=".NET 10">
   <img src="https://img.shields.io/badge/WinUI-3-blue" alt="WinUI 3">
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License: MIT">
   <a href="https://github.com/breezy89757/Harness.WinUI/releases/latest"><img src="https://img.shields.io/github/v/release/breezy89757/Harness.WinUI" alt="GitHub Release"></a>
@@ -32,7 +32,7 @@ Harness.WinUI reads and writes files, plugs into MCP tools, and previews what it
 
 ### Features
 
-- **Native and lightweight**: WinUI 3 + .NET 9, no Electron, no Node.js. Model calls, tools and file handling all run in one process.
+- **Native and lightweight**: WinUI 3 + .NET 10, no Electron, no Node.js. Model calls, tools and file handling all run in one process.
 - **Any OpenAI-compatible endpoint**: Azure OpenAI, OpenAI, LiteLLM and more. Official services use the Responses API (reasoning models need it to call tools); everything else uses Chat Completions.
 - **See what the agent is doing**: reasoning, the arguments and result of every tool call, token usage, model name and response time are all shown.
 - **Live artifact panel**: web pages, SVG, Mermaid diagrams and Markdown documents preview in a side panel while they are being written, with version history, Save As, and Open in browser.
@@ -88,7 +88,7 @@ Unzip to any folder and run `Harness.WinUI.exe`. On first launch, enter your mod
 
 - Windows 10 1809 or later, or Windows 11 (x64 / ARM64)
 - [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) (built into Windows 11)
-- Building requires the [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- Building requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 
 The .NET runtime and the Windows App Runtime are copied into the output folder, so the target machine doesn't need either installed.
 
@@ -99,7 +99,7 @@ dotnet build Harness.WinUI.sln -p:Platform=x64
 ```
 
 ```bash
-./src/Harness.WinUI/bin/x64/Debug/net9.0-windows10.0.19041.0/win-x64/Harness.WinUI.exe
+./src/Harness.WinUI/bin/x64/Debug/net10.0-windows10.0.19041.0/win-x64/Harness.WinUI.exe
 ```
 
 #### Package as MSIX (Microsoft Store)
@@ -156,7 +156,7 @@ The chat view never runs HTML produced by the model. Artifacts run in a separate
 
 ```
 src/
-  Harness.Core/               Agent, model connection, MCP, built-in tools, approvals, settings encryption, history (net9.0, no UI dependency)
+  Harness.Core/               Agent, model connection, MCP, built-in tools, approvals, settings encryption, history (net10.0, no UI dependency)
   Harness.MarkdownRendering/  Markdown → HTML, chat page, highlight.js / mermaid
   Harness.WinUI/              WinUI 3 desktop app
 tools/Harness.DevConsole/     Command-line tool for testing Core without the UI
@@ -174,7 +174,7 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 
 ### 特色
 
-- **原生又輕量**：WinUI 3 + .NET 9，不用 Electron，也不用 Node.js。模型連線、工具、檔案處理全部在同一個行程內完成。
+- **原生又輕量**：WinUI 3 + .NET 10，不用 Electron，也不用 Node.js。模型連線、工具、檔案處理全部在同一個行程內完成。
 - **任何 OpenAI 相容端點都能接**：Azure OpenAI、OpenAI、LiteLLM 等。官方服務自動走 Responses API（推理模型呼叫工具需要這個），其他走 Chat Completions。
 - **看得到 agent 在做什麼**：思考過程、每一次工具呼叫的參數和結果、token 用量、模型名稱、回應時間都會顯示出來。
 - **即時成品面板**：網頁、SVG、Mermaid 圖表、Markdown 文件會在側邊面板邊寫邊預覽，而且有版本紀錄，可以另存或用瀏覽器開啟。
@@ -228,7 +228,7 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 
 - Windows 10 1809 以上或 Windows 11（x64 / ARM64）
 - [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)（Windows 11 已內建）
-- 建置需要 [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- 建置需要 [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 
 .NET runtime 和 Windows App Runtime 都會一起放進輸出資料夾，執行的電腦不用另外安裝。
 
@@ -239,7 +239,7 @@ dotnet build Harness.WinUI.sln -p:Platform=x64
 ```
 
 ```bash
-./src/Harness.WinUI/bin/x64/Debug/net9.0-windows10.0.19041.0/win-x64/Harness.WinUI.exe
+./src/Harness.WinUI/bin/x64/Debug/net10.0-windows10.0.19041.0/win-x64/Harness.WinUI.exe
 ```
 
 #### 打包成 MSIX（Microsoft Store）
@@ -296,7 +296,7 @@ dotnet build Harness.WinUI.sln -p:Platform=x64
 
 ```
 src/
-  Harness.Core/               Agent、模型連線、MCP、內建工具、核准、設定加密、對話紀錄（net9.0，不依賴 UI）
+  Harness.Core/               Agent、模型連線、MCP、內建工具、核准、設定加密、對話紀錄（net10.0，不依賴 UI）
   Harness.MarkdownRendering/  Markdown → HTML、聊天頁面、highlight.js / mermaid
   Harness.WinUI/              WinUI 3 桌面程式
 tools/Harness.DevConsole/     不開 UI 直接測試 Core 的命令列工具

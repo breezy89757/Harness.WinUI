@@ -2,6 +2,7 @@
 
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.Versioning;
 using System.Text.Json;
 using System.Threading.Channels;
 using Harness.Core.Config;
@@ -15,6 +16,7 @@ namespace Harness.Core.Observability;
 /// <see cref="TraceStore"/> on a background task. While it is off nothing listens, so the instrumentation
 /// costs nothing (Microsoft.Extensions.AI skips building span data when a source has no listener).
 /// </summary>
+[SupportedOSPlatform("windows")]
 public sealed class TraceRecorder : IDisposable
 {
     private readonly Channel<Activity> _finished = Channel.CreateUnbounded<Activity>(new UnboundedChannelOptions { SingleReader = true });

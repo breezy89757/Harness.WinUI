@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Builds Harness.WinUI in Release and packages it as an MSIX bundle for the Microsoft Store.
 .DESCRIPTION
@@ -75,7 +75,9 @@ foreach ($platform in $Platforms) {
     $layouts += $layout
 }
 
-$bundle = Join-Path $releaseDir "Harness.WinUI_$packageVersion.msixbundle"
+# One platform makes a single .msix (winapp only bundles several); both make the .msixbundle the Store takes.
+$extension = if ($layouts.Count -gt 1) { "msixbundle" } else { "msix" }
+$bundle = Join-Path $releaseDir "Harness.WinUI_$packageVersion.$extension"
 if (Test-Path $bundle) { Remove-Item $bundle -Force }
 $packArgs = @("package") + $layouts + @("--manifest", $stagedManifest, "--output", $bundle, "--skip-pri")
 if ($Cert) { $packArgs += @("--cert", $Cert) }
