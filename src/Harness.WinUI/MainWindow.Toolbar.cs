@@ -107,34 +107,65 @@ public sealed partial class MainWindow
         }
     }
 
-    private void SetToolbarButtonShown(string id, bool shown)
+    /// <summary>Saves which buttons are hidden, in the toolbar's own order (so the file reads naturally), and applies it.</summary>
+    private void SetHiddenToolbarButtons(IEnumerable<string> ids)
     {
-        var hidden = HiddenToolbarButtons();
-        if (shown)
-            hidden.Remove(id);
-        else
-            hidden.Add(id);
-        // Keep the toolbar's own order in the file, so it reads naturally if edited by hand.
+        var hidden = ids.ToHashSet();
         var ordered = _toolbarItems.Select(i => i.Id).Where(hidden.Contains).ToList();
         (AppPreferences.Load() with { HiddenToolbarButtons = ordered.Count > 0 ? ordered : null }).Save();
         ApplyToolbar(hidden);
     }
 
-    /// <summary>One checkable entry per toolbar button.</summary>
-    private IEnumerable<MenuFlyoutItemBase> ToolbarToggles()
+    /// <summary>
+    /// A panel with a check box per button: tick or untick as many as you like, then Apply (nothing changes
+    /// until then; Cancel or clicking away leaves the toolbar as it was).
+    /// </summary>
+    private void ShowToolbarCustomizer(FrameworkElement anchor, Windows.Foundation.Point? position = null)
     {
         var hidden = HiddenToolbarButtons();
+        var panel = new StackPanel { Spacing = 2, MinWidth = 280 };
+        panel.Children.Add(new TextBlock
+        {
+            Text = Strings.ShowOnToolbar,
+            Margin = new Thickness(0, 0, 0, 6),
+            Style = (Style)Application.Current.Resources["BodyStrongTextBlockStyle"],
+        });
+
+        var boxes = new List<(string Id, CheckBox Box)>();
         foreach (var item in _toolbarItems)
         {
-            var toggle = new ToggleMenuFlyoutItem
-            {
-                Text = item.Label(),
-                Icon = new FontIcon { Glyph = item.Glyph },
-                IsChecked = !hidden.Contains(item.Id),
-            };
-            toggle.Click += (_, _) => SetToolbarButtonShown(item.Id, toggle.IsChecked);
-            yield return toggle;
+            var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+            label.Children.Add(new FontIcon { Glyph = item.Glyph, FontSize = 16 });
+            label.Children.Add(new TextBlock { Text = item.Label(), VerticalAlignment = VerticalAlignment.Center });
+            var box = new CheckBox { Content = label, IsChecked = !hidden.Contains(item.Id) };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(box, item.Label());
+            boxes.Add((item.Id, box));
+            panel.Children.Add(box);
         }
+
+        var flyout = new Flyout { Placement = FlyoutPlacementMode.TopEdgeAlignedLeft };
+        var apply = new Button { Content = Strings.Apply, Style = (Style)Application.Current.Resources["AccentButtonStyle"], HorizontalAlignment = HorizontalAlignment.Stretch };
+        var cancel = new Button { Content = Strings.Cancel, HorizontalAlignment = HorizontalAlignment.Stretch };
+        apply.Click += (_, _) =>
+        {
+            SetHiddenToolbarButtons(boxes.Where(b => b.Box.IsChecked != true).Select(b => b.Id));
+            flyout.Hide();
+        };
+        cancel.Click += (_, _) => flyout.Hide();
+
+        var buttons = new Grid { ColumnSpacing = 8, Margin = new Thickness(0, 10, 0, 0) };
+        buttons.ColumnDefinitions.Add(new ColumnDefinition());
+        buttons.ColumnDefinitions.Add(new ColumnDefinition());
+        Grid.SetColumn(cancel, 1);
+        buttons.Children.Add(apply);
+        buttons.Children.Add(cancel);
+        panel.Children.Add(buttons);
+
+        flyout.Content = panel;
+        var options = new FlyoutShowOptions { Placement = FlyoutPlacementMode.TopEdgeAlignedLeft };
+        if (position is { } at)
+            options.Position = at;
+        flyout.ShowAt(anchor, options);
     }
 
     // Built on every open so labels (cost, tool count) and enabled states are current.
@@ -158,23 +189,14 @@ public sealed partial class MainWindow
         if (MoreFlyout.Items.Count > 0)
             MoreFlyout.Items.Add(new MenuFlyoutSeparator());
 
-        var customize = new MenuFlyoutSubItem { Text = Strings.CustomizeToolbar, Icon = new FontIcon { Glyph = "" } };
-        foreach (var toggle in ToolbarToggles())
-            customize.Items.Add(toggle);
+        var customize = new MenuFlyoutItem { Text = Strings.CustomizeToolbarEllipsis, Icon = new FontIcon { Glyph = "" } };
+        customize.Click += (_, _) => DispatcherQueue.TryEnqueue(() => ShowToolbarCustomizer(MoreButton));
         MoreFlyout.Items.Add(customize);
     }
 
     private void ToolbarPanel_ContextRequested(UIElement sender, ContextRequestedEventArgs e)
     {
         e.Handled = true;
-        var menu = new MenuFlyout();
-        menu.Items.Add(new MenuFlyoutItem { Text = Strings.ShowOnToolbar, IsEnabled = false });
-        foreach (var toggle in ToolbarToggles())
-            menu.Items.Add(toggle);
-
-        var options = new FlyoutShowOptions { Placement = FlyoutPlacementMode.TopEdgeAlignedLeft };
-        if (e.TryGetPosition(ToolbarPanel, out var point))
-            options.Position = point;
-        menu.ShowAt(ToolbarPanel, options);
+        ShowToolbarCustomizer(ToolbarPanel, e.TryGetPosition(ToolbarPanel, out var point) ? point : null);
     }
 }

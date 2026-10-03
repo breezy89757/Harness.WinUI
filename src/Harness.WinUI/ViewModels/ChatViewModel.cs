@@ -100,6 +100,11 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
     /// <summary>Default image quality, for the status line's time estimate (the tool reads its own copy).</summary>
     public string ImageQuality { get; set; } = "low";
 
+    /// <summary>The user's web search switch; applies when the provider supports it (<see cref="SupportsWebSearch"/>).</summary>
+    public bool WebSearch { get; set; }
+
+    public bool SupportsWebSearch => _chatSession?.SupportsWebSearch == true;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(McpBadgeText))]
     private int _mcpToolCount;
@@ -208,7 +213,7 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
             {
                 _deniedCalls[request.CallId] = 0;
                 await _messageSink.UpsertMessageStepAsync(messageId, ChatMarkup.ToolStepId(request.CallId), ChatMarkup.ToolStepHtml(call, note: Strings.Declined), StepState.Error);
-                await _messageSink.SetMessageStatusAsync(messageId, ThinkingStatus);
+                await _messageSink.SetMessageStatusAsync(messageId, Strings.WaitingForModel);
             }
             else
             {
@@ -430,6 +435,7 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         var text = new StringBuilder();
         var reasoning = new StringBuilder();
         var tools = new Dictionary<string, ToolCallStarted>();
+        var citations = new List<CitationReported>();
         var steps = new Dictionary<string, StoredStep>(); // insertion order = display order
         string? errorText = null;
         var stopped = false;
@@ -441,6 +447,19 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         var statusVisible = false;
 
         string? currentStatus = null;
+        var lastActivityUtc = DateTime.UtcNow;
+        var turnOver = false;
+
+        // While waiting for the model, say so when it's been quiet for a while — it's the provider, not the app.
+        async Task WatchForSlowModelAsync()
+        {
+            while (!turnOver)
+            {
+                await Task.Delay(1000).ConfigureAwait(true);
+                if (!turnOver && currentStatus == Strings.WaitingForModel && (DateTime.UtcNow - lastActivityUtc).TotalSeconds >= SlowModelSeconds)
+                    await SetStatusAsync(Strings.ModelSlow).ConfigureAwait(true);
+            }
+        }
         var presentedArtifacts = new Dictionary<string, (int Length, bool IsComplete)>();
 
         async Task SetStatusAsync(string? status)
@@ -483,7 +502,8 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         {
             await _messageSink.AppendMessageAsync(id, "assistant", string.Empty).ConfigureAwait(true);
             _activeAssistantId = id;
-            await SetStatusAsync(ThinkingStatus).ConfigureAwait(true);
+            await SetStatusAsync(Strings.WaitingForModel).ConfigureAwait(true);
+            _ = WatchForSlowModelAsync();
 
             // Stopping mid-turn can leave the agent session half-updated (e.g. a tool call without its
             // result), which would break the next turn; a stopped turn rolls back to this snapshot.
@@ -493,8 +513,10 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
             // gets that with this message, the transcript shows only what the user typed.
             var forModel = AppContextProvider?.Invoke() is { } appContext ? appContext + "\n\n" + userMessage : userMessage;
 
+            session.WebSearch = WebSearch;
             await foreach (var evt in session.SendAsync(forModel, AppPreferences.ParseEffort(ReasoningEffort), cancellation.Token, attachments))
             {
+                lastActivityUtc = DateTime.UtcNow;
                 switch (evt)
                 {
                     case TextDelta delta:
@@ -512,6 +534,8 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
                     case ReasoningDelta r:
                         // Summaries stream token by token: throttle like reply text (the full text is sent at the end).
                         reasoning.Append(r.Text);
+                        if (currentStatus == Strings.WaitingForModel || currentStatus == Strings.ModelSlow)
+                            await SetStatusAsync(ThinkingStatus).ConfigureAwait(true);
                         if ((DateTime.UtcNow - lastReasoningFlushUtc).TotalMilliseconds >= FlushIntervalMs)
                         {
                             lastReasoningFlushUtc = DateTime.UtcNow;
@@ -525,7 +549,14 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
                         steps[call.CallId] = new StoredStep(call.CallId, call.Name, ArgumentsJson(call.Arguments), "running");
                         await _messageSink.UpsertMessageStepAsync(
                             id, ChatMarkup.ToolStepId(call.CallId), ChatMarkup.ToolStepHtml(call), StepState.Running).ConfigureAwait(true);
-                        await SetStatusAsync(call.Name == ImageGenerationTool.Name ? ChatMarkup.ImageStatus(call, ImageQuality) : Strings.RunningTool(call.Name)).ConfigureAwait(true);
+                        await SetStatusAsync(call.Name switch
+                        {
+                            ImageGenerationTool.Name => ChatMarkup.ImageStatus(call, ImageQuality),
+                            ChatSession.WebSearchToolName => Strings.SearchingWeb,
+                            WebFetchTool.Name when call.Arguments is { } arguments && arguments.TryGetValue("url", out var url) && url is not null
+                                && Uri.TryCreate(url.ToString(), UriKind.Absolute, out var page) => Strings.ReadingPage(page.Host),
+                            _ => Strings.RunningTool(call.Name),
+                        }).ConfigureAwait(true);
                         break;
 
                     case ToolCallCompleted done when tools.TryGetValue(done.CallId, out var call):
@@ -550,14 +581,32 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
                             if (done.Exception is null)
                                 await _messageSink.PresentToolAppAsync(id, call, done.Result).ConfigureAwait(true);
                         }
-                        await SetStatusAsync(ThinkingStatus).ConfigureAwait(true);
+                        await SetStatusAsync(Strings.WaitingForModel).ConfigureAwait(true);
                         break;
 
                     case UsageReported u:
                         usage = usage?.Add(u) ?? u;
                         break;
+
+                    case CitationReported citation when citations.All(c => c.Url != citation.Url):
+                        citations.Add(citation);
+                        break;
                 }
             }
+
+            // A search the provider didn't report results for is still finished once the reply is.
+            foreach (var step in steps.Values.Where(s => s.State == "running" && s.Name == ChatSession.WebSearchToolName).ToList())
+            {
+                steps[step.Id] = step with { State = "done" };
+                await _messageSink.UpsertMessageStepAsync(
+                    id, ChatMarkup.ToolStepId(step.Id), ChatMarkup.ToolStepHtml(tools[step.Id]), StepState.Done).ConfigureAwait(true);
+            }
+
+            // Cited pages the reply doesn't already link to, listed under it.
+            var reply = text.ToString();
+            var unlinked = citations.Where(c => !reply.Contains(c.Url, StringComparison.Ordinal)).ToList();
+            if (unlinked.Count > 0)
+                text.Append(ChatMarkup.SourcesMarkdown(unlinked));
 
             if (reasoning.Length > 0)
             {
@@ -615,6 +664,7 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         }
         finally
         {
+            turnOver = true;
             lock (_timerLock)
             {
                 stopwatch.Stop();
@@ -785,6 +835,9 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
     #endregion
 
     private static string ThinkingStatus => Strings.Thinking;
+
+    /// <summary>Seconds without any sign of the model before the status says it's slow.</summary>
+    private const int SlowModelSeconds = 20;
     private const string ReasoningStepId = "reasoning";
 
 

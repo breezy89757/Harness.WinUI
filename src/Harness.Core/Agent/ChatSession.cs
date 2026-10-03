@@ -67,6 +67,17 @@ public sealed class ChatSession
     public string? ConfiguredModelId { get; }
 
     /// <summary>
+    /// Whether the provider can search the web itself (OpenAI / Azure OpenAI Responses API, the same
+    /// condition as reasoning summaries). Chat Completions endpoints such as LiteLLM can't.
+    /// </summary>
+    public bool SupportsWebSearch => _reasoningSummaries;
+
+    /// <summary>Offer the provider's hosted web search on the next turns (when <see cref="SupportsWebSearch"/>).</summary>
+    public bool WebSearch { get; set; }
+
+    public const string WebSearchToolName = "web_search";
+
+    /// <summary>
     /// Sends a user message and streams the assistant's turn as <see cref="ChatStreamEvent"/>s —
     /// text deltas plus reasoning, tool-call and usage events when the provider reports them.
     /// The underlying <see cref="AgentSession"/> is created lazily and reused so the conversation
@@ -83,12 +94,25 @@ public sealed class ChatSession
     {
         _session ??= await _agent.CreateSessionAsync(cancellationToken).ConfigureAwait(false);
 
-        var tools = _toolsProvider?.Invoke();
+        var tools = _toolsProvider?.Invoke()?.ToList() ?? [];
+        var webSearch = WebSearch && SupportsWebSearch;
+        if (webSearch)
+            tools.Add(new HostedWebSearchTool());
         var reasoningOptions = _reasoningSummaries || effort is not null
             ? new ReasoningOptions { Output = _reasoningSummaries ? ReasoningOutput.Summary : null, Effort = effort }
             : null;
-        var runOptions = tools is { Count: > 0 } || reasoningOptions is not null
-            ? new ChatClientAgentRunOptions(new ChatOptions { Tools = tools is { Count: > 0 } ? [.. tools] : null, Reasoning = reasoningOptions })
+        var runOptions = tools.Count > 0 || reasoningOptions is not null
+            ? new ChatClientAgentRunOptions(new ChatOptions
+            {
+                Tools = tools.Count > 0 ? [.. tools] : null,
+                Reasoning = reasoningOptions,
+                // Ask for the pages the search used, not only the ones cited.
+#pragma warning disable OPENAI001
+                RawRepresentationFactory = webSearch
+                    ? _ => new OpenAI.Responses.CreateResponseOptions { IncludedProperties = { OpenAI.Responses.IncludedResponseProperty.WebSearchCallActionSources } }
+                    : null,
+#pragma warning restore OPENAI001
+            })
             : null;
 
         var updates = attachments is { Count: > 0 }
@@ -98,8 +122,21 @@ public sealed class ChatSession
         {
             foreach (var content in update.Contents)
             {
+                foreach (var citation in content.Annotations?.OfType<CitationAnnotation>() ?? [])
+                {
+                    if (citation.Url is { } url)
+                        yield return new CitationReported(url.ToString(), citation.Title);
+                }
+
                 switch (content)
                 {
+                    case WebSearchToolCallContent search:
+                        yield return new ToolCallStarted(search.CallId, WebSearchToolName,
+                            search.Queries is { Count: > 0 } queries ? new Dictionary<string, object?> { ["query"] = string.Join(" / ", queries) } : null);
+                        break;
+                    case WebSearchToolResultContent results:
+                        yield return new ToolCallCompleted(results.CallId, SourcesText(results.Outputs), null);
+                        break;
                     case TextContent { Text: { Length: > 0 } text }:
                         yield return new TextDelta(text);
                         break;
@@ -124,4 +161,15 @@ public sealed class ChatSession
             }
         }
     }
+
+    /// <summary>The pages a web search used, one per line.</summary>
+    private static string SourcesText(IList<AIContent>? outputs) =>
+        outputs is not { Count: > 0 }
+            ? "(no sources returned)"
+            : string.Join('\n', outputs.Select(o => o switch
+            {
+                UriContent uri => uri.Uri.ToString(),
+                TextContent text => text.Text,
+                _ => o.ToString(),
+            }));
 }

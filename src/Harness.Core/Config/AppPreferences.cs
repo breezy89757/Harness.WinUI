@@ -24,6 +24,9 @@ public sealed record AppPreferences
     /// <summary>"auto" (the model's default), "low", "medium" or "high".</summary>
     public string ReasoningEffort { get; init; } = "auto";
 
+    /// <summary>Let the model search the web (the provider's own search; off by default — it's billed separately and leaves the provider's data boundary).</summary>
+    public bool WebSearch { get; init; }
+
     /// <summary>Default generate_image quality: "low" (~20s), "medium" (~50s) or "high" (~2 min).</summary>
     public string ImageQuality { get; init; } = "low";
 

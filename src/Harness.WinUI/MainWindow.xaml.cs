@@ -218,6 +218,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
     {
         ViewModel.ReasoningEffort = preferences.ReasoningEffort;
         ViewModel.ImageQuality = _tools.ImageQuality = ImageGenerationTool.NormalizeQuality(preferences.ImageQuality);
+        ViewModel.WebSearch = preferences.WebSearch;
         ToolTipService.SetToolTip(QualityButton, Strings.QualityTooltip(EffortLabel(preferences.ReasoningEffort), ImageLabel(ViewModel.ImageQuality)));
     }
 
@@ -228,7 +229,16 @@ public sealed partial class MainWindow : Window, IChatMessageSink
             item.IsChecked = (string)item.Tag == effort;
         foreach (var item in new[] { ImageLow, ImageMedium, ImageHigh })
             item.IsChecked = (string)item.Tag == ViewModel.ImageQuality;
+
+        // The provider's own search: only on the Responses API (OpenAI, Azure OpenAI).
+        WebSearchItem.IsEnabled = ViewModel.SupportsWebSearch;
+        WebSearchItem.IsChecked = ViewModel.WebSearch && ViewModel.SupportsWebSearch;
+        WebSearchItem.Text = ViewModel.SupportsWebSearch ? Strings.WebSearch : Strings.WebSearchUnsupported;
+        ToolTipService.SetToolTip(WebSearchItem, Strings.WebSearchNote);
     }
+
+    private void WebSearch_Click(object sender, RoutedEventArgs e) =>
+        SaveQuality(p => p with { WebSearch = WebSearchItem.IsChecked });
 
     private void Effort_Click(object sender, RoutedEventArgs e) =>
         SaveQuality(p => p with { ReasoningEffort = (string)((FrameworkElement)sender).Tag });

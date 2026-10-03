@@ -15,6 +15,8 @@ license texts are reproduced or linked at the end of this file.
 | OpenTelemetry .NET (`OpenTelemetry`, `OpenTelemetry.Exporter.OpenTelemetryProtocol`) | Apache-2.0 | https://github.com/open-telemetry/opentelemetry-dotnet |
 | Open XML SDK (`DocumentFormat.OpenXml`) | MIT | https://github.com/dotnet/Open-XML-SDK |
 | PdfPig | Apache-2.0 | https://github.com/UglyToad/PdfPig |
+| SmartReader | Apache-2.0 | https://github.com/Strumenta/SmartReader |
+| ReverseMarkdown | MIT | https://github.com/mysticmind/reversemarkdown-net |
 | SQLitePCLRaw | Apache-2.0 | https://github.com/ericsink/SQLitePCL.raw |
 | SQLite | Public domain | https://sqlite.org/copyright.html |
 | Markdig | BSD-2-Clause | https://github.com/xoofx/markdig |
@@ -30,7 +32,7 @@ license texts are reproduced or linked at the end of this file.
 ## MIT License
 
 Applies to the components marked MIT above. Copyright holders include the .NET Foundation and
-Contributors, Microsoft Corporation, OpenAI, and Knut Sveidqvist (Mermaid).
+Contributors, Microsoft Corporation, OpenAI, Babu Annamalai (ReverseMarkdown) and Knut Sveidqvist (Mermaid).
 
 ```
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -55,7 +57,8 @@ SOFTWARE.
 ## Apache License 2.0
 
 Applies to the Model Context Protocol C# SDK, OpenTelemetry .NET (Copyright The OpenTelemetry
-Authors), PdfPig (Copyright UglyToad / Eliot Jones) and SQLitePCLRaw (Copyright Eric Sink). The full license text is at
+Authors), PdfPig (Copyright UglyToad / Eliot Jones), SmartReader (Copyright Strumenta) and SQLitePCLRaw
+(Copyright Eric Sink). The full license text is at
 https://www.apache.org/licenses/LICENSE-2.0.
 
 ## BSD 2-Clause License — Markdig

@@ -225,6 +225,17 @@ internal static class ChatMarkup
     /// An amount with its ISO currency code ("USD 0.0042"): unambiguous where "$" isn't, and with enough
     /// decimals for the fractions of a cent a single call costs.
     /// </summary>
+    /// <summary>A "Sources" list for pages a web search cited but the reply doesn't link to.</summary>
+    public static string SourcesMarkdown(IReadOnlyList<Harness.Core.Agent.CitationReported> citations)
+    {
+        var lines = citations.Select((c, i) =>
+        {
+            var title = string.IsNullOrWhiteSpace(c.Title) ? (Uri.TryCreate(c.Url, UriKind.Absolute, out var u) ? u.Host : c.Url) : c.Title;
+            return $"{i + 1}. [{title.Replace("[", "\\[").Replace("]", "\\]")}]({c.Url.Replace(")", "%29")})";
+        });
+        return $"\n\n**{Strings.Sources}**\n\n" + string.Join('\n', lines);
+    }
+
     public static string FormatCost(decimal amount, string currency)
     {
         var format = amount == 0 ? "0" : amount < 0.01m ? "0.0000" : amount < 1 ? "0.000" : "#,0.00";

@@ -264,6 +264,12 @@
                         <FontIcon FontSize="16" Glyph="&#xE945;" />
                         <Button.Flyout>
                             <MenuFlyout x:Name="QualityFlyout" Placement="TopEdgeAlignedLeft" Opening="QualityFlyout_Opening">
+                                <ToggleMenuFlyoutItem x:Name="WebSearchItem" Text="{x:Bind local:Strings.WebSearch}" Click="WebSearch_Click">
+                                    <ToggleMenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE774;" />
+                                    </ToggleMenuFlyoutItem.Icon>
+                                </ToggleMenuFlyoutItem>
+                                <MenuFlyoutSeparator />
                                 <MenuFlyoutItem Text="{x:Bind local:Strings.ReasoningEffortHeader}" IsEnabled="False" />
                                 <RadioMenuFlyoutItem x:Name="EffortAuto" GroupName="Effort" Tag="auto" Text="{x:Bind local:Strings.EffortAuto}" Click="Effort_Click" />
                                 <RadioMenuFlyoutItem x:Name="EffortLow" GroupName="Effort" Tag="low" Text="{x:Bind local:Strings.EffortLow}" Click="Effort_Click" />

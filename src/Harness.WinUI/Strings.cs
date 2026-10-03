@@ -60,6 +60,9 @@ public static class Strings
 
     // Chat status and steps
     public static string Thinking => T("Thinking…", "思考中…");
+    public static string WaitingForModel => T("Waiting for the model…", "正在等模型回應…");
+    public static string ModelSlow => T("The model is slow to respond — still waiting (Stop to cancel)…", "模型回應較慢，仍在等待…（可按停止）");
+    public static string ReadingPage(string host) => T($"Reading {host}…", $"正在讀取 {host}…");
     public static string WaitingForApproval => T("Waiting for your approval…", "等待你的核准…");
     public static string RunningTool(string name) => T($"Running {name}…", $"正在執行 {name}…");
     public static string GeneratingImage(string quality, string estimate) => T($"Generating image ({quality}, {estimate})…", $"正在生成圖片（{quality}，{estimate}）…");
@@ -88,6 +91,13 @@ public static class Strings
     public static string ImageLow => T("Low — about 20s", "低 — 約 20 秒");
     public static string ImageMedium => T("Medium — about 50s", "中 — 約 50 秒");
     public static string ImageHigh => T("High — about 2 min", "高 — 約 2 分鐘");
+    public static string WebSearch => T("Web search", "網路搜尋");
+    public static string WebSearchUnsupported => T("Web search (needs the Responses API)", "網路搜尋（需要 Responses API）");
+    public static string WebSearchNote => T(
+        "The model can search the web with your provider's search (Bing on Azure). Searches are billed separately, and on Azure the queries leave Azure's data boundary.",
+        "讓模型用供應商內建的搜尋查網路（Azure 上是 Bing）。搜尋另外計費；在 Azure 上，搜尋內容會離開 Azure 的資料邊界。");
+    public static string SearchingWeb => T("Searching the web…", "正在搜尋網路…");
+    public static string Sources => T("Sources", "來源");
     public static string QualityTooltip(string effort, string image) =>
         T($"Response quality\nReasoning: {effort}\nImages: {image}", $"回應品質\n推理：{effort}\n生圖：{image}");
     public static string OpenFile => T("Open file", "開啟檔案");
@@ -389,6 +399,8 @@ public static class Strings
     // Toolbar
     public static string MoreTooltip => T("More", "更多");
     public static string CustomizeToolbar => T("Customize toolbar", "自訂工具列");
+    public static string CustomizeToolbarEllipsis => T("Customize toolbar…", "自訂工具列…");
+    public static string Apply => T("Apply", "套用");
     public static string ShowOnToolbar => T("Show on toolbar", "顯示在工具列上");
 
     // Attachments (paste / drag and drop)

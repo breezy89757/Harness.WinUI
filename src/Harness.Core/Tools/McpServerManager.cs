@@ -159,7 +159,7 @@ public static class McpServerManager
         }
     }
 
-    private static bool IsLocalOrPrivate(IPAddress address)
+    internal static bool IsLocalOrPrivate(IPAddress address)
     {
         if (address.IsIPv4MappedToIPv6)
             address = address.MapToIPv4();

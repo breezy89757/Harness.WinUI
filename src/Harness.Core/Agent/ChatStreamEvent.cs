@@ -14,6 +14,9 @@ public sealed record ToolCallStarted(string CallId, string Name, IDictionary<str
 
 public sealed record ToolCallCompleted(string CallId, object? Result, Exception? Exception) : ChatStreamEvent;
 
+/// <summary>A source the reply cites (from the provider's web search).</summary>
+public sealed record CitationReported(string Url, string? Title) : ChatStreamEvent;
+
 /// <summary>Usage for one model call. A turn with tool calls makes several calls, so sum them with <see cref="Add"/>.</summary>
 public sealed record UsageReported(
     long? InputTokens,

@@ -140,6 +140,7 @@ public sealed class AgentTools : IAsyncDisposable
         if (_sandbox is not null)
             tools.AddRange(FileTools.Create(_sandbox, _approver, _permissions));
         tools.AddRange(McpServerManager.CreateAgentTools(Mcp, _approver, _permissions));
+        tools.Add(WebFetchTool.Create(_approver));
         if (_image is not null)
             tools.Add(ImageGenerationTool.Create(_image, () => ImageQuality));
 
