@@ -165,38 +165,66 @@ public sealed partial class ObservabilityWindow
         };
     }
 
-    /// <summary>A plain table: the first column is a name, the rest are right-aligned figures.</summary>
-    private static Grid Table(string[] headers, IEnumerable<string[]> rows, Func<string[], bool>? dimRow = null)
+    /// <summary>
+    /// A table in a card: a header row over a divider, then rows with alternating shading and a line
+    /// between them. The first column is a name; the rest are right-aligned figures.
+    /// </summary>
+    private static Border Table(string[] headers, IEnumerable<string[]> rows, Func<string[], bool>? dimRow = null)
     {
-        var grid = new Grid { ColumnSpacing = 24, RowSpacing = 8, Padding = new Thickness(0, 4, 0, 8) };
+        var grid = new Grid();
         foreach (var _ in headers)
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var resources = Application.Current.Resources;
 
-        void AddRow(string[] cells, bool header, bool dim)
+        void AddRow(string[] cells, bool header, bool shaded, bool dim)
         {
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             var row = grid.RowDefinitions.Count - 1;
+
+            // Row background and the line under it, across every column.
+            var band = new Border
+            {
+                Background = shaded ? (Brush)resources["SubtleFillColorSecondaryBrush"] : null,
+                BorderBrush = (Brush)resources[header ? "ControlStrongStrokeColorDefaultBrush" : "DividerStrokeColorDefaultBrush"],
+                BorderThickness = new Thickness(0, 0, 0, 1),
+            };
+            Grid.SetRow(band, row);
+            Grid.SetColumnSpan(band, headers.Length);
+            grid.Children.Add(band);
+
             for (var i = 0; i < cells.Length && i < headers.Length; i++)
             {
                 var text = new TextBlock
                 {
                     Text = cells[i],
+                    Padding = new Thickness(i == 0 ? 16 : 20, header ? 10 : 8, i == headers.Length - 1 ? 16 : 0, header ? 10 : 8),
                     HorizontalAlignment = i == 0 ? HorizontalAlignment.Left : HorizontalAlignment.Right,
+                    VerticalAlignment = VerticalAlignment.Center,
                     FontWeight = header ? FontWeights.SemiBold : FontWeights.Normal,
-                    Foreground = (Brush)Application.Current.Resources[header || dim ? "TextFillColorSecondaryBrush" : "TextFillColorPrimaryBrush"],
+                    Foreground = (Brush)resources[header || dim ? "TextFillColorSecondaryBrush" : "TextFillColorPrimaryBrush"],
                     IsTextSelectionEnabled = !header,
                 };
                 if (header)
-                    text.Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"];
+                    text.Style = (Style)resources["CaptionTextBlockStyle"];
                 Grid.SetRow(text, row);
                 Grid.SetColumn(text, i);
                 grid.Children.Add(text);
             }
         }
 
-        AddRow(headers, header: true, dim: false);
+        AddRow(headers, header: true, shaded: false, dim: false);
+        var index = 0;
         foreach (var cells in rows)
-            AddRow(cells, header: false, dim: dimRow?.Invoke(cells) == true);
-        return grid;
+            AddRow(cells, header: false, shaded: index++ % 2 == 1, dim: dimRow?.Invoke(cells) == true);
+
+        return new Border
+        {
+            Child = grid,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            CornerRadius = new CornerRadius(8),
+            BorderThickness = new Thickness(1),
+            BorderBrush = (Brush)resources["CardStrokeColorDefaultBrush"],
+            Background = (Brush)resources["CardBackgroundFillColorDefaultBrush"],
+        };
     }
 }

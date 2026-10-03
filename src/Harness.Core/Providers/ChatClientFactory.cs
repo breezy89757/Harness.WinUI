@@ -18,8 +18,9 @@ namespace Harness.Core.Providers;
 /// </summary>
 public static class ChatClientFactory
 {
-    public static IChatClient Create(ResolvedProvider provider) =>
-        Create(provider.Endpoint, provider.Model, provider.ApiKey, provider.Api);
+    /// <param name="instrument">False for calls that shouldn't appear in the observability records (e.g. analysing them).</param>
+    public static IChatClient Create(ResolvedProvider provider, bool instrument = true) =>
+        Create(provider.Endpoint, provider.Model, provider.ApiKey, provider.Api, instrument);
 
     /// <summary>Reasoning summaries only exist on the Responses API; don't send the option elsewhere (e.g. LiteLLM).</summary>
     public static bool SupportsReasoningSummaries(ResolvedProvider provider) =>
@@ -27,7 +28,7 @@ public static class ChatClientFactory
         provider.Api.Resolve(endpoint) == ProviderApi.Responses;
 
     /// <summary>Builds a client from an already-resolved endpoint/model/API key.</summary>
-    public static IChatClient Create(string endpoint, string model, string apiKey, ProviderApi api = ProviderApi.Auto)
+    public static IChatClient Create(string endpoint, string model, string apiKey, ProviderApi api = ProviderApi.Auto, bool instrument = true)
     {
         if (string.IsNullOrWhiteSpace(endpoint) || string.IsNullOrWhiteSpace(model) || string.IsNullOrWhiteSpace(apiKey))
             throw new ProviderConfigurationException("Endpoint, Model, and API key must all be provided.");
@@ -37,7 +38,7 @@ public static class ChatClientFactory
 
         var credential = new ApiKeyCredential(apiKey);
         // Calls go through Telemetry's HttpClient so that, when recording is on, the raw exchange is kept too.
-        var transport = new HttpClientPipelineTransport(Telemetry.HttpClient);
+        var transport = instrument ? new HttpClientPipelineTransport(Telemetry.HttpClient) : null;
         var client = api.Resolve(endpointUri) switch
         {
             // The Responses client is still flagged experimental in OpenAI 2.x (OPENAI001), but it's
@@ -49,7 +50,7 @@ public static class ChatClientFactory
             _ => new ChatClient(model, credential, new OpenAIClientOptions { Endpoint = endpointUri, Transport = transport })
                 .AsIChatClient(),
         };
-        return Telemetry.Instrument(client);
+        return instrument ? Telemetry.Instrument(client) : client;
     }
 
     /// <summary>Dev/CI path: reads the API key from <see cref="ProviderOptions.ApiKeyEnvVar"/> and delegates.</summary>

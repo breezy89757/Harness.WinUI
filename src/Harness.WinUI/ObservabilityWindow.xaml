@@ -124,7 +124,63 @@
             Visibility="Collapsed"
             BorderThickness="0,1,0,0"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
-            <StackPanel x:Name="StatsPanel" Padding="24,16" Spacing="12" MaxWidth="1200" HorizontalAlignment="Left" />
+            <StackPanel Padding="24,16" Spacing="12" MaxWidth="1200" HorizontalAlignment="Left">
+                <!-- Ask the model about these records -->
+                <Border
+                    Padding="16"
+                    CornerRadius="8"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon FontSize="16" Glyph="&#xE99A;" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+                            <TextBlock Text="{x:Bind local:Strings.AnalysisTitle}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        </StackPanel>
+                        <TextBlock
+                            Text="{x:Bind local:Strings.AnalysisNote}"
+                            TextWrapping="Wrap"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox
+                                x:Name="AskBox"
+                                MinWidth="360"
+                                PlaceholderText="{x:Bind local:Strings.AnalysisPlaceholder}"
+                                AutomationProperties.AutomationId="TraceAskBox"
+                                AutomationProperties.Name="{x:Bind local:Strings.AnalysisTitle}"
+                                KeyDown="AskBox_KeyDown" />
+                            <Button
+                                x:Name="AskButton"
+                                Grid.Column="1"
+                                Style="{StaticResource AccentButtonStyle}"
+                                Content="{x:Bind local:Strings.AnalysisAsk}"
+                                AutomationProperties.AutomationId="TraceAskButton"
+                                Click="AskButton_Click" />
+                            <Button
+                                x:Name="OverviewButton"
+                                Grid.Column="2"
+                                Content="{x:Bind local:Strings.AnalysisOverview}"
+                                AutomationProperties.AutomationId="TraceOverviewButton"
+                                Click="OverviewButton_Click" />
+                        </Grid>
+                        <StackPanel x:Name="AnswerPanel" Spacing="8" Visibility="Collapsed">
+                            <ProgressBar x:Name="AnswerProgress" IsIndeterminate="True" />
+                            <TextBlock
+                                x:Name="AnswerText"
+                                TextWrapping="Wrap"
+                                IsTextSelectionEnabled="True"
+                                LineHeight="22" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <StackPanel x:Name="StatsPanel" Spacing="12" />
+            </StackPanel>
         </ScrollViewer>
 
         <Grid x:Name="LogView" Grid.Row="1" BorderThickness="0,1,0,0" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">

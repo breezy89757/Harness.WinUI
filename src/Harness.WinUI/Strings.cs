@@ -347,6 +347,19 @@ public static class Strings
     public static string ColDecision => T("Decision", "決定");
     public static string ColCount => T("Count", "次數");
     public static string ColWait => T("Average wait", "平均等待");
+    public static string AnalysisTitle => T("AI analysis", "AI 分析");
+    public static string AnalysisNote => T(
+        "Your model reads the records of the selected period through read-only tools and answers. The records it reads (including message content) are sent to the model you configured; the analysis itself isn't recorded.",
+        "由你設定的模型透過唯讀工具讀取所選期間的紀錄並回答。它讀到的紀錄（包含訊息內容）會送到你設定的模型；分析本身不會被記錄。");
+    public static string AnalysisPlaceholder => T("e.g. Which step is slowest? Which tools could I turn off?", "例如：哪個步驟最慢？哪些工具可以關掉？");
+    public static string AnalysisAsk => T("Ask", "提問");
+    public static string AnalysisStop => T("Stop", "停止");
+    public static string AnalysisOverview => T("Analyze this period", "分析這段期間");
+    public static string AnalysisOverviewQuestion => T(
+        "Analyze this period: where time goes (slow model calls, tools, approval waits), failures and their causes, cost, and how tools and skills are used. Give concrete suggestions.",
+        "請分析這段期間：時間花在哪裡（慢的模型呼叫、工具、等待核准）、失敗與原因、成本，以及工具與技能的使用情況，並給出具體建議。");
+    public static string AnalysisNoModel => T("No model is configured. Set one up in Settings first.", "尚未設定模型，請先到設定中填入。");
+    public static string AnalysisFailed(string message) => T($"The analysis failed: {message}", $"分析失敗：{message}");
     public static string Chars(string n) => T($"{n} chars", $"{n} 字元");
     public static string TraceTtft(string seconds) => T($"first token {seconds}", $"首字 {seconds}");
 

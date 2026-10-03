@@ -26,6 +26,7 @@ namespace Harness.WinUI;
 public sealed partial class ObservabilityWindow : Window
 {
     private readonly TraceRecorder? _recorder;
+    private readonly Func<Microsoft.Extensions.AI.IChatClient?> _analysisClient;
     private readonly ObservableCollection<TurnItem> _turns = [];
     private readonly ObservableCollection<SpanItem> _spans = [];
     private readonly DispatcherQueueTimer _searchDelay;
@@ -33,10 +34,12 @@ public sealed partial class ObservabilityWindow : Window
     private string? _wantedTraceId;
     private bool _initializing = true;
 
-    public ObservabilityWindow(TraceRecorder? recorder)
+    /// <param name="analysisClient">A chat client for AI analysis (uninstrumented); null when no model is configured.</param>
+    public ObservabilityWindow(TraceRecorder? recorder, Func<Microsoft.Extensions.AI.IChatClient?> analysisClient)
     {
         InitializeComponent();
         _recorder = recorder;
+        _analysisClient = analysisClient;
         Title = $"{Strings.ObservabilityTitle} — Harness.WinUI";
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Harness.ico"));
         var scale = GetDpiForWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)) / 96.0;
