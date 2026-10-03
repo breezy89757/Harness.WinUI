@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Effective Date:** 2026-10-02
+**Effective Date:** 2026-10-03
 
 **Harness.WinUI** is a desktop AI assistant for Windows. It connects to an AI model service that **you**
 configure, and it runs entirely on your device otherwise.
@@ -20,6 +20,8 @@ To answer you, Harness.WinUI sends data to the services you set up yourself:
   during the conversation — for example the content of a file you ask Harness.WinUI to read, or a
   skill it loads. The optional image model receives your image prompts.
 - **MCP servers you add** receive the tool calls the assistant makes to them.
+- **An OpenTelemetry backend you set up** (optional, off by default) receives the observability
+  records described below — with message content only if you chose to record it.
 
 How those services handle your data is governed by their own terms and privacy policies. Harness.WinUI does
 not send data anywhere else.
@@ -32,6 +34,10 @@ not send data anywhere else.
   and can only be decrypted by your Windows user account. They are never stored in plain text.
 - **Generated files** (documents, images, artifacts) are saved where the app shows you: the sandbox
   folder you choose, and `Pictures\Harness.WinUI` for images.
+- **Observability records** (only if you turn recording on): what was sent to your model and what came
+  back, tool calls and their results, timing, tokens and cost, kept in the app's data folder for the
+  number of days you choose (30 by default). You can leave message content out, or delete all records.
+  When you use AI analysis, the records it reads are sent to your model endpoint.
 
 You can delete conversations in the app at any time. Uninstalling the Microsoft Store version
 removes its app data folder.
@@ -54,12 +60,12 @@ Questions about this policy: breezy8975757@gmail.com
 
 # 隱私權政策（繁體中文）
 
-**生效日期：** 2026-10-02
+**生效日期：** 2026-10-03
 
 **Harness.WinUI** 是 Windows 上的 AI 助手。它只會連到**你自己設定**的 AI 模型服務，其餘所有動作都在你的電腦上完成。
 
 - **我們不蒐集任何資料**：開發者沒有為 Harness.WinUI 架設任何伺服器；App 內沒有分析、遙測、廣告或追蹤。開發者不會收到你的訊息、檔案、設定或 API key。
-- **傳送給你設定的服務**：你的訊息、對話內容、你附加的圖片和檔案，以及對話中工具的結果（例如你請 Harness.WinUI 讀取的檔案內容、它載入的技能），會送到你設定的模型端點（如 Azure OpenAI、OpenAI、LiteLLM）；生圖提示會送到你設定的生圖模型；你加入的 MCP server 會收到對它的工具呼叫。這些服務如何處理資料，依其各自的條款與隱私權政策。
-- **存在你電腦上的資料**：設定、對話紀錄與 token 用量紀錄存在 App 的本機資料夾。API key 與 MCP 驗證密鑰使用 Windows DPAPI 加密，只有你的 Windows 帳號能解開，不會以明碼存放。產生的檔案存在你指定的沙盒資料夾，圖片存在 `圖片\Harness.WinUI`。
+- **傳送給你設定的服務**：你的訊息、對話內容、你附加的圖片和檔案，以及對話中工具的結果（例如你請 Harness.WinUI 讀取的檔案內容、它載入的技能），會送到你設定的模型端點（如 Azure OpenAI、OpenAI、LiteLLM）；生圖提示會送到你設定的生圖模型；你加入的 MCP server 會收到對它的工具呼叫；你自行設定的 OpenTelemetry 後台（選用，預設關閉）會收到下述觀測紀錄，只有在你選擇記錄訊息內容時才包含內容。這些服務如何處理資料，依其各自的條款與隱私權政策。
+- **存在你電腦上的資料**：設定、對話紀錄與 token 用量紀錄存在 App 的本機資料夾。API key 與 MCP 驗證密鑰使用 Windows DPAPI 加密，只有你的 Windows 帳號能解開，不會以明碼存放。產生的檔案存在你指定的沙盒資料夾，圖片存在 `圖片\Harness.WinUI`。觀測紀錄只在你開啟記錄時產生：送給模型的內容與回應、工具呼叫與結果、時間、token 與費用，存在 App 的本機資料夾，保留你設定的天數（預設 30 天），可以選擇不記錄訊息內容或全部刪除；使用 AI 分析時，它讀取的紀錄會送到你的模型端點。
 - **檔案存取**：檔案工具只能在你選擇的沙盒資料夾內運作（也可以在設定中關閉）；會修改檔案或 Harness.WinUI 設定的動作，都會先請你核准。
 - **聯絡方式**：breezy8975757@gmail.com

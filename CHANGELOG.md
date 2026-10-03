@@ -1,5 +1,22 @@
 # Harness.WinUI - Changelog
 
+## [1.0.5] - 2026-10-03
+
+### Added
+- Observability window (toolbar): see what is sent to the model and what comes back. Recording is off
+  until you turn it on there; records stay on this PC (`trace.db`) and are kept 30 days by default
+  - Log: every turn with its model, model and tool calls, tokens, cost and duration; a timeline of each
+    turn (model calls, tool calls, approval waits); for each step the messages as the model saw them,
+    the raw HTTP request and response, and every attribute. A recorded reply's footer opens its turn
+  - Statistics: per model (median and P95 duration, time to first token, tokens, cost), per tool
+    (offered vs. called, failures, time, result size), per skill, MCP server and approval decision
+  - AI analysis: ask your model about the records ("which step is slowest?"); it reads them through
+    read-only tools, and its own calls aren't recorded
+  - OTLP export (optional, off until you set it up): send the records to Aspire Dashboard, Langfuse, an
+    OpenTelemetry Collector or similar; headers are kept encrypted. Raw HTTP exchanges stay local
+- Built on Microsoft.Extensions.AI's OpenTelemetry instrumentation (GenAI semantic conventions); with
+  recording off it adds no work
+
 ## [1.0.4] - 2026-10-02
 
 ### Added

@@ -47,6 +47,7 @@ Harness.WinUI reads and writes files, plugs into MCP tools, and previews what it
 - **Notifications**: when the window is in the background, a Windows notification and a flashing taskbar button tell you a reply finished or something needs your approval.
 - **Conversation history**: stored locally in SQLite; reopening the app restores the model's context too.
 - **Stop anytime, tune quality**: stop a reply mid-stream (or press Esc). Switch reasoning effort and image quality whenever you like.
+- **Observability**: turn on recording to see every turn's model calls, tool calls and approval waits on a timeline, the exact request and response sent to the provider, statistics per model, tool and skill, and ask your model to analyze them. Records stay on your PC; optional OTLP export to Aspire Dashboard, Langfuse and the like.
 - **Make it yours**: Ctrl + plus / minus (or Ctrl + wheel) changes the text size; right-click the toolbar to choose which buttons show.
 - **English and Traditional Chinese UI**: the model replies in the language you write in.
 
@@ -137,6 +138,7 @@ Data folder: the portable build and builds you run yourself use `%LOCALAPPDATA%\
 | `history.db` | Conversation history |
 | `usage.db` | Token usage and cost per reply |
 | `preferences.json` | Language, sandbox, prices, text size, toolbar and other preferences |
+| `trace.db` | Observability records, only when recording is on (kept 30 days by default) |
 | `skills\` | Your skills (`SKILL.md` folders) |
 | `artifacts\` | Artifact files |
 
@@ -179,6 +181,7 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 - **通知**：視窗在背景時，回覆完成或需要你核准，會跳出 Windows 通知並閃爍工作列按鈕。
 - **對話紀錄**：存在本機 SQLite，重新打開時連模型的上下文一起接回來。
 - **隨時停止、可調品質**：回覆進行中可以按停止（或 Esc）。推理強度和生圖品質可以隨時切換。
+- **可觀測性**：開啟記錄後，可以在時間軸上看到每個回合的模型呼叫、工具呼叫與核准等待，送給供應商的原始請求與回應，各模型、工具、技能的統計，還能請模型分析這些紀錄。紀錄只存在本機；可選擇用 OTLP 匯出到 Aspire Dashboard、Langfuse 等。
 - **依你的習慣調整**：Ctrl + 加號 / 減號（或 Ctrl + 滾輪）調整字型大小；在工具列按右鍵可選擇要顯示哪些按鈕。
 - **繁體中文與英文介面**：介面可選繁中或英文。模型會用你輸入的語言回覆，中文一律用台灣用語的繁體中文。
 
@@ -267,6 +270,7 @@ dotnet build Harness.WinUI.sln -p:Platform=x64
 | `history.db` | 對話紀錄 |
 | `usage.db` | 每則回覆的 token 用量與費用 |
 | `preferences.json` | 語言、沙盒、價格、字型大小、工具列等偏好設定 |
+| `trace.db` | 觀測紀錄，只在開啟記錄時產生（預設保留 30 天） |
 | `skills\` | 你的技能（含 `SKILL.md` 的資料夾） |
 | `artifacts\` | 成品檔案 |
 

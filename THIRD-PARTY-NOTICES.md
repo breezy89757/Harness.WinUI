@@ -12,6 +12,7 @@ license texts are reproduced or linked at the end of this file.
 | Microsoft.Extensions.AI | MIT | https://github.com/dotnet/extensions |
 | OpenAI .NET SDK (`OpenAI`) | MIT | https://github.com/openai/openai-dotnet |
 | Model Context Protocol C# SDK (`ModelContextProtocol`) | Apache-2.0 | https://github.com/modelcontextprotocol/csharp-sdk |
+| OpenTelemetry .NET (`OpenTelemetry`, `OpenTelemetry.Exporter.OpenTelemetryProtocol`) | Apache-2.0 | https://github.com/open-telemetry/opentelemetry-dotnet |
 | Open XML SDK (`DocumentFormat.OpenXml`) | MIT | https://github.com/dotnet/Open-XML-SDK |
 | PdfPig | Apache-2.0 | https://github.com/UglyToad/PdfPig |
 | SQLitePCLRaw | Apache-2.0 | https://github.com/ericsink/SQLitePCL.raw |
@@ -53,8 +54,8 @@ SOFTWARE.
 
 ## Apache License 2.0
 
-Applies to the Model Context Protocol C# SDK, PdfPig (Copyright UglyToad / Eliot Jones) and
-SQLitePCLRaw (Copyright Eric Sink). The full license text is at
+Applies to the Model Context Protocol C# SDK, OpenTelemetry .NET (Copyright The OpenTelemetry
+Authors), PdfPig (Copyright UglyToad / Eliot Jones) and SQLitePCLRaw (Copyright Eric Sink). The full license text is at
 https://www.apache.org/licenses/LICENSE-2.0.
 
 ## BSD 2-Clause License — Markdig
