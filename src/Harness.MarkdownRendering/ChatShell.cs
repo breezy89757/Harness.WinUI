@@ -171,6 +171,14 @@ public static class ChatShell
         .step .reasoning-text { white-space: pre-wrap; margin-top: 4px; }
         @keyframes harness-spin { to { transform: rotate(360deg); } }
 
+        /* Markdown tables: a light frame, a divider under the header, row lines and alternate shading. */
+        .message table { border-collapse: separate; border-spacing: 0; margin: 8px 0; max-width: 100%; width: fit-content; display: block;
+                         overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px; }
+        .message th, .message td { padding: 6px 14px; text-align: left; border-bottom: 1px solid var(--border-color);
+                                   font-variant-numeric: tabular-nums; }
+        .message th { font-weight: 600; background: var(--code-bg); border-bottom-width: 2px; }
+        .message tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--code-bg) 60%, transparent); }
+        .message tbody tr:last-child td { border-bottom: none; }
         .meta { font-size: 0.75em; color: var(--muted); margin-top: 4px; padding: 0 6px; cursor: default; }
         .meta:empty { display: none; }
         .meta.traced { cursor: pointer; }
