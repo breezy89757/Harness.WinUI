@@ -11,6 +11,7 @@ using Harness.Core.Agent;
 using Harness.Core.Artifacts;
 using Harness.Core.Config;
 using Harness.Core.History;
+using Harness.Core.Observability;
 using Harness.Core.Tools;
 using Harness.Core.Usage;
 using Harness.MarkdownRendering;
@@ -415,6 +416,9 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
 
         IsBusy = true;
         var id = NextMessageId();
+        // Root span of this turn when recording is on: the model and tool calls below become its children.
+        using var turnSpan = Telemetry.StartTurn(ChatMarkup.WithAttachmentNames(userMessage, attachments));
+        var traceId = turnSpan?.TraceId.ToHexString();
         var stopwatch = Stopwatch.StartNew();
         lock (_timerLock)
         {
@@ -626,14 +630,15 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
                 meta = string.IsNullOrEmpty(meta) ? Strings.Stopped : $"{Strings.Stopped} · {meta}";
                 tooltip = Strings.StoppedTooltip + (string.IsNullOrEmpty(tooltip) ? string.Empty : "\n\n" + tooltip);
             }
-            await _messageSink.SetMessageMetaAsync(id, meta, tooltip).ConfigureAwait(true);
+            await _messageSink.SetMessageMetaAsync(id, meta, tooltip, traceId).ConfigureAwait(true);
 
             var reply = new StoredMessage(
                 "assistant", errorText ?? text.ToString(),
                 reasoning.Length > 0 ? reasoning.ToString() : null,
                 steps.Count > 0 ? [.. steps.Values] : null,
-                meta, tooltip);
+                meta, tooltip, traceId);
             await SaveTurnAsync(session, new StoredMessage("user", ChatMarkup.WithAttachmentNames(userMessage, attachments)), reply).ConfigureAwait(true);
+            Telemetry.EndTurn(turnSpan, _conversationId, errorText ?? text.ToString(), stopped, errorText);
             IsBusy = false;
 
             // A stop is the user's own doing; anything else may be worth a notification.
@@ -762,7 +767,7 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
 
         await _messageSink.UpdateMessageContentAsync(id, ChatMarkup.ReplyHtml(segments), isFinal: true).ConfigureAwait(true);
         if (message.Meta is { } meta)
-            await _messageSink.SetMessageMetaAsync(id, meta, message.MetaTooltip).ConfigureAwait(true);
+            await _messageSink.SetMessageMetaAsync(id, meta, message.MetaTooltip, message.TraceId).ConfigureAwait(true);
     }
 
     private static string TitleFrom(string message)

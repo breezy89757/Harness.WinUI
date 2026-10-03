@@ -173,6 +173,8 @@ public static class ChatShell
 
         .meta { font-size: 0.75em; color: var(--muted); margin-top: 4px; padding: 0 6px; cursor: default; }
         .meta:empty { display: none; }
+        .meta.traced { cursor: pointer; }
+        .meta.traced:hover { color: var(--accent); text-decoration: underline; }
 
         @media (prefers-reduced-motion: reduce) {
             .dots i, .step.running::before, .artifact-card.writing .artifact-badge { animation: none; opacity: 0.7; }
@@ -352,13 +354,18 @@ public static class ChatShell
             });
         }
 
-        function setMessageMeta(id, text, title) {
+        function setMessageMeta(id, text, title, trace) {
             const t = turn(id);
             if (!t) return;
             withStickyScroll(() => {
                 const meta = t.querySelector('.meta');
                 meta.textContent = text;
                 meta.title = title || '';
+                // A recorded turn: the footer opens it in the observability window.
+                if (trace) {
+                    meta.classList.add('traced');
+                    meta.onclick = () => post({ type: 'openTrace', trace });
+                }
             });
         }
 

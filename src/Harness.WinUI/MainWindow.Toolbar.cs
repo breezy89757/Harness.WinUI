@@ -36,6 +36,8 @@ public sealed partial class MainWindow
                 at => QualityFlyout.ShowAt(at), Always),
             new("usage", UsageButton, "", () => WithDetail(Strings.UsageTooltip, ViewModel.ConversationCostText),
                 at => UsageButton.Flyout.ShowAt(at), Always),
+            new("observability", ObservabilityButton, "\uE9D9", () => Strings.ObservabilityTitle,
+                _ => OpenObservability(null), Always),
         ];
         ApplyToolbar(HiddenToolbarButtons());
     }

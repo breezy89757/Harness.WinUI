@@ -29,8 +29,11 @@ public interface IChatMessageSink
     /// <summary>Adds or updates a step row (tool call / reasoning). <paramref name="html"/> must already be encoded.</summary>
     Task UpsertMessageStepAsync(string id, string stepId, string html, StepState state);
 
-    /// <summary>Sets the muted footer under a reply; <paramref name="tooltip"/> holds the full breakdown.</summary>
-    Task SetMessageMetaAsync(string id, string text, string? tooltip);
+    /// <summary>
+    /// Sets the muted footer under a reply; <paramref name="tooltip"/> holds the full breakdown. With a
+    /// <paramref name="traceId"/> (the turn was recorded), clicking it opens the turn in the observability window.
+    /// </summary>
+    Task SetMessageMetaAsync(string id, string text, string? tooltip, string? traceId = null);
 
     /// <summary>
     /// Shows an artifact in the side panel: live content while it streams, then — once

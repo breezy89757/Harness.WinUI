@@ -62,6 +62,7 @@ public partial class App : Application
             preferences.Save();
         }
         _tools.SetSandbox(preferences.SandboxFolder);
+        Traces = OpenTraces(preferences);
 
         var (chatSession, options, startupError, needsProviderSetup) = BuildChatSession();
 
@@ -75,6 +76,24 @@ public partial class App : Application
     /// </summary>
     /// <summary>True when running as an MSIX package (Microsoft Store); set at launch.</summary>
     public static bool IsPackaged { get; private set; }
+
+    /// <summary>The observability recorder (recording only when the user turned it on); null if trace.db can't be opened.</summary>
+    public static Harness.Core.Observability.TraceRecorder? Traces { get; private set; }
+
+    private static Harness.Core.Observability.TraceRecorder? OpenTraces(AppPreferences preferences)
+    {
+        try
+        {
+            var recorder = new Harness.Core.Observability.TraceRecorder(new Harness.Core.Observability.TraceStore());
+            recorder.Configure(preferences.TraceEnabled, preferences.TraceContent, preferences.TraceRetentionDays);
+            return recorder;
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException or UnauthorizedAccessException)
+        {
+            System.Diagnostics.Debug.WriteLine($"Observability unavailable: {ex}");
+            return null;
+        }
+    }
 
     private static string? PackagedDataFolder()
     {

@@ -252,6 +252,60 @@ public static class Strings
     public static string NotifyApprovalTitle => T("Waiting for your approval", "等待你的核准");
     public static string NotifyApprovalBody(string tool) => T($"Harness.WinUI wants to run {tool}.", $"Harness.WinUI 想要執行 {tool}。");
 
+    // Observability
+    public static string ObservabilityTitle => T("Observability", "觀測");
+    public static string ObservabilityTooltip => T("Observability: what is sent to the model and what comes back", "觀測：送給模型的內容與回應");
+    public static string TraceRecording => T("Recording", "記錄中");
+    public static string TraceNotRecording => T("Not recording", "未記錄");
+    public static string TraceRange24Hours => T("Last 24 hours", "過去 24 小時");
+    public static string TraceRange7Days => T("Last 7 days", "過去 7 天");
+    public static string TraceRange30Days => T("Last 30 days", "過去 30 天");
+    public static string TraceSearch => T("Search messages, tools or models", "搜尋訊息、工具或模型");
+    public static string TraceFailedOnly => T("Errors only", "只看錯誤");
+    public static string TraceSettings => T("Recording settings", "記錄設定");
+    public static string TraceCaptureContent => T("Record message content (prompts, replies, tool arguments and results)", "記錄訊息內容（提示、回覆、工具參數與結果）");
+    public static string TraceRetention => T("Keep records for (days)", "紀錄保留天數");
+    public static string TraceClear => T("Delete all records", "刪除所有紀錄");
+    public static string TraceClearConfirm => T("Delete every recorded turn? This can't be undone.", "要刪除所有紀錄嗎？刪除後無法復原。");
+    public static string Delete => T("Delete", "刪除");
+    public static string TraceOffTitle => T("Recording is off", "觀測記錄未開啟");
+    public static string TraceOffBody(int days) => T(
+        $"Turn on Recording to keep what Harness.WinUI sends to the model, what comes back, and every tool call. Records stay on this PC and are deleted after {days} days.",
+        $"開啟「記錄」後，會保存 Harness.WinUI 送給模型的內容、模型的回應，以及每一次工具呼叫。紀錄只存在這台電腦，{days} 天後自動刪除。");
+    public static string TraceUnavailable => T("The observability database couldn't be opened.", "無法開啟觀測資料庫。");
+    public static string TraceEmpty => T("No recorded turns in this period.", "這段期間沒有紀錄。");
+    public static string TraceSelectTurn => T("Select a turn on the left to see its model and tool calls.", "選擇左側的一筆紀錄，查看模型與工具呼叫。");
+    public static string TraceModelCalls(int n) => T($"{n} model calls", $"{n} 次模型呼叫");
+    public static string TraceToolCalls(int n) => T($"{n} tool calls", $"{n} 次工具呼叫");
+    public static string TraceTabContent => T("Content", "內容");
+    public static string TraceTabRequest => T("Raw request", "原始請求");
+    public static string TraceTabResponse => T("Raw response", "原始回應");
+    public static string TraceTabDetails => T("Details", "屬性");
+    public static string TraceSystem => T("System instructions", "系統指示");
+    public static string TraceToolsOffered(int n) => T($"Tools offered ({n})", $"提供給模型的工具（{n}）");
+    public static string TraceInput(int n) => T($"Input ({n} messages)", $"輸入（{n} 則訊息）");
+    public static string TraceOutput => T("Output", "輸出");
+    public static string TraceArguments => T("Arguments", "參數");
+    public static string TraceResult => T("Result", "結果");
+    public static string TraceUserMessage => T("User message", "使用者訊息");
+    public static string TraceReply => T("Reply", "回覆");
+    public static string TraceNoContent => T("Content wasn't recorded (Recording settings).", "未記錄內容（見記錄設定）。");
+    public static string TraceNoRaw => T("No raw HTTP exchange was recorded for this step.", "這一步沒有原始 HTTP 紀錄。");
+    public static string TraceTurn => T("Turn", "回合");
+    public static string TraceModelCall(string? model) => T($"Model call · {model}", $"模型呼叫 · {model}");
+    public static string TraceToolCall(string? name) => T($"Tool · {name}", $"工具 · {name}");
+    public static string TraceApproval(string? decision) => T($"Approval · {decision}", $"核准 · {decision}");
+    public static string TraceDecision(string? decision) => decision switch
+    {
+        "AllowOnce" => T("allowed once", "允許一次"),
+        "AlwaysAllow" => T("always allowed", "永遠允許"),
+        "Deny" => T("denied", "拒絕"),
+        _ => T("no answer", "未回應"),
+    };
+    public static string TraceFailed => T("Failed", "失敗");
+    public static string TraceTokens(string tokens) => T($"{tokens} tok", $"{tokens} tok");
+    public static string TraceTtft(string seconds) => T($"first token {seconds}", $"首字 {seconds}");
+
     // Toolbar
     public static string MoreTooltip => T("More", "更多");
     public static string CustomizeToolbar => T("Customize toolbar", "自訂工具列");

@@ -1,8 +1,10 @@
 // Harness.WinUI — Licensed under the MIT License.
 
+using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Harness.Core.Config;
+using Harness.Core.Observability;
 
 namespace Harness.Core.Tools;
 
@@ -97,12 +99,21 @@ public sealed class ApprovalGatedFunction : DelegatingAIFunction
 
     protected override async ValueTask<object?> InvokeCoreAsync(AIFunctionArguments arguments, CancellationToken cancellationToken)
     {
+        // The current span is this call's execute_tool span (when recording): say where the tool comes from.
+        Activity.Current?.SetTag(Telemetry.TagToolSource, _serverName);
+
         if (!_readOnly && !(_canAlwaysAllow && _permissions.IsAlwaysAllowed(_serverName, _originalName)))
         {
             var callId = FunctionInvokingChatClient.CurrentContext?.CallContent.CallId ?? Guid.NewGuid().ToString("N");
             var request = new ToolApprovalRequest(callId, _serverName, Name, new Dictionary<string, object?>(arguments), _canAlwaysAllow);
 
-            var decision = await _approver.RequestApprovalAsync(request, cancellationToken).ConfigureAwait(false);
+            ToolApprovalDecision decision;
+            using (var waiting = Telemetry.Source.StartActivity(Telemetry.OpApproval))
+            {
+                waiting?.SetTag(Telemetry.TagToolName, Name);
+                decision = await _approver.RequestApprovalAsync(request, cancellationToken).ConfigureAwait(false);
+                waiting?.SetTag(Telemetry.TagDecision, decision.ToString());
+            }
             if (decision == ToolApprovalDecision.Deny)
                 return "The user declined to run this tool. Do not retry it; ask the user how they would like to proceed.";
 

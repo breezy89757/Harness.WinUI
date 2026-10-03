@@ -402,6 +402,9 @@ public sealed partial class MainWindow : Window, IChatMessageSink
                 case "openArtifact":
                     _ = ArtifactPanel.ShowAsync(message.GetProperty("id").GetString() ?? string.Empty);
                     break;
+                case "openTrace":
+                    OpenObservability(message.GetProperty("trace").GetString());
+                    break;
                 case "zoom":
                     StepZoom(message.GetProperty("step").GetInt32());
                     break;
@@ -523,8 +526,8 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         ExecuteShellScriptAsync(
             $"upsertMessageStep({ToJs(id)}, {ToJs(stepId)}, {ToJs(html)}, {ToJs(state.ToString().ToLowerInvariant())});");
 
-    public Task SetMessageMetaAsync(string id, string text, string? tooltip) =>
-        ExecuteShellScriptAsync($"setMessageMeta({ToJs(id)}, {ToJs(text)}, {ToJs(tooltip)});");
+    public Task SetMessageMetaAsync(string id, string text, string? tooltip, string? traceId = null) =>
+        ExecuteShellScriptAsync($"setMessageMeta({ToJs(id)}, {ToJs(text)}, {ToJs(tooltip)}, {ToJs(traceId)});");
 
     public Task PresentArtifactAsync(ArtifactSegment artifact) =>
         RunOnUIThreadAsync(() => ArtifactPanel.PresentAsync(artifact));

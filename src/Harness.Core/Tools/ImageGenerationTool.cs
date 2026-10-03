@@ -32,7 +32,12 @@ public static class ImageGenerationTool
         {
             quality = NormalizeQuality(string.IsNullOrWhiteSpace(quality) ? defaultQuality() : quality);
             var client = new ImageClient(settings.Model, new ApiKeyCredential(settings.ApiKey),
-                new OpenAIClientOptions { Endpoint = new Uri(settings.Endpoint), NetworkTimeout = TimeSpan.FromMinutes(5) });
+                new OpenAIClientOptions
+                {
+                    Endpoint = new Uri(settings.Endpoint),
+                    NetworkTimeout = TimeSpan.FromMinutes(5),
+                    Transport = new System.ClientModel.Primitives.HttpClientPipelineTransport(Observability.Telemetry.HttpClient),
+                });
 
             var options = new ImageGenerationOptions { Size = ParseSize(size), Quality = ParseQuality(quality) };
             var image = (await client.GenerateImageAsync(prompt, options, cancellationToken).ConfigureAwait(false)).Value;

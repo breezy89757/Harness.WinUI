@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Window
+    x:Class="Harness.WinUI.ObservabilityWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Harness.WinUI"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.Controls">
+
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="RootGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Filters and recording switch -->
+        <Grid Padding="16,12" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ComboBox
+                x:Name="RangeBox"
+                MinWidth="150"
+                VerticalAlignment="Center"
+                AutomationProperties.AutomationId="TraceRangeBox"
+                AutomationProperties.Name="{x:Bind local:Strings.TraceRange24Hours}"
+                SelectionChanged="Filter_Changed">
+                <ComboBoxItem Content="{x:Bind local:Strings.TraceRange24Hours}" Tag="1" />
+                <ComboBoxItem Content="{x:Bind local:Strings.TraceRange7Days}" Tag="7" />
+                <ComboBoxItem Content="{x:Bind local:Strings.TraceRange30Days}" Tag="30" />
+            </ComboBox>
+            <CheckBox
+                x:Name="FailedOnlyBox"
+                Grid.Column="1"
+                VerticalAlignment="Center"
+                Content="{x:Bind local:Strings.TraceFailedOnly}"
+                AutomationProperties.AutomationId="TraceFailedOnly"
+                Click="Filter_Changed" />
+            <TextBox
+                x:Name="SearchBox"
+                Grid.Column="2"
+                MaxWidth="420"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Center"
+                PlaceholderText="{x:Bind local:Strings.TraceSearch}"
+                AutomationProperties.AutomationId="TraceSearchBox"
+                AutomationProperties.Name="{x:Bind local:Strings.TraceSearch}"
+                TextChanged="SearchBox_TextChanged" />
+            <Button
+                Grid.Column="3"
+                Padding="10,8"
+                VerticalAlignment="Center"
+                AutomationProperties.AutomationId="TraceRefreshButton"
+                AutomationProperties.Name="{x:Bind local:Strings.Refresh}"
+                ToolTipService.ToolTip="{x:Bind local:Strings.Refresh}"
+                Click="Refresh_Click">
+                <FontIcon FontSize="16" Glyph="&#xE72C;" />
+            </Button>
+            <ToggleSwitch
+                x:Name="RecordToggle"
+                Grid.Column="4"
+                MinWidth="0"
+                VerticalAlignment="Center"
+                OnContent="{x:Bind local:Strings.TraceRecording}"
+                OffContent="{x:Bind local:Strings.TraceNotRecording}"
+                AutomationProperties.AutomationId="TraceRecordToggle"
+                AutomationProperties.Name="{x:Bind local:Strings.TraceRecording}"
+                Toggled="RecordToggle_Toggled" />
+            <Button
+                Grid.Column="5"
+                Padding="10,8"
+                VerticalAlignment="Center"
+                AutomationProperties.AutomationId="TraceSettingsButton"
+                AutomationProperties.Name="{x:Bind local:Strings.TraceSettings}"
+                ToolTipService.ToolTip="{x:Bind local:Strings.TraceSettings}">
+                <FontIcon FontSize="16" Glyph="&#xE713;" />
+                <Button.Flyout>
+                    <Flyout x:Name="SettingsFlyout" Placement="BottomEdgeAlignedRight" Opening="SettingsFlyout_Opening">
+                        <StackPanel Width="320" Spacing="12">
+                            <TextBlock Text="{x:Bind local:Strings.TraceSettings}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                            <CheckBox
+                                x:Name="CaptureContentBox"
+                                AutomationProperties.AutomationId="TraceCaptureContent"
+                                Click="CaptureContent_Click">
+                                <TextBlock Text="{x:Bind local:Strings.TraceCaptureContent}" TextWrapping="Wrap" />
+                            </CheckBox>
+                            <NumberBox
+                                x:Name="RetentionBox"
+                                Header="{x:Bind local:Strings.TraceRetention}"
+                                Minimum="1"
+                                Maximum="365"
+                                SpinButtonPlacementMode="Inline"
+                                AutomationProperties.AutomationId="TraceRetentionBox"
+                                ValueChanged="RetentionBox_ValueChanged" />
+                            <Button
+                                Content="{x:Bind local:Strings.TraceClear}"
+                                AutomationProperties.AutomationId="TraceClearButton"
+                                Click="Clear_Click" />
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+        </Grid>
+
+        <Grid Grid.Row="1" BorderThickness="0,1,0,0" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="380" MinWidth="240" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" MinWidth="360" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Turns -->
+            <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
+                <ListView
+                    x:Name="TurnList"
+                    SelectionMode="Single"
+                    AutomationProperties.AutomationId="TraceTurnList"
+                    AutomationProperties.Name="{x:Bind local:Strings.ObservabilityTitle}"
+                    SelectionChanged="TurnList_SelectionChanged">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="local:TurnItem">
+                            <StackPanel Padding="0,8" Spacing="2" ToolTipService.ToolTip="{x:Bind Tooltip}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon
+                                        FontSize="12"
+                                        Glyph="&#xEA39;"
+                                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                        Visibility="{x:Bind FailedVisibility}" />
+                                    <TextBlock Text="{x:Bind Title}" TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                </StackPanel>
+                                <TextBlock
+                                    Text="{x:Bind Caption}"
+                                    TextTrimming="CharacterEllipsis"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+                <StackPanel
+                    x:Name="EmptyPanel"
+                    Padding="24"
+                    Spacing="8"
+                    VerticalAlignment="Center"
+                    Visibility="Collapsed">
+                    <TextBlock x:Name="EmptyTitle" Style="{StaticResource BodyStrongTextBlockStyle}" TextWrapping="Wrap" />
+                    <TextBlock
+                        x:Name="EmptyBody"
+                        TextWrapping="Wrap"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </Grid>
+
+            <toolkit:GridSplitter
+                Grid.Column="1"
+                Width="6"
+                ResizeBehavior="PreviousAndNext"
+                ResizeDirection="Columns" />
+
+            <!-- Selected turn: timeline, then the selected step -->
+            <Grid x:Name="DetailGrid" Grid.Column="2" Padding="16,12,16,0" RowSpacing="8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="2*" MinHeight="120" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="3*" />
+                </Grid.RowDefinitions>
+                <TextBlock
+                    x:Name="TurnHeader"
+                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                    TextWrapping="Wrap"
+                    MaxLines="2"
+                    TextTrimming="CharacterEllipsis"
+                    IsTextSelectionEnabled="True" />
+                <ListView
+                    x:Name="SpanList"
+                    Grid.Row="1"
+                    SelectionMode="Single"
+                    AutomationProperties.AutomationId="TraceSpanList"
+                    AutomationProperties.Name="{x:Bind local:Strings.TraceTurn}"
+                    SelectionChanged="SpanList_SelectionChanged">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="local:SpanItem">
+                            <Grid Padding="{x:Bind Indent}" ColumnSpacing="12" MinHeight="32">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="200" />
+                                </Grid.ColumnDefinitions>
+                                <FontIcon FontSize="14" Glyph="{x:Bind Glyph}" Foreground="{x:Bind IconBrush}" />
+                                <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{x:Bind Label}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock
+                                    Grid.Column="2"
+                                    VerticalAlignment="Center"
+                                    Text="{x:Bind Detail}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <!-- Where in the turn this step ran, and for how long -->
+                                <Border
+                                    Grid.Column="3"
+                                    Height="6"
+                                    CornerRadius="3"
+                                    VerticalAlignment="Center"
+                                    Background="{ThemeResource ControlFillColorSecondaryBrush}">
+                                    <Border
+                                        HorizontalAlignment="Left"
+                                        Height="6"
+                                        CornerRadius="3"
+                                        Margin="{x:Bind BarMargin}"
+                                        Width="{x:Bind BarWidth}"
+                                        Background="{x:Bind BarBrush}" />
+                                </Border>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+
+                <SelectorBar x:Name="DetailTabs" Grid.Row="2" SelectionChanged="DetailTabs_SelectionChanged">
+                    <SelectorBarItem x:Name="ContentTab" Text="{x:Bind local:Strings.TraceTabContent}" IsSelected="True" />
+                    <SelectorBarItem x:Name="RequestTab" Text="{x:Bind local:Strings.TraceTabRequest}" />
+                    <SelectorBarItem x:Name="ResponseTab" Text="{x:Bind local:Strings.TraceTabResponse}" />
+                    <SelectorBarItem x:Name="DetailsTab" Text="{x:Bind local:Strings.TraceTabDetails}" />
+                </SelectorBar>
+                <ScrollViewer x:Name="DetailScroller" Grid.Row="3" Padding="0,0,12,16" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="DetailPanel" Spacing="12" />
+                </ScrollViewer>
+                <TextBox
+                    x:Name="RawBox"
+                    Grid.Row="3"
+                    Margin="0,0,0,16"
+                    IsReadOnly="True"
+                    AcceptsReturn="True"
+                    TextWrapping="NoWrap"
+                    FontFamily="Cascadia Mono, Consolas"
+                    FontSize="12"
+                    ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                    ScrollViewer.VerticalScrollBarVisibility="Auto"
+                    AutomationProperties.AutomationId="TraceRawBox"
+                    AutomationProperties.Name="{x:Bind local:Strings.TraceTabRequest}"
+                    Visibility="Collapsed" />
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

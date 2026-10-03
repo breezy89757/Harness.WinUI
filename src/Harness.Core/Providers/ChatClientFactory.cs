@@ -1,11 +1,13 @@
 // Harness.WinUI — Licensed under the MIT License.
 
 using System.ClientModel;
+using System.ClientModel.Primitives;
 using Microsoft.Extensions.AI;
 using OpenAI;
 using OpenAI.Chat;
 using OpenAI.Responses;
 using Harness.Core.Config;
+using Harness.Core.Observability;
 
 namespace Harness.Core.Providers;
 
@@ -34,17 +36,20 @@ public static class ChatClientFactory
             throw new ProviderConfigurationException($"Endpoint '{endpoint}' is not a valid absolute URI.");
 
         var credential = new ApiKeyCredential(apiKey);
-        return api.Resolve(endpointUri) switch
+        // Calls go through Telemetry's HttpClient so that, when recording is on, the raw exchange is kept too.
+        var transport = new HttpClientPipelineTransport(Telemetry.HttpClient);
+        var client = api.Resolve(endpointUri) switch
         {
             // The Responses client is still flagged experimental in OpenAI 2.x (OPENAI001), but it's
             // the only way reasoning models accept tools — see ProviderApi.Responses.
 #pragma warning disable OPENAI001
-            ProviderApi.Responses => new ResponsesClient(credential, new ResponsesClientOptions { Endpoint = endpointUri })
+            ProviderApi.Responses => new ResponsesClient(credential, new ResponsesClientOptions { Endpoint = endpointUri, Transport = transport })
                 .AsIChatClient(model),
 #pragma warning restore OPENAI001
-            _ => new ChatClient(model, credential, new OpenAIClientOptions { Endpoint = endpointUri })
+            _ => new ChatClient(model, credential, new OpenAIClientOptions { Endpoint = endpointUri, Transport = transport })
                 .AsIChatClient(),
         };
+        return Telemetry.Instrument(client);
     }
 
     /// <summary>Dev/CI path: reads the API key from <see cref="ProviderOptions.ApiKeyEnvVar"/> and delegates.</summary>

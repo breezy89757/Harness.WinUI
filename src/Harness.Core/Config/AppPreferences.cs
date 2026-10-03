@@ -42,6 +42,15 @@ public sealed record AppPreferences
     /// <summary>Composer toolbar buttons (by id) the user moved into the More menu.</summary>
     public List<string>? HiddenToolbarButtons { get; init; }
 
+    /// <summary>Record what is sent to the model and what comes back, for the observability window (off by default).</summary>
+    public bool TraceEnabled { get; init; }
+
+    /// <summary>Whether recording includes message content (prompts, replies, tool arguments and results), not just timing and tokens.</summary>
+    public bool TraceContent { get; init; } = true;
+
+    /// <summary>Days recorded traces are kept.</summary>
+    public int TraceRetentionDays { get; init; } = 30;
+
     /// <summary>The price set for <paramref name="model"/> (names compare case-insensitively), or null.</summary>
     public Usage.ModelPrice? PriceFor(string? model) =>
         model is null ? null : ModelPrices?.FirstOrDefault(p => string.Equals(p.Key, model, StringComparison.OrdinalIgnoreCase)).Value;

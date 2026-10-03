@@ -20,7 +20,8 @@ public sealed record StoredMessage(
     string? Reasoning = null,
     IReadOnlyList<StoredStep>? Steps = null,
     string? Meta = null,
-    string? MetaTooltip = null);
+    string? MetaTooltip = null,
+    string? TraceId = null);
 
 public sealed record ConversationSummary(string Id, string Title, DateTimeOffset UpdatedAt);
 

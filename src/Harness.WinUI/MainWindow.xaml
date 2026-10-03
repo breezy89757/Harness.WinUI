@@ -300,6 +300,17 @@
                     </Button>
 
                     <Button
+                        x:Name="ObservabilityButton"
+                        AutomationProperties.AutomationId="ObservabilityButton"
+                        AutomationProperties.Name="{x:Bind local:Strings.ObservabilityTitle}"
+                        VerticalAlignment="Bottom"
+                        Padding="10,8"
+                        ToolTipService.ToolTip="{x:Bind local:Strings.ObservabilityTooltip}"
+                        Click="ObservabilityButton_Click">
+                        <FontIcon FontSize="16" Glyph="&#xE9D9;" />
+                    </Button>
+
+                    <Button
                         x:Name="MoreButton"
                         AutomationProperties.AutomationId="MoreButton"
                         AutomationProperties.Name="{x:Bind local:Strings.MoreTooltip}"
