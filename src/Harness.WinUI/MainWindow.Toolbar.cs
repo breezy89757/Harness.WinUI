@@ -40,6 +40,54 @@ public sealed partial class MainWindow
                 _ => OpenObservability(null), Always),
         ];
         ApplyToolbar(HiddenToolbarButtons());
+
+        // Narrow window (or the artifact panel open): buttons that don't fit move into More until there's room.
+        ComposerGrid.SizeChanged += (_, _) => FitToolbar();
+        foreach (var item in _toolbarItems)
+            item.Button.SizeChanged += (_, e) =>
+            {
+                // e.g. the usage button grows with the cost text
+                if (e.NewSize.Width > 0 && _buttonWidths.GetValueOrDefault(item.Id) != e.NewSize.Width)
+                {
+                    _buttonWidths[item.Id] = e.NewSize.Width;
+                    FitToolbar();
+                }
+            };
+    }
+
+    private HashSet<string> _userHidden = [];
+    private readonly HashSet<string> _overflowed = [];
+    private readonly Dictionary<string, double> _buttonWidths = [];
+
+    /// <summary>Room the message box keeps before toolbar buttons start moving into More.</summary>
+    private const double MinInputWidth = 260;
+
+    /// <summary>Shows the buttons the user chose, left to right, as long as the message box keeps <see cref="MinInputWidth"/>.</summary>
+    private void FitToolbar()
+    {
+        if (ComposerGrid.ActualWidth <= 0)
+            return;
+        var spacing = ToolbarPanel.Spacing;
+        var available = ComposerGrid.ActualWidth - ComposerGrid.Padding.Left - ComposerGrid.Padding.Right
+            - ComposerGrid.ColumnSpacing * 2 - Math.Max(SendButton.ActualWidth, StopButton.ActualWidth) - MinInputWidth
+            - (MoreButton.ActualWidth > 0 ? MoreButton.ActualWidth : 48);
+
+        _overflowed.Clear();
+        var used = 0.0;
+        foreach (var item in _toolbarItems.Where(i => !_userHidden.Contains(i.Id)))
+        {
+            var width = _buttonWidths.GetValueOrDefault(item.Id, 48) + spacing;
+            if (_overflowed.Count == 0 && used + width <= available)
+                used += width;
+            else
+                _overflowed.Add(item.Id);
+        }
+        foreach (var item in _toolbarItems)
+        {
+            var visible = !_userHidden.Contains(item.Id) && !_overflowed.Contains(item.Id) ? Visibility.Visible : Visibility.Collapsed;
+            if (item.Button.Visibility != visible)
+                item.Button.Visibility = visible;
+        }
     }
 
     private static string WithDetail(string label, string? detail) =>
@@ -50,8 +98,13 @@ public sealed partial class MainWindow
 
     private void ApplyToolbar(HashSet<string> hidden)
     {
-        foreach (var item in _toolbarItems)
-            item.Button.Visibility = hidden.Contains(item.Id) ? Visibility.Collapsed : Visibility.Visible;
+        _userHidden = hidden;
+        FitToolbar();
+        if (ComposerGrid.ActualWidth <= 0)
+        {
+            foreach (var item in _toolbarItems)
+                item.Button.Visibility = hidden.Contains(item.Id) ? Visibility.Collapsed : Visibility.Visible;
+        }
     }
 
     private void SetToolbarButtonShown(string id, bool shown)
@@ -88,8 +141,9 @@ public sealed partial class MainWindow
     private void MoreFlyout_Opening(object sender, object e)
     {
         MoreFlyout.Items.Clear();
+        // Buttons the user hid, and those that don't fit right now.
         var hidden = HiddenToolbarButtons();
-        foreach (var item in _toolbarItems.Where(i => hidden.Contains(i.Id)))
+        foreach (var item in _toolbarItems.Where(i => hidden.Contains(i.Id) || _overflowed.Contains(i.Id)))
         {
             var entry = new MenuFlyoutItem
             {
