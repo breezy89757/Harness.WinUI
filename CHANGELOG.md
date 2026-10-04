@@ -1,5 +1,21 @@
 # Harness.WinUI - Changelog
 
+## [1.0.6] - 2026-10-04
+
+### Added
+- `fetch_url`: the agent reads a web page (main content as Markdown, via Mozilla Readability), or a PDF or
+  Office file at a URL. Public sites need no approval; addresses on this PC or the internal network do,
+  every time (checked on the address actually connected to, so redirects and DNS tricks can't get around it)
+- Web search (off by default; turn it on in the response quality menu): your OpenAI or Azure OpenAI provider's built-in search, with the
+  pages it used listed under the reply. On Azure OpenAI it uses Grounding with Bing, which is billed
+  separately and is outside Azure's data boundary
+- The working line under a reply says what's happening (searching the web, reading a page, running a
+  tool, waiting for the model) instead of always "Thinking"
+- Customize toolbar: tick several buttons and apply them at once
+
+### Changed
+- Built on .NET 10 (LTS); .NET 9 support ends in November 2026
+
 ## [1.0.5] - 2026-10-03
 
 ### Added

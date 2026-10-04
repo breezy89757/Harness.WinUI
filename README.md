@@ -40,6 +40,7 @@ Harness.WinUI reads and writes files, plugs into MCP tools, and previews what it
 - **You approve anything with side effects**: writing files or changing settings shows a confirmation card: Allow once, Always allow, or Deny.
 - **MCP**: stdio and Streamable HTTP servers. Manage them in the UI, or just ask the agent to add one in the chat.
 - **MCP Apps**: tools that come with their own UI (`io.modelcontextprotocol/ui`) render it right in the chat, e.g. a database query shown as an interactive table. Each app runs in an isolated, sandboxed frame with the CSP it declares; the model sees only the tool's text summary.
+- **Web**: the agent reads pages you link (`fetch_url`, with the page's main content as Markdown; PDF and Office files too). Addresses on your PC or internal network need your approval. Optional web search (off by default) uses your OpenAI or Azure OpenAI provider's built-in search, with sources cited.
 - **Image generation**: works with gpt-image models; images show up right in the conversation.
 - **Agent Skills**: drop a folder with a `SKILL.md` into `~/.claude/skills`, `~/.agents/skills` or Harness.WinUI's skills folder, and the agent loads it when a request matches.
 - **Paste and drop attachments**: paste a screenshot or copied files with Ctrl+V, or drag files onto the window. Images go to the model as images; text, Office and PDF files as text.
@@ -133,7 +134,7 @@ The sandbox defaults to the `sandbox` folder inside the data folder (see Data an
 
 ### Data and privacy
 
-Everything is stored locally. Nothing is sent anywhere except the model endpoint you configure (and any MCP servers you add). See the [privacy policy](PRIVACY.md).
+Everything is stored locally. Nothing is sent anywhere except the model endpoint you configure, any MCP servers you add, and the web pages the agent reads. See the [privacy policy](PRIVACY.md).
 
 Data folder: the portable build and builds you run yourself use `%LOCALAPPDATA%\Harness.WinUI\`; the Microsoft Store version uses the app's own folder (`%LOCALAPPDATA%\Packages\<Harness.WinUI package>\LocalState\`), which is removed when you uninstall.
 
@@ -182,6 +183,7 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 - **有副作用的動作都要你核准**：寫檔、改設定前會跳出確認卡片，可選「允許一次」、「永遠允許」或「拒絕」。
 - **MCP**：支援 stdio 和 Streamable HTTP 兩種 server。可以在介面上管理，也能直接在對話裡請 agent 幫你新增。
 - **MCP Apps**：自帶介面的工具（`io.modelcontextprotocol/ui`）會直接在對話裡顯示，例如把資料庫查詢結果呈現成可操作的表格。每個 App 在獨立的沙盒框架中執行，只套用它宣告的 CSP；模型只會看到工具的文字摘要。
+- **網路**：agent 可以讀你給的網頁（`fetch_url`，擷取正文轉成 Markdown，PDF、Office 檔也行）；本機或內網位址需要你核准。網路搜尋（選用，預設關閉）使用 OpenAI 或 Azure OpenAI 內建的搜尋，並附上來源。
 - **生圖**：接 gpt-image 系列模型，圖片直接顯示在對話裡。
 - **Agent Skills**：把含 `SKILL.md` 的資料夾放進 `~/.claude/skills`、`~/.agents/skills` 或 Harness.WinUI 的技能資料夾，請求符合時 agent 會自動載入。
 - **貼上、拖曳附件**：Ctrl+V 貼上截圖或複製的檔案，或直接把檔案拖進視窗。圖片以圖片送給模型，文字、Office、PDF 檔轉成文字。
@@ -273,7 +275,7 @@ dotnet build Harness.WinUI.sln -p:Platform=x64
 
 ### 資料與隱私
 
-所有資料都存在本機，除了你設定的模型端點（和你加入的 MCP server）之外，不會傳到任何地方。詳見[隱私權政策](PRIVACY.md)。
+所有資料都存在本機，除了你設定的模型端點、你加入的 MCP server，以及 agent 讀取的網頁之外，不會傳到任何地方。詳見[隱私權政策](PRIVACY.md)。
 
 資料夾位置：免安裝版和自行建置的版本在 `%LOCALAPPDATA%\Harness.WinUI\`；Microsoft Store 版在 App 自己的資料夾（`%LOCALAPPDATA%\Packages\<Harness.WinUI 套件>\LocalState\`），解除安裝時會一併移除。
 
