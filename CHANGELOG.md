@@ -1,5 +1,15 @@
 # Harness.WinUI - Changelog
 
+## [Unreleased]
+
+### Added
+- `run_command`: the agent can run PowerShell commands in the sandbox folder (PowerShell 7 when it's
+  installed), e.g. run a script it wrote, build or test code. Every command is shown in full on an
+  approval card and runs only after you approve it (there's no "Always allow" for commands). Input is
+  closed, so a program can't hang waiting for typing; output is UTF-8 and cut to its start and end when
+  long; commands stop after 2 minutes by default (up to 10), and the whole process tree is stopped on
+  timeout or when you press Stop
+
 ## [1.0.6] - 2026-10-04
 
 ### Added

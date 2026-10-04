@@ -9,8 +9,8 @@ using Harness.Core.Skills;
 namespace Harness.Core.Tools;
 
 /// <summary>
-/// Everything the agent can call: built-in tools (sandboxed file access, MCP management, image
-/// generation) plus tools from MCP servers.
+/// Everything the agent can call: built-in tools (sandboxed file access, commands, MCP management, web,
+/// image generation) plus tools from MCP servers.
 /// </summary>
 [SupportedOSPlatform("windows")]
 public sealed class AgentTools : IAsyncDisposable
@@ -138,7 +138,10 @@ public sealed class AgentTools : IAsyncDisposable
         var tools = new List<AITool>();
         tools.AddRange(SkillCatalog.CreateTools(() => Skills.Where(s => IsSkillEnabled(s.Name)).ToList()));
         if (_sandbox is not null)
+        {
             tools.AddRange(FileTools.Create(_sandbox, _approver, _permissions));
+            tools.Add(CommandTool.Create(_sandbox, _approver, _permissions));
+        }
         tools.AddRange(McpServerManager.CreateAgentTools(Mcp, _approver, _permissions));
         tools.Add(WebFetchTool.Create(_approver));
         if (_image is not null)

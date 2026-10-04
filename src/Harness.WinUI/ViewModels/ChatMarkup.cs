@@ -118,11 +118,15 @@ internal static class ChatMarkup
     /// <summary>Full view of what's about to run, so the user can judge it (secrets masked).</summary>
     public static string ApprovalStepHtml(ToolApprovalRequest request)
     {
-        var args = request.Arguments.Count > 0 ? JsonSerializer.Serialize(Redact(request.Arguments), s_prettyJson) : "{}";
+        // A command reads best as itself, not as an escaped JSON string.
+        var args = request.ToolName == CommandTool.Name && request.Arguments.TryGetValue("command", out var command) && command?.ToString() is { } text
+            ? text + (request.Arguments.TryGetValue("timeout_seconds", out var timeout) && timeout is not null ? $"\n\n({Strings.CommandTimeout(timeout.ToString())})" : string.Empty)
+            : request.Arguments.Count > 0 ? JsonSerializer.Serialize(Redact(request.Arguments), s_prettyJson) : "{}";
+        var where = request.ToolName == CommandTool.Name ? $"<div class='tool-where'>{WebUtility.HtmlEncode(Strings.CommandWhere)}</div>" : string.Empty;
         var alwaysButton = request.CanAlwaysAllow ? $"<button data-decision='always'>{WebUtility.HtmlEncode(Strings.AlwaysAllow)}</button>" : string.Empty;
         return $"""
             <div><code>{WebUtility.HtmlEncode(request.ToolName)}</code><span class='tool-server'>({WebUtility.HtmlEncode(request.ServerName)})</span>
-            <pre class='tool-args'>{WebUtility.HtmlEncode(Truncate(args, 4000))}</pre>
+            {where}<pre class='tool-args'>{WebUtility.HtmlEncode(Truncate(args, 4000))}</pre>
             <div class='approval' data-call='{WebUtility.HtmlEncode(request.CallId)}'>
               <span>{WebUtility.HtmlEncode(Strings.AllowThisAction)}</span>
               <button class='primary' data-decision='allow'>{WebUtility.HtmlEncode(Strings.AllowOnce)}</button>

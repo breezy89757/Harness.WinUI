@@ -74,6 +74,9 @@ public static class Strings
     public static string AllowThisAction => T("Allow this action?", "允許執行這個動作嗎？");
     public static string AllowOnce => T("Allow once", "允許一次");
     public static string AlwaysAllow => T("Always allow", "永遠允許");
+    public static string CommandWhere => T("PowerShell, in the sandbox folder, with your permissions", "PowerShell，在沙盒資料夾中、以你的權限執行");
+    public static string CommandTimeout(string? seconds) => T($"stops after {seconds} s", $"{seconds} 秒後停止");
+    public static string RunningCommand => T("Running a command…", "正在執行指令…");
     public static string Deny => T("Deny", "拒絕");
     public static string Stop => T("Stop", "停止");
     public static string StopTooltip => T("Stop generating (Esc)", "停止回應（Esc）");

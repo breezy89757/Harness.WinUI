@@ -37,6 +37,7 @@ Harness.WinUI reads and writes files, plugs into MCP tools, and previews what it
 - **See what the agent is doing**: reasoning, the arguments and result of every tool call, token usage, model name and response time are all shown.
 - **Live artifact panel**: web pages, SVG, Mermaid diagrams and Markdown documents preview in a side panel while they are being written, with version history, Save As, and Open in browser.
 - **Built-in file tools, confined to a sandbox**: list, read, search, write and exact replace. Reads text from `.docx`, `.xlsx`, `.pptx` and `.pdf`, and **creates real Word and Excel files**.
+- **Run commands**: the agent can run PowerShell commands in the sandbox folder (`run_command`), e.g. run the Python script it just wrote, build or test code. Each command is shown in full and runs only after you approve it; programs can't wait for typed input, and the whole process tree is stopped on timeout or when you press Stop.
 - **You approve anything with side effects**: writing files or changing settings shows a confirmation card: Allow once, Always allow, or Deny.
 - **MCP**: stdio and Streamable HTTP servers. Manage them in the UI, or just ask the agent to add one in the chat.
 - **MCP Apps**: tools that come with their own UI (`io.modelcontextprotocol/ui`) render it right in the chat, e.g. a database query shown as an interactive table. Each app runs in an isolated, sandboxed frame with the CSP it declares; the model sees only the tool's text summary.
@@ -127,6 +128,7 @@ For development you can use a config file instead: put the endpoint and model in
 #### Try it
 
 - "Turn notes.txt in the sandbox into a weekly report in Word"
+- "Write a small Python calculator and run 3 + 4 with uv"
 - "Make a Pomodoro timer web page" / "Draw a Mermaid diagram of this flow"
 - "Add an MCP server named mslearn at https://learn.microsoft.com/api/mcp"
 
@@ -180,6 +182,7 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 - **看得到 agent 在做什麼**：思考過程、每一次工具呼叫的參數和結果、token 用量、模型名稱、回應時間都會顯示出來。
 - **即時成品面板**：網頁、SVG、Mermaid 圖表、Markdown 文件會在側邊面板邊寫邊預覽，而且有版本紀錄，可以另存或用瀏覽器開啟。
 - **內建檔案工具，只能在沙盒內動作**：列出、讀取、搜尋、寫入、精確取代。可以讀 `.docx`、`.xlsx`、`.pptx`、`.pdf` 的文字，也能**直接產生真正的 Word / Excel 檔**。
+- **執行指令**：agent 可以在沙盒資料夾中執行 PowerShell 指令（`run_command`），例如執行它剛寫好的 Python 程式、建置或測試程式碼。每個指令都會完整顯示，經你核准後才執行；程式無法等待鍵盤輸入，逾時或按下停止時，整個行程樹都會被結束。
 - **有副作用的動作都要你核准**：寫檔、改設定前會跳出確認卡片，可選「允許一次」、「永遠允許」或「拒絕」。
 - **MCP**：支援 stdio 和 Streamable HTTP 兩種 server。可以在介面上管理，也能直接在對話裡請 agent 幫你新增。
 - **MCP Apps**：自帶介面的工具（`io.modelcontextprotocol/ui`）會直接在對話裡顯示，例如把資料庫查詢結果呈現成可操作的表格。每個 App 在獨立的沙盒框架中執行，只套用它宣告的 CSP；模型只會看到工具的文字摘要。
@@ -268,6 +271,7 @@ dotnet build Harness.WinUI.sln -p:Platform=x64
 #### 試試看
 
 - 「把沙盒裡的 notes.txt 整理成一份 Word 週報」
+- 「寫一個簡單的 Python 計算機，用 uv 執行 3 + 4」
 - 「做一個番茄鐘網頁」「畫一張這個流程的 Mermaid 圖」
 - 「幫我加一個 MCP server：名稱 mslearn，網址 https://learn.microsoft.com/api/mcp」
 

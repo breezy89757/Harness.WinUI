@@ -553,6 +553,7 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
                         {
                             ImageGenerationTool.Name => ChatMarkup.ImageStatus(call, ImageQuality),
                             ChatSession.WebSearchToolName => Strings.SearchingWeb,
+                            CommandTool.Name => Strings.RunningCommand,
                             WebFetchTool.Name when call.Arguments is { } arguments && arguments.TryGetValue("url", out var url) && url is not null
                                 && Uri.TryCreate(url.ToString(), UriKind.Absolute, out var page) => Strings.ReadingPage(page.Host),
                             _ => Strings.RunningTool(call.Name),

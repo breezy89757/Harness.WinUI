@@ -153,6 +153,7 @@ public static class ChatShell
         .step.waiting { color: var(--text-color); }
         .step > div { min-width: 0; flex: 1; }
         .tool-server { opacity: 0.7; margin-left: 4px; }
+        .tool-where { margin-top: 6px; font-size: 0.85em; color: var(--muted); }
         .tool-args, .tool-result { margin: 6px 0 0; padding: 8px; font-size: 0.9em; max-height: 220px; overflow: auto;
                                    white-space: pre-wrap; word-break: break-word; }
         .tool-open { margin-left: 6px; white-space: nowrap; }

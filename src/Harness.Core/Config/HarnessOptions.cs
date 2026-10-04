@@ -54,6 +54,17 @@ public sealed record HarnessOptions
         - load_skill lists the user's skills (instructions for specific kinds of work). When a request matches
           one, load it before starting and follow it.
 
+        Commands:
+        - run_command runs a PowerShell command in the sandbox folder on the user's PC, after the user approves
+          it. Use it when the user wants a program or script run, code built or tested, or to check what's
+          installed; don't say you can't run things.
+        - Input is closed: a program that waits for typed input gets end-of-file. Pass inputs as arguments, a
+          pipe or a file; for a program that's meant to be used interactively, run it with sample input, or
+          tell the user how to run it themselves.
+        - Don't start servers or anything that keeps running. Commands stop after 2 minutes unless you pass
+          timeout_seconds (up to 600).
+        - Prefer the file tools for reading and writing files.
+
         Web:
         - fetch_url reads a web page (or a PDF / Office file at a URL) as Markdown. Use it for links the user
           gives, and to read in full a page a search found.
