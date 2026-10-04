@@ -152,6 +152,19 @@
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                 Style="{StaticResource CaptionTextBlockStyle}" />
 
+            <!-- What runs without asking -->
+            <TextBlock Margin="0,8,0,0" Text="{x:Bind local:Strings.AlwaysAllowedHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
+            <TextBlock
+                Text="{x:Bind local:Strings.AlwaysAllowedHelp}"
+                TextWrapping="Wrap"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Style="{StaticResource CaptionTextBlockStyle}" />
+            <StackPanel
+                x:Name="AlwaysAllowedPanel"
+                Spacing="4"
+                AutomationProperties.AutomationId="SettingsAlwaysAllowedList"
+                AutomationProperties.Name="{x:Bind local:Strings.AlwaysAllowedHeader}" />
+
             <TextBlock
                 x:Name="ErrorTextBlock"
                 Foreground="{ThemeResource SystemFillColorCriticalBrush}"

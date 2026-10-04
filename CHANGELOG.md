@@ -1,14 +1,18 @@
 # Harness.WinUI - Changelog
 
-## [Unreleased]
+## [1.0.7] - 2026-10-04
 
 ### Added
 - `run_command`: the agent can run PowerShell commands in the sandbox folder (PowerShell 7 when it's
   installed), e.g. run a script it wrote, build or test code. Every command is shown in full on an
-  approval card and runs only after you approve it (there's no "Always allow" for commands). Input is
-  closed, so a program can't hang waiting for typing; output is UTF-8 and cut to its start and end when
-  long; commands stop after 2 minutes by default (up to 10), and the whole process tree is stopped on
-  timeout or when you press Stop
+  approval card and runs only after you approve it. Input is closed, so a program can't hang waiting
+  for typing; output is UTF-8 and cut to its start and end when long; commands stop after 2 minutes by
+  default (up to 10), and the whole process tree is stopped on timeout or when you press Stop
+- "Always allow" for commands covers commands that start the same way: the program and its subcommand,
+  e.g. `uv run`, `git status`, `python`. Commands that chain, pipe, redirect or use `$`, and ones that
+  start a shell, delete files or start detached programs, are asked every time
+- Settings → Always allowed: see every action that runs without asking (file tools, MCP tools, command
+  prefixes) and remove any of them; removals apply when you save
 
 ## [1.0.6] - 2026-10-04
 

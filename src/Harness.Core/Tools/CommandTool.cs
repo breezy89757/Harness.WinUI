@@ -1,22 +1,26 @@
 // Harness.WinUI — Licensed under the MIT License.
 
+using System.Buffers;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.AI;
 using Harness.Core.Files;
 
 namespace Harness.Core.Tools;
 
 /// <summary>
-/// <c>run_command</c>: runs a PowerShell command in the sandbox folder, after the user approves that exact
-/// command (every time — there's no "always allow" for commands). It runs as the user, like a terminal
-/// they'd open themselves: the approval is the control, not isolation. Input is closed (nothing can wait
-/// for typing), and the whole process tree is stopped on timeout or when the reply is stopped.
+/// <c>run_command</c>: runs a PowerShell command in the sandbox folder, after the user approves it. It runs
+/// as the user, like a terminal they'd open themselves: the approval is the control, not isolation.
+/// "Always allow" covers commands that start the same way (e.g. "uv run"), and only simple ones: a command
+/// that chains, pipes, redirects or computes anything is asked every time (see <see cref="AlwaysAllowPrefix"/>).
+/// Input is closed (nothing can wait for typing), and the whole process tree is stopped on timeout or when
+/// the reply is stopped.
 /// </summary>
 [SupportedOSPlatform("windows")]
-public static class CommandTool
+public static partial class CommandTool
 {
     public const string Name = "run_command";
     public const string ServerName = "shell";
@@ -46,7 +50,48 @@ public static class CommandTool
                     RunAsync(sandbox.Root, command, TimeSpan.FromSeconds(Math.Clamp(timeout_seconds ?? DefaultTimeoutSeconds, 1, MaxTimeoutSeconds)), cancellationToken),
                 Name,
                 Description),
-            ServerName, Name, readOnly: false, approver, permissions, canAlwaysAllow: false);
+            ServerName, Name, readOnly: false, approver, permissions,
+            scope: arguments => arguments.TryGetValue("command", out var command) ? AlwaysAllowPrefix(command?.ToString()) : null);
+
+    // Anything that could hide another command, or one that runs a shell, deletes, or starts other programs
+    // detached, can't be always-allowed: "always allow 'git status'" mustn't also allow "git status; rm …".
+    private static readonly SearchValues<char> s_compound = SearchValues.Create(";|&<>`$(){}\r\n");
+    private static readonly HashSet<string> s_neverAlways = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "powershell", "pwsh", "cmd", "bash", "sh", "wsl", "iex", "invoke-expression", "icm", "invoke-command",
+        "start", "saps", "start-process", "start-job", "rm", "ri", "del", "erase", "rd", "rmdir", "remove-item",
+        "format", "format-volume", "clear-disk", "shutdown", "stop-computer", "restart-computer", "reg", "runas",
+        "sudo", "set-executionpolicy", "takeown", "icacls", "schtasks", "sc",
+    };
+
+    /// <summary>
+    /// What "Always allow" would cover for this command: its program and, if it has one, its subcommand
+    /// ("uv run", "git status", "python"); null when the command must be asked every time.
+    /// </summary>
+    public static string? AlwaysAllowPrefix(string? command)
+    {
+        var trimmed = command?.Trim();
+        if (string.IsNullOrEmpty(trimmed) || trimmed.AsSpan().ContainsAny(s_compound))
+            return null;
+
+        var words = trimmed.Split(' ', '\t').Where(w => w.Length > 0).ToArray();
+        var program = words[0].ToLowerInvariant();
+        if (!ProgramWord().IsMatch(program))
+            return null;
+        if (program.EndsWith(".exe", StringComparison.Ordinal))
+            program = program[..^4];
+        if (s_neverAlways.Contains(Path.GetFileName(program)))
+            return null;
+
+        return words.Length > 1 && SubcommandWord().IsMatch(words[1]) ? $"{program} {words[1].ToLowerInvariant()}" : program;
+    }
+
+    [GeneratedRegex(@"^[a-z0-9._\\/:-]+$")]
+    private static partial Regex ProgramWord();
+
+    // "run", "status", "build" — not options, paths or file names.
+    [GeneratedRegex(@"^[A-Za-z][A-Za-z0-9-]*$")]
+    private static partial Regex SubcommandWord();
 
     private static async Task<string> RunAsync(string folder, string command, TimeSpan timeout, CancellationToken cancellationToken)
     {

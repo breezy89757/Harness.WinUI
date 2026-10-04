@@ -1,15 +1,17 @@
 // Harness.WinUI — Licensed under the MIT License.
 
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Storage.Pickers;
 using Harness.Core.Config;
+using Harness.Core.Tools;
 
 namespace Harness.WinUI;
 
 /// <summary>
-/// App settings: UI language, model provider (endpoint, model, API key, API type, image model) and the
-/// sandbox folder the built-in file tools may access. The API key is DPAPI-encrypted via
+/// App settings: UI language, model provider (endpoint, model, API key, API type, image model), the
+/// sandbox folder the built-in file tools may access, and what's always allowed to run without asking. The API key is DPAPI-encrypted via
 /// <see cref="LocalSettingsStore.Save"/>; this dialog never writes it in plaintext, logs it, or echoes
 /// it back once saved.
 ///
@@ -26,6 +28,8 @@ public sealed partial class SettingsDialog : ContentDialog
     private readonly nint _windowHandle;
     private readonly string _initialLanguage;
     private readonly string _initialSandbox;
+    private readonly ToolPermissionStore _permissions;
+    private readonly List<(string ServerName, string ToolName)> _removedPermissions = [];
 
     public ResolvedProvider? Saved { get; private set; }
 
@@ -36,9 +40,12 @@ public sealed partial class SettingsDialog : ContentDialog
 
     public SettingsDialog(
         string? initialEndpoint, string? initialModel, ProviderApi initialApi, string? initialImageModel,
-        bool hasExistingApiKey, nint windowHandle)
+        bool hasExistingApiKey, nint windowHandle, ToolPermissionStore permissions)
     {
         InitializeComponent();
+
+        _permissions = permissions;
+        ShowAlwaysAllowed();
 
         _hasExistingApiKey = hasExistingApiKey;
         _windowHandle = windowHandle;
@@ -64,6 +71,44 @@ public sealed partial class SettingsDialog : ContentDialog
 
         UpdateSaveButtonState();
     }
+
+    /// <summary>One row per always-allowed action, each with a Remove button (removals apply on Save).</summary>
+    private void ShowAlwaysAllowed()
+    {
+        AlwaysAllowedPanel.Children.Clear();
+        var entries = _permissions.List().Except(_removedPermissions).ToList();
+        if (entries.Count == 0)
+        {
+            AlwaysAllowedPanel.Children.Add(new TextBlock { Text = Strings.AlwaysAllowedNone, Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"] });
+            return;
+        }
+
+        foreach (var entry in entries)
+        {
+            var label = Describe(entry.ServerName, entry.ToolName);
+            var row = new Grid { ColumnSpacing = 8 };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.Children.Add(new TextBlock { Text = label, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center });
+            var remove = new Button { Content = Strings.Remove };
+            Grid.SetColumn(remove, 1);
+            AutomationProperties.SetName(remove, $"{Strings.Remove}: {label}");
+            AutomationProperties.SetAutomationId(remove, $"SettingsAlwaysAllowedRemove_{entry.ServerName}/{entry.ToolName}");
+            remove.Click += (_, _) =>
+            {
+                _removedPermissions.Add(entry);
+                ShowAlwaysAllowed();
+            };
+            row.Children.Add(remove);
+            AlwaysAllowedPanel.Children.Add(row);
+        }
+    }
+
+    /// <summary>"Commands starting with “uv run”", or "write_file (files)".</summary>
+    private static string Describe(string serverName, string toolName) =>
+        serverName == CommandTool.ServerName && toolName.StartsWith(CommandTool.Name + " ", StringComparison.Ordinal)
+            ? Strings.CommandsStartingWith(toolName[(CommandTool.Name.Length + 1)..])
+            : $"{toolName} ({serverName})";
 
     private static void SelectByTag(ComboBox comboBox, string tag) =>
         comboBox.SelectedItem = comboBox.Items.OfType<ComboBoxItem>()
@@ -165,6 +210,8 @@ public sealed partial class SettingsDialog : ContentDialog
             }).Save();
             if (sandboxChanged)
                 NewSandboxFolder = sandbox;
+            foreach (var (serverName, toolName) in _removedPermissions)
+                _permissions.Remove(serverName, toolName);
         }
         catch (Exception ex)
         {

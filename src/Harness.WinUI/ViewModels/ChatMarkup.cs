@@ -123,7 +123,8 @@ internal static class ChatMarkup
             ? text + (request.Arguments.TryGetValue("timeout_seconds", out var timeout) && timeout is not null ? $"\n\n({Strings.CommandTimeout(timeout.ToString())})" : string.Empty)
             : request.Arguments.Count > 0 ? JsonSerializer.Serialize(Redact(request.Arguments), s_prettyJson) : "{}";
         var where = request.ToolName == CommandTool.Name ? $"<div class='tool-where'>{WebUtility.HtmlEncode(Strings.CommandWhere)}</div>" : string.Empty;
-        var alwaysButton = request.CanAlwaysAllow ? $"<button data-decision='always'>{WebUtility.HtmlEncode(Strings.AlwaysAllow)}</button>" : string.Empty;
+        var alwaysLabel = request.AlwaysAllowScope is { } scope ? Strings.AlwaysAllowStartingWith(scope) : Strings.AlwaysAllow;
+        var alwaysButton = request.CanAlwaysAllow ? $"<button data-decision='always'>{WebUtility.HtmlEncode(alwaysLabel)}</button>" : string.Empty;
         return $"""
             <div><code>{WebUtility.HtmlEncode(request.ToolName)}</code><span class='tool-server'>({WebUtility.HtmlEncode(request.ServerName)})</span>
             {where}<pre class='tool-args'>{WebUtility.HtmlEncode(Truncate(args, 4000))}</pre>

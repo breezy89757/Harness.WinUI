@@ -17,8 +17,10 @@ public enum ToolApprovalDecision
 
 /// <param name="CallId">Matches <see cref="Agent.ToolCallStarted.CallId"/> so the UI can attach the prompt to that step.</param>
 /// <param name="CanAlwaysAllow">False for tools that change Harness.WinUI's own configuration — those are asked every time.</param>
+/// <param name="AlwaysAllowScope">What "Always allow" would cover when it's narrower than the whole tool (e.g. commands starting with "uv run").</param>
 public sealed record ToolApprovalRequest(
-    string CallId, string ServerName, string ToolName, IReadOnlyDictionary<string, object?> Arguments, bool CanAlwaysAllow);
+    string CallId, string ServerName, string ToolName, IReadOnlyDictionary<string, object?> Arguments, bool CanAlwaysAllow,
+    string? AlwaysAllowScope = null);
 
 /// <summary>Asks the user whether a tool with side effects may run. Implemented by the UI.</summary>
 public interface IToolApprover
@@ -59,12 +61,32 @@ public sealed class ToolPermissionStore
     {
         lock (_lock)
         {
-            if (!_alwaysAllowed.Add(Key(serverName, toolName)))
-                return;
-
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            File.WriteAllText(_path, JsonSerializer.Serialize(_alwaysAllowed.Order().ToArray(), new JsonSerializerOptions { WriteIndented = true }));
+            if (_alwaysAllowed.Add(Key(serverName, toolName)))
+                Save();
         }
+    }
+
+    /// <summary>Everything that's always allowed, as (server, tool) — the tool may carry a scope, e.g. "run_command uv run".</summary>
+    public IReadOnlyList<(string ServerName, string ToolName)> List()
+    {
+        lock (_lock)
+            return _alwaysAllowed.Order().Select(k => k.Split('/', 2)).Where(p => p.Length == 2).Select(p => (p[0], p[1])).ToList();
+    }
+
+    /// <summary>Asks again from now on.</summary>
+    public void Remove(string serverName, string toolName)
+    {
+        lock (_lock)
+        {
+            if (_alwaysAllowed.Remove(Key(serverName, toolName)))
+                Save();
+        }
+    }
+
+    private void Save()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
+        File.WriteAllText(_path, JsonSerializer.Serialize(_alwaysAllowed.Order().ToArray(), new JsonSerializerOptions { WriteIndented = true }));
     }
 
     private static string Key(string serverName, string toolName) => $"{serverName}/{toolName}";
@@ -83,12 +105,19 @@ public sealed class ApprovalGatedFunction : DelegatingAIFunction
     private readonly bool _canAlwaysAllow;
     private readonly IToolApprover _approver;
     private readonly ToolPermissionStore _permissions;
+    private readonly Func<AIFunctionArguments, string?>? _scope;
 
+    /// <param name="scope">
+    /// When set, "Always allow" covers only calls with the same scope (e.g. commands starting with "uv run"),
+    /// remembered as "tool scope"; a call whose scope is null is asked every time.
+    /// </param>
     public ApprovalGatedFunction(
         AIFunction inner, string serverName, string originalName, bool readOnly,
-        IToolApprover approver, ToolPermissionStore permissions, bool canAlwaysAllow = true)
+        IToolApprover approver, ToolPermissionStore permissions, bool canAlwaysAllow = true,
+        Func<AIFunctionArguments, string?>? scope = null)
         : base(inner)
     {
+        _scope = scope;
         _serverName = serverName;
         _originalName = originalName;
         _readOnly = readOnly;
@@ -102,10 +131,13 @@ public sealed class ApprovalGatedFunction : DelegatingAIFunction
         // The current span is this call's execute_tool span (when recording): say where the tool comes from.
         Activity.Current?.SetTag(Telemetry.TagToolSource, _serverName);
 
-        if (!_readOnly && !(_canAlwaysAllow && _permissions.IsAlwaysAllowed(_serverName, _originalName)))
+        var scope = _scope?.Invoke(arguments);
+        var permission = _scope is null ? _originalName : scope is null ? null : $"{_originalName} {scope}";
+        var canAlwaysAllow = _canAlwaysAllow && permission is not null;
+        if (!_readOnly && !(canAlwaysAllow && _permissions.IsAlwaysAllowed(_serverName, permission!)))
         {
             var callId = FunctionInvokingChatClient.CurrentContext?.CallContent.CallId ?? Guid.NewGuid().ToString("N");
-            var request = new ToolApprovalRequest(callId, _serverName, Name, new Dictionary<string, object?>(arguments), _canAlwaysAllow);
+            var request = new ToolApprovalRequest(callId, _serverName, Name, new Dictionary<string, object?>(arguments), canAlwaysAllow, scope);
 
             ToolApprovalDecision decision;
             using (var waiting = Telemetry.Source.StartActivity(Telemetry.OpApproval))
@@ -117,8 +149,8 @@ public sealed class ApprovalGatedFunction : DelegatingAIFunction
             if (decision == ToolApprovalDecision.Deny)
                 return "The user declined to run this tool. Do not retry it; ask the user how they would like to proceed.";
 
-            if (decision == ToolApprovalDecision.AlwaysAllow && _canAlwaysAllow)
-                _permissions.AllowAlways(_serverName, _originalName);
+            if (decision == ToolApprovalDecision.AlwaysAllow && canAlwaysAllow)
+                _permissions.AllowAlways(_serverName, permission!);
         }
 
         return await base.InvokeCoreAsync(arguments, cancellationToken).ConfigureAwait(false);

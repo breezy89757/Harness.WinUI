@@ -38,6 +38,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
     private readonly HarnessOptions _options;
     private readonly bool _needsProviderSetup;
     private readonly AgentTools _tools;
+    private readonly ToolPermissionStore _permissions = new();
     private bool _shellLoaded;
     private bool _isComposing;
 
@@ -54,7 +55,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         ArtifactPanel.WindowHandle = WindowHandle;
 
         // The ViewModel is the approver for every gated tool call.
-        _tools.Configure(ViewModel, new ToolPermissionStore());
+        _tools.Configure(ViewModel, _permissions);
         _tools.Mcp.Changed += (_, _) => DispatcherQueue.TryEnqueue(RefreshToolStatus);
         _tools.Changed += (_, _) => DispatcherQueue.TryEnqueue(RefreshToolStatus);
         RefreshToolStatus();
@@ -291,7 +292,8 @@ public sealed partial class MainWindow : Window, IChatMessageSink
             saved?.Api ?? ProviderApiExtensions.Parse(_options.Provider.Api),
             saved is not null ? saved.ImageModel : _options.Provider.ImageModel,
             hasExistingApiKey: saved is not null,
-            WindowHandle)
+            WindowHandle,
+            _permissions)
         {
             XamlRoot = Content.XamlRoot,
         };

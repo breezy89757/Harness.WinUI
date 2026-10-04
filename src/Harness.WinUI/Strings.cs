@@ -74,6 +74,13 @@ public static class Strings
     public static string AllowThisAction => T("Allow this action?", "允許執行這個動作嗎？");
     public static string AllowOnce => T("Allow once", "允許一次");
     public static string AlwaysAllow => T("Always allow", "永遠允許");
+    public static string AlwaysAllowStartingWith(string prefix) => T($"Always allow “{prefix} …”", $"永遠允許「{prefix} …」");
+    public static string AlwaysAllowedHeader => T("Always allowed", "永遠允許的動作");
+    public static string AlwaysAllowedHelp => T(
+        "Actions you chose “Always allow” for run without asking. Remove one to be asked again (applies when you save).",
+        "你選擇「永遠允許」的動作，執行前不會再詢問。移除後會重新詢問（按「儲存」後生效）。");
+    public static string AlwaysAllowedNone => T("Nothing is always allowed.", "目前沒有永遠允許的動作。");
+    public static string CommandsStartingWith(string prefix) => T($"Commands starting with “{prefix}”", $"開頭為「{prefix}」的指令");
     public static string CommandWhere => T("PowerShell, in the sandbox folder, with your permissions", "PowerShell，在沙盒資料夾中、以你的權限執行");
     public static string CommandTimeout(string? seconds) => T($"stops after {seconds} s", $"{seconds} 秒後停止");
     public static string RunningCommand => T("Running a command…", "正在執行指令…");
