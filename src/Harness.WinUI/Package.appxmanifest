@@ -29,7 +29,11 @@
   </Dependencies>
 
   <Resources>
-    <Resource Language="x-generate" />
+    <!-- The languages Harness.WinUI's UI and Store listings are in. Not x-generate: the self-contained
+         Windows App SDK brings WinUI's strings in 86 languages into resources.pri, which would make the
+         package (and its Store page) claim all of them. WinUI's own text (menus, tooltips) follows these. -->
+    <Resource Language="en-US" />
+    <Resource Language="zh-TW" />
   </Resources>
 
   <Applications>

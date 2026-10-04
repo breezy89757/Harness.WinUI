@@ -1,5 +1,13 @@
 # Harness.WinUI - Changelog
 
+## [1.0.8] - 2026-10-04
+
+### Fixed
+- The Store package now declares English and Traditional Chinese, the languages Harness.WinUI's interface
+  is in, instead of every language the bundled WinUI components have text for (the Store page listed 86).
+  WinUI's own text, such as context menus and tooltips, is in Chinese on a Traditional Chinese system and
+  in English otherwise
+
 ## [1.0.7] - 2026-10-04
 
 ### Added
