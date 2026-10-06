@@ -8,4 +8,7 @@ namespace Harness.WinUI.ViewModels;
 public sealed record ConversationItem(string Id, string Title, string When, bool IsCurrent)
 {
     public string DeleteLabel => Strings.DeleteConversation;
+    public string MoreLabel => Strings.ConversationMore;
+    public string RenameLabel => Strings.RenameConversation;
+    public string ExportLabel => Strings.ExportConversation;
 }

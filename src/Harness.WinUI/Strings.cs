@@ -40,6 +40,19 @@ public static class Strings
     public static string History => T("History", "對話紀錄");
     public static string NoHistory => T("No saved conversations yet.", "還沒有對話紀錄。");
     public static string DeleteConversation => T("Delete conversation", "刪除對話");
+    public static string HistorySearchPlaceholder => T("Search conversations", "搜尋對話");
+    public static string NoHistoryMatches => T("No conversations match.", "沒有符合的對話。");
+    public static string ConversationMore => T("More", "更多");
+    public static string RenameConversation => T("Rename", "重新命名");
+    public static string RenameConversationTitle => T("Rename conversation", "重新命名對話");
+    public static string ExportConversation => T("Export as Markdown…", "匯出成 Markdown…");
+    public static string ExportYou => T("You", "你");
+    public static string ExportAssistant => T("Assistant", "助理");
+    public static string ExportToolsUsed => T("Tools used", "使用的工具");
+    public static string FileSaved(string name) => T($"Saved {name}", $"已儲存 {name}");
+    public static string SaveFileFailed(string message) => T($"Couldn't save the file: {message}", $"無法儲存檔案：{message}");
+    public static string CopyTooltip => T("Copy", "複製");
+    public static string Copied => T("Copied", "已複製");
     public static string ResumedContextLost => T(
         "The earlier context of this conversation couldn't be restored (the provider may have expired it), so the next message starts fresh. The transcript above is still saved.",
         "無法接續這段對話先前的內容（模型服務端的紀錄可能已過期），下一則訊息會從新的上下文開始。上方的對話紀錄仍然保留。");

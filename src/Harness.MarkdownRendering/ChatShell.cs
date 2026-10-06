@@ -14,7 +14,8 @@ namespace Harness.MarkdownRendering;
 ///
 /// Each turn is <c>div.turn.{role}#msg-{id}</c> containing a bubble with <c>.steps</c> (tool calls /
 /// reasoning), <c>.content</c> (rendered Markdown) and <c>.status</c> (animated "working" line with a
-/// live elapsed-time counter), followed by a muted <c>.meta</c> line (model, tokens, timing).
+/// live elapsed-time counter), followed by a <c>.foot</c> row: a muted <c>.meta</c> line (model, tokens,
+/// timing) and, on replies, a copy button.
 ///
 /// Streaming render decisions:
 ///  - Text deltas are buffered by the caller and flushed to <c>updateMessageContent</c> on a
@@ -192,6 +193,20 @@ public static class ChatShell
         pre { background-color: var(--code-bg); padding: 12px; border-radius: 8px; overflow-x: auto; border: 1px solid var(--border-color); }
         code { font-family: 'Cascadia Code', 'Cascadia Mono', Consolas, monospace; font-size: 0.9em; }
         pre code { background: none; padding: 0; }
+
+        /* Copy buttons: one on each finished code block and one in a reply's footer, shown on hover or focus. */
+        .copy-code, .copy-msg { display: inline-grid; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 6px;
+                                color: var(--muted); background: transparent; cursor: pointer; opacity: 0; user-select: none; }
+        .copy-code:hover, .copy-msg:hover { color: var(--text-color); background: var(--code-bg); border-color: var(--border-color); }
+        .copy-code:focus-visible, .copy-msg:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; opacity: 1; }
+        .copy-code.copied, .copy-msg.copied { color: var(--ok); opacity: 1; }
+        .code-block { position: relative; }
+        .copy-code { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; background: var(--code-bg); }
+        .code-block:hover .copy-code { opacity: 1; }
+        .foot { display: flex; align-items: center; gap: 2px; }
+        .copy-msg { width: 20px; height: 18px; margin-top: 4px; }
+        .turn:hover .copy-msg { opacity: 1; }
+        .turn:has(.content:empty) .copy-msg { display: none; }
         </style>
         """;
 
@@ -289,7 +304,8 @@ public static class ChatShell
                         "<div class='steps'></div><div class='content'></div>" +
                         "<div class='status' hidden><span class='dots'><i></i><i></i><i></i></span>" +
                         "<span class='status-text'></span><span class='elapsed'></span></div>" +
-                    "</div><div class='meta'></div>";
+                    "</div><div class='foot'><div class='meta'></div></div>";
+                if (role === 'assistant') t.querySelector('.foot').appendChild(copyButton('copy-msg'));
                 t.querySelector('.content').innerHTML = html;
                 document.getElementById('messages').appendChild(t);
                 renderContent(t.querySelector('.content'), true);
@@ -378,10 +394,43 @@ public static class ChatShell
             });
         }
 
+        // Copy buttons. The page only collects the text; the host puts it on the clipboard.
+        let copyLabel = 'Copy';
+        const copyIcon = "<svg viewBox='0 0 16 16' width='14' height='14' aria-hidden='true'>" +
+            "<rect x='5.5' y='5.5' width='8.5' height='8.5' rx='1.5' fill='none' stroke='currentColor' stroke-width='1.4'/>" +
+            "<path d='M3.5 10.5h-1A1.5 1.5 0 0 1 1 9V3.5A1.5 1.5 0 0 1 2.5 2H8a1.5 1.5 0 0 1 1.5 1.5v1' fill='none' stroke='currentColor' stroke-width='1.4'/></svg>";
+
+        function copyButton(className) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = className;
+            b.title = copyLabel;
+            b.setAttribute('aria-label', copyLabel);
+            b.innerHTML = copyIcon;
+            return b;
+        }
+
+        function setCopyLabel(text) {
+            copyLabel = text;
+            document.querySelectorAll('.copy-code, .copy-msg').forEach(b => { b.title = text; b.setAttribute('aria-label', text); });
+        }
+
+        // A finished code block gets a copy button (blocks still being written would flicker).
+        function addCodeCopyButtons(el) {
+            el.querySelectorAll('pre').forEach(pre => {
+                if (pre.parentElement.classList.contains('code-block') || pre.closest('.mermaid, [data-mermaid-hash]')) return;
+                const wrap = document.createElement('div');
+                wrap.className = 'code-block';
+                pre.replaceWith(wrap);
+                wrap.append(pre, copyButton('copy-code'));
+            });
+        }
+
         async function renderContent(el, isFinal) {
             el.querySelectorAll('pre code:not(.hljs)').forEach(block => {
                 if (typeof hljs !== 'undefined') hljs.highlightElement(block);
             });
+            if (isFinal) addCodeCopyButtons(el);
             if (!isFinal || typeof mermaid === 'undefined') return;
             const unrendered = el.querySelectorAll('[data-mermaid-hash]:not([data-mermaid-rendered])');
             if (unrendered.length > 0) {
@@ -461,6 +510,16 @@ public static class ChatShell
         });
 
         document.addEventListener('click', e => {
+            const copy = e.target.closest('button.copy-code, button.copy-msg');
+            if (copy) {
+                const text = copy.classList.contains('copy-code')
+                    ? copy.parentElement.querySelector('pre').textContent
+                    : (copy.closest('.turn').querySelector('.content')?.innerText || '');
+                post({ type: 'copy', text: text.replace(/\s+$/, '') });
+                copy.classList.add('copied');
+                setTimeout(() => copy.classList.remove('copied'), 1200);
+                return;
+            }
             if (openArtifactFrom(e.target)) return;
             // Tool approval buttons (only ever rendered by the host; Markdown output can't contain HTML).
             const button = e.target.closest('.approval button[data-decision]');

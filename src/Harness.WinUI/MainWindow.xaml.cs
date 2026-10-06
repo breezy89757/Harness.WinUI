@@ -136,7 +136,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         ConfigureChatWebView();
         await LoadShellAsync();
         await ApplyZoomAsync();
-        await ExecuteShellScriptAsync($"setDropHint({JsonSerializer.Serialize(Strings.DropHint)});");
+        await ExecuteShellScriptAsync($"setDropHint({JsonSerializer.Serialize(Strings.DropHint)}); setCopyLabel({JsonSerializer.Serialize(Strings.CopyTooltip)});");
         await ViewModel.InitializeAsync();
         InputTextBox.Focus(FocusState.Programmatic);
 
@@ -164,8 +164,8 @@ public sealed partial class MainWindow : Window, IChatMessageSink
 
     private async void HistoryFlyout_Opening(object sender, object e)
     {
-        await ViewModel.RefreshHistoryAsync();
-        HistoryEmptyText.Visibility = ViewModel.History.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        HistorySearchBox.Text = string.Empty;
+        await ReloadHistoryAsync();
     }
 
     private async void HistoryList_ItemClick(object sender, ItemClickEventArgs e)
@@ -179,7 +179,10 @@ public sealed partial class MainWindow : Window, IChatMessageSink
     private async void DeleteConversation_Click(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement { Tag: string id })
+        {
             await ViewModel.DeleteConversationAsync(id);
+            UpdateHistoryEmptyText();
+        }
     }
 
     private async void ToolsButton_Click(object sender, RoutedEventArgs e)
@@ -420,6 +423,10 @@ public sealed partial class MainWindow : Window, IChatMessageSink
                     break;
                 case "zoom":
                     StepZoom(message.GetProperty("step").GetInt32());
+                    break;
+                case "copy":
+                    if (message.GetProperty("text").GetString() is { Length: > 0 } text)
+                        CopyToClipboard(text);
                     break;
                 case "dropFile":
                     OnDroppedFile(message.GetProperty("name").GetString() ?? "file", message.GetProperty("data").GetString() ?? string.Empty);

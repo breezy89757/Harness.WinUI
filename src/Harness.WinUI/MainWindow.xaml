@@ -167,17 +167,26 @@
                                 <Grid Width="360" MaxHeight="480" RowSpacing="8">
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
                                         <RowDefinition Height="*" />
                                     </Grid.RowDefinitions>
                                     <TextBlock Text="{x:Bind local:Strings.History}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                    <TextBox
+                                        x:Name="HistorySearchBox"
+                                        Grid.Row="1"
+                                        MaxLength="100"
+                                        AutomationProperties.AutomationId="HistorySearchBox"
+                                        AutomationProperties.Name="{x:Bind local:Strings.HistorySearchPlaceholder}"
+                                        PlaceholderText="{x:Bind local:Strings.HistorySearchPlaceholder}"
+                                        TextChanged="HistorySearchBox_TextChanged" />
                                     <TextBlock
                                         x:Name="HistoryEmptyText"
-                                        Grid.Row="1"
+                                        Grid.Row="2"
                                         Text="{x:Bind local:Strings.NoHistory}"
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                     <ListView
                                         x:Name="HistoryList"
-                                        Grid.Row="1"
+                                        Grid.Row="2"
                                         AutomationProperties.AutomationId="HistoryList"
                                         AutomationProperties.Name="{x:Bind local:Strings.History}"
                                         ItemsSource="{x:Bind ViewModel.History}"
@@ -186,9 +195,10 @@
                                         ItemClick="HistoryList_ItemClick">
                                         <ListView.ItemTemplate>
                                             <DataTemplate x:DataType="vm:ConversationItem">
-                                                <Grid Padding="0,6" ColumnSpacing="8">
+                                                <Grid Padding="0,6" ColumnSpacing="4">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel>
@@ -203,6 +213,30 @@
                                                     </StackPanel>
                                                     <Button
                                                         Grid.Column="1"
+                                                        Padding="6"
+                                                        VerticalAlignment="Center"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        ToolTipService.ToolTip="{x:Bind MoreLabel}"
+                                                        AutomationProperties.Name="{x:Bind MoreLabel}">
+                                                        <FontIcon FontSize="12" Glyph="&#xE712;" />
+                                                        <Button.Flyout>
+                                                            <MenuFlyout>
+                                                                <MenuFlyoutItem Text="{x:Bind RenameLabel}" Tag="{x:Bind}" Click="RenameConversation_Click">
+                                                                    <MenuFlyoutItem.Icon>
+                                                                        <FontIcon Glyph="&#xE70F;" />
+                                                                    </MenuFlyoutItem.Icon>
+                                                                </MenuFlyoutItem>
+                                                                <MenuFlyoutItem Text="{x:Bind ExportLabel}" Tag="{x:Bind}" Click="ExportConversation_Click">
+                                                                    <MenuFlyoutItem.Icon>
+                                                                        <FontIcon Glyph="&#xE78C;" />
+                                                                    </MenuFlyoutItem.Icon>
+                                                                </MenuFlyoutItem>
+                                                            </MenuFlyout>
+                                                        </Button.Flyout>
+                                                    </Button>
+                                                    <Button
+                                                        Grid.Column="2"
                                                         Padding="6"
                                                         VerticalAlignment="Center"
                                                         Background="Transparent"

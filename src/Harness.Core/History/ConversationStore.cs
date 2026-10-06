@@ -70,12 +70,26 @@ public sealed class ConversationStore
 
     public static string DefaultPath => AppPaths.Combine("history.db");
 
-    public IReadOnlyList<ConversationSummary> List(int limit = 100)
+    /// <param name="search">Only conversations whose title or any message contains this text (case-insensitive for ASCII).</param>
+    public IReadOnlyList<ConversationSummary> List(int limit = 100, string? search = null)
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT id, title, updated_at FROM conversations ORDER BY updated_at DESC LIMIT $limit";
         command.Parameters.AddWithValue("$limit", limit);
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            command.CommandText = "SELECT id, title, updated_at FROM conversations ORDER BY updated_at DESC LIMIT $limit";
+        }
+        else
+        {
+            // LIKE wildcards in what the user typed are literal characters, not patterns.
+            command.CommandText = """
+                SELECT id, title, updated_at FROM conversations
+                WHERE title LIKE $pattern ESCAPE '\' OR id IN (SELECT conversation_id FROM messages WHERE text LIKE $pattern ESCAPE '\')
+                ORDER BY updated_at DESC LIMIT $limit
+                """;
+            command.Parameters.AddWithValue("$pattern", "%" + search.Trim().Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%");
+        }
 
         var results = new List<ConversationSummary>();
         using var reader = command.ExecuteReader();
@@ -168,6 +182,17 @@ public sealed class ConversationStore
         }
 
         transaction.Commit();
+    }
+
+    /// <summary>Changes a conversation's title. Doesn't touch its time, so it keeps its place in the list.</summary>
+    public void Rename(string id, string title)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE conversations SET title = $title WHERE id = $id";
+        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$title", title);
+        command.ExecuteNonQuery();
     }
 
     public void Delete(string id)

@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+- Copy buttons: one on every code block (copies just the code) and one under each reply (copies the
+  reply's text), shown when you point at them
+- History: a search box (finds a conversation by its title or anything said in it), and a "⋯" menu on
+  each conversation to rename it or export it as a Markdown file
+
 ### Changed
 - Observability → Statistics shows the prompt-cache hit rate (overall and per model), and its labels now
   explain themselves: hover a card for what it counts, and each table has a short note on its columns.

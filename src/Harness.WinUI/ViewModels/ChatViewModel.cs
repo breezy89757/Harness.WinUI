@@ -726,13 +726,33 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         }
     }
 
+    /// <summary>Narrows the History list to conversations containing this text (blank: all). Applies from the next <see cref="RefreshHistoryAsync"/>.</summary>
+    public string? HistorySearch { get; set; }
+
+    private int _historyRefreshes;
+
     /// <summary>Reloads the recent-conversations list shown in the History flyout.</summary>
     public async Task RefreshHistoryAsync()
     {
         if (_history is null)
             return;
 
-        var conversations = await Task.Run(() => _history.List(50)).ConfigureAwait(true);
+        // Typing starts a search per pause; only the newest one may fill the list, however long the older ones take.
+        var refresh = ++_historyRefreshes;
+        var search = HistorySearch;
+        IReadOnlyList<ConversationSummary> conversations;
+        try
+        {
+            conversations = await Task.Run(() => _history.List(50, search)).ConfigureAwait(true);
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex)
+        {
+            Debug.WriteLine($"Couldn't list conversations: {ex.Message}");
+            return;
+        }
+        if (refresh != _historyRefreshes)
+            return;
+
         History.Clear();
         foreach (var conversation in conversations)
             History.Add(new ConversationItem(conversation.Id, conversation.Title, Strings.RelativeTime(conversation.UpdatedAt), conversation.Id == _conversationId));
@@ -777,6 +797,36 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         {
             IsBusy = false;
         }
+    }
+
+    /// <summary>Longest title a user can give a conversation.</summary>
+    public const int MaxTitleLength = 100;
+
+    public async Task RenameConversationAsync(string conversationId, string title)
+    {
+        title = title.ReplaceLineEndings(" ").Trim();
+        if (_history is null || title.Length == 0)
+            return;
+
+        if (title.Length > MaxTitleLength)
+            title = title[..MaxTitleLength];
+        await Task.Run(() => _history.Rename(conversationId, title)).ConfigureAwait(true);
+        if (conversationId == _conversationId)
+            _conversationTitle = title;
+    }
+
+    /// <summary>A saved conversation as Markdown, with a file name that suits it; null if it can't be loaded.</summary>
+    public async Task<(string FileName, string Markdown)?> ExportConversationAsync(string conversationId)
+    {
+        if (_history is null)
+            return null;
+
+        var conversation = await Task.Run(() => _history.Load(conversationId)).ConfigureAwait(true);
+        if (conversation is null)
+            return null;
+
+        var markdown = ConversationMarkdown.Build(conversation, Strings.ExportYou, Strings.ExportAssistant, Strings.ExportToolsUsed);
+        return (conversation.Title, markdown);
     }
 
     public async Task DeleteConversationAsync(string conversationId)
