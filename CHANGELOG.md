@@ -1,6 +1,6 @@
 # Harness.WinUI - Changelog
 
-## [Unreleased]
+## [1.0.9] - 2026-10-06
 
 ### Added
 - Copy buttons: one on every code block (copies just the code) and one under each reply (copies the
