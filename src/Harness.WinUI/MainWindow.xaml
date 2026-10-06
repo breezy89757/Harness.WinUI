@@ -50,6 +50,47 @@
                 <TextBlock x:Name="ZoomIndicatorText" Style="{StaticResource BodyStrongTextBlockStyle}" />
             </Border>
 
+            <!-- Skills to pick from while the message starts with "/". Focus stays in the message box; arrow keys and Enter/Tab drive it. -->
+            <Border
+                x:Name="SkillSuggestions"
+                Grid.Row="0"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Bottom"
+                Margin="24,0,24,8"
+                MinWidth="320"
+                MaxWidth="560"
+                Padding="4"
+                CornerRadius="{StaticResource OverlayCornerRadius}"
+                Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                Visibility="Collapsed">
+                <ListView
+                    x:Name="SkillList"
+                    MaxHeight="240"
+                    SelectionMode="Single"
+                    IsTabStop="False"
+                    IsItemClickEnabled="True"
+                    ItemClick="SkillList_ItemClick"
+                    AutomationProperties.AutomationId="SkillSuggestionList"
+                    AutomationProperties.Name="{x:Bind local:Strings.SkillSuggestions}">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SkillSuggestion">
+                            <StackPanel Padding="0,4" Spacing="2">
+                                <TextBlock Text="{x:Bind Label}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                <TextBlock
+                                    Text="{x:Bind Description}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    TextWrapping="Wrap"
+                                    MaxLines="2"
+                                    TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Border>
+
             <!-- Pasted / dropped attachments, sent with the next message. -->
             <Border
                 x:Name="AttachmentStrip"
@@ -376,6 +417,7 @@
                     VerticalAlignment="Bottom"
                     Text="{x:Bind ViewModel.InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                     IsEnabled="{x:Bind local:MainWindow.IsNotBusy(ViewModel.IsBusy), Mode=OneWay}"
+                    TextChanged="InputTextBox_TextChanged"
                     PreviewKeyDown="InputTextBox_PreviewKeyDown"
                     Paste="InputTextBox_Paste"
                     TextCompositionStarted="InputTextBox_TextCompositionStarted"

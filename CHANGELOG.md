@@ -5,6 +5,9 @@
 ### Added
 - Copy buttons: one on every code block (copies just the code) and one under each reply (copies the
   reply's text), shown when you point at them
+- Skills from the composer: type `/` at the start of a message to list your skills (filtered as you type),
+  pick one with the arrow keys and Enter or Tab, or a click, then write your request. The agent is told to
+  use that skill; the conversation shows just what you typed
 - History: a search box (finds a conversation by its title or anything said in it), and a "⋯" menu on
   each conversation to rename it or export it as a Markdown file
 

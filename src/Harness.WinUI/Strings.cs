@@ -51,6 +51,7 @@ public static class Strings
     public static string ExportToolsUsed => T("Tools used", "使用的工具");
     public static string FileSaved(string name) => T($"Saved {name}", $"已儲存 {name}");
     public static string SaveFileFailed(string message) => T($"Couldn't save the file: {message}", $"無法儲存檔案：{message}");
+    public static string SkillSuggestions => T("Skills", "技能");
     public static string CopyTooltip => T("Copy", "複製");
     public static string Copied => T("Copied", "已複製");
     public static string ResumedContextLost => T(

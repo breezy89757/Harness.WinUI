@@ -99,6 +99,28 @@ public static partial class SkillCatalog
         return null;
     }
 
+    /// <summary>
+    /// A message the user began with <c>/skill-name</c> (picked from the composer's skill list) becomes what the
+    /// model should be told: use that skill for the rest of the message. Anything else, including a slash
+    /// followed by a name that isn't one of <paramref name="skills"/>, comes back unchanged.
+    /// </summary>
+    public static string ExpandInvocation(string message, IEnumerable<Skill> skills)
+    {
+        var match = Invocation().Match(message);
+        if (!match.Success)
+            return message;
+
+        var name = match.Groups["name"].Value;
+        if (!skills.Any(s => s.Name == name))
+            return message;
+
+        var request = match.Groups["rest"].Value.Trim();
+        var instruction = $"The user chose the \"{name}\" skill. Load it with load_skill and follow it";
+        return request.Length == 0
+            ? instruction + ". They didn't write a request yet: briefly say what this skill can do and ask what they need."
+            : instruction + " for this request:\n\n" + request;
+    }
+
     /// <summary>The model's skill tools, over the skills enabled right now.</summary>
     public static IEnumerable<AITool> CreateTools(Func<IReadOnlyList<Skill>> skills)
     {
@@ -155,4 +177,8 @@ public static partial class SkillCatalog
 
     [GeneratedRegex("^[a-z0-9]+(-[a-z0-9]+)*$")]
     private static partial Regex SkillName();
+
+    // "/name" alone, or "/name" then whitespace and the request.
+    [GeneratedRegex(@"\A/(?<name>[a-z0-9]+(-[a-z0-9]+)*)(\s+(?<rest>[\s\S]*))?\z")]
+    private static partial Regex Invocation();
 }

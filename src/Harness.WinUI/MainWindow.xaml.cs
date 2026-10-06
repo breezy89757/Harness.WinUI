@@ -52,6 +52,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         _needsProviderSetup = needsProviderSetup;
         _tools = tools;
         ViewModel = new ChatViewModel(chatSession, this, OpenHistory(), startupError);
+        ViewModel.SkillsProvider = EnabledSkills;
         ArtifactPanel.WindowHandle = WindowHandle;
 
         // The ViewModel is the approver for every gated tool call.
@@ -469,6 +470,12 @@ public sealed partial class MainWindow : Window, IChatMessageSink
     // the candidate and arrives as VirtualKey.ProcessKey; the composition flag is a second guard.
     private void InputTextBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
+        if (HandleSkillSuggestionKey(e.Key))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key != VirtualKey.Enter || _isComposing)
             return;
 

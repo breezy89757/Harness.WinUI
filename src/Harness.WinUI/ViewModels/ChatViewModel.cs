@@ -97,6 +97,9 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
     /// </summary>
     public Func<string?>? AppContextProvider { get; set; }
 
+    /// <summary>The skills a message may start with ("/skill-name"): the enabled ones.</summary>
+    public Func<IReadOnlyList<Harness.Core.Skills.Skill>>? SkillsProvider { get; set; }
+
     /// <summary>Default image quality, for the status line's time estimate (the tool reads its own copy).</summary>
     public string ImageQuality { get; set; } = "low";
 
@@ -511,7 +514,9 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
 
             // MCP App views may have told us what the user did in them (ui/update-model-context); the model
             // gets that with this message, the transcript shows only what the user typed.
-            var forModel = AppContextProvider?.Invoke() is { } appContext ? appContext + "\n\n" + userMessage : userMessage;
+            // A message that starts with /skill-name tells the model to use that skill; the transcript keeps what was typed.
+            var request = SkillsProvider is { } skills ? Harness.Core.Skills.SkillCatalog.ExpandInvocation(userMessage, skills()) : userMessage;
+            var forModel = AppContextProvider?.Invoke() is { } appContext ? appContext + "\n\n" + request : request;
 
             session.WebSearch = WebSearch;
             await foreach (var evt in session.SendAsync(forModel, AppPreferences.ParseEffort(ReasoningEffort), cancellation.Token, attachments))

@@ -43,7 +43,7 @@ Harness.WinUI reads and writes files, plugs into MCP tools, and previews what it
 - **MCP Apps**: tools that come with their own UI (`io.modelcontextprotocol/ui`) render it right in the chat, e.g. a database query shown as an interactive table. Each app runs in an isolated, sandboxed frame with the CSP it declares; the model sees only the tool's text summary.
 - **Web**: the agent reads pages you link (`fetch_url`, with the page's main content as Markdown; PDF and Office files too). Addresses on your PC or internal network need your approval. Optional web search (off by default) uses your OpenAI or Azure OpenAI provider's built-in search, with sources cited.
 - **Image generation**: works with gpt-image models; images show up right in the conversation.
-- **Agent Skills**: drop a folder with a `SKILL.md` into `~/.claude/skills`, `~/.agents/skills` or Harness.WinUI's skills folder, and the agent loads it when a request matches.
+- **Agent Skills**: drop a folder with a `SKILL.md` into `~/.claude/skills`, `~/.agents/skills` or Harness.WinUI's skills folder, and the agent loads it when a request matches, or type `/` in the message box to pick one yourself.
 - **Paste and drop attachments**: paste a screenshot or copied files with Ctrl+V, or drag files onto the window. Images go to the model as images; text, Office and PDF files as text.
 - **Know what it costs**: every reply shows its tokens and cost; the usage button totals the conversation, today, this month and all time. Set prices per 1M tokens in Settings.
 - **Notifications**: when the window is in the background, a Windows notification and a flashing taskbar button tell you a reply finished or something needs your approval.
@@ -188,7 +188,7 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 - **MCP Apps**：自帶介面的工具（`io.modelcontextprotocol/ui`）會直接在對話裡顯示，例如把資料庫查詢結果呈現成可操作的表格。每個 App 在獨立的沙盒框架中執行，只套用它宣告的 CSP；模型只會看到工具的文字摘要。
 - **網路**：agent 可以讀你給的網頁（`fetch_url`，擷取正文轉成 Markdown，PDF、Office 檔也行）；本機或內網位址需要你核准。網路搜尋（選用，預設關閉）使用 OpenAI 或 Azure OpenAI 內建的搜尋，並附上來源。
 - **生圖**：接 gpt-image 系列模型，圖片直接顯示在對話裡。
-- **Agent Skills**：把含 `SKILL.md` 的資料夾放進 `~/.claude/skills`、`~/.agents/skills` 或 Harness.WinUI 的技能資料夾，請求符合時 agent 會自動載入。
+- **Agent Skills**：把含 `SKILL.md` 的資料夾放進 `~/.claude/skills`、`~/.agents/skills` 或 Harness.WinUI 的技能資料夾，請求符合時 agent 會自動載入；也可以在訊息框輸入 `/` 自己挑一個。
 - **貼上、拖曳附件**：Ctrl+V 貼上截圖或複製的檔案，或直接把檔案拖進視窗。圖片以圖片送給模型，文字、Office、PDF 檔轉成文字。
 - **費用一目了然**：每則回覆都顯示 token 數和費用；用量按鈕可看本次對話、今天、本月和全部的累計。每 100 萬 token 的價格在設定中填入。
 - **通知**：視窗在背景時，回覆完成或需要你核准，會跳出 Windows 通知並閃爍工作列按鈕。
