@@ -26,7 +26,12 @@ public sealed class TraceAnalyst(TraceStore store)
         - Be concrete: name the turns (time and message), steps, tools and figures behind each finding.
         - Suggest specific improvements when the data supports them: tools that are offered but never used (their
           definitions cost input tokens on every call), slow or failing tools and MCP servers, unusually slow model
-          calls, large tool results that fill the context, long approval waits.
+          calls, large tool results that fill the context, long approval waits, a low prompt-cache hit rate.
+        - CacheHitRate is the share of input tokens the provider served from its prompt cache (cheaper and faster).
+          null means the provider doesn't report it: say so, don't call it 0%. A low rate while the same long prefix
+          (system instructions, tool definitions) is sent on every call means that prefix probably changes between
+          calls or the provider's cache isn't kicking in; say what the data shows and what to check, without
+          claiming a cause you can't see.
         - Reply in the language of the question; for Chinese use Traditional Chinese with Taiwan terminology.
         - Plain text only, no Markdown symbols (no #, **, tables). Use short paragraphs and lines starting with "• ".
         """;
@@ -53,7 +58,7 @@ public sealed class TraceAnalyst(TraceStore store)
             ([Description("Days back from now.")] int? days) =>
                 JsonSerializer.Serialize(store.Statistics(Since(days ?? defaultDays)), s_json),
             "get_statistics",
-            "Totals for the period, then per model (calls, failures, median and P95 duration, time to first token, tokens, cost, " +
+            "Totals for the period (including cached input tokens and the prompt-cache hit rate), then per model (calls, failures, median and P95 duration, time to first token, tokens, cache hit rate, cost, " +
             "size of the tool definitions sent per call), per tool (times offered to the model vs. called, failures, average and " +
             "slowest duration, average result size in characters, source), per skill, and per approval decision."),
 

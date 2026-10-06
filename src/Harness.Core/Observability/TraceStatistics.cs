@@ -6,16 +6,19 @@ using Microsoft.Data.Sqlite;
 
 namespace Harness.Core.Observability;
 
+/// <param name="CachedTokens">Input tokens the provider served from its prompt cache; null when the provider reports none.</param>
+/// <param name="CacheHitRate">CachedTokens as a share (0–1) of the input tokens of the calls that reported it; null when nothing was reported.</param>
 public sealed record TraceTotals(
     int Turns, int FailedTurns, int ModelCalls, int ToolCalls, long InputTokens, long OutputTokens,
-    double? Cost, string? Currency, double AverageTurnMs);
+    long? CachedTokens, double? CacheHitRate, double? Cost, string? Currency, double AverageTurnMs);
 
 /// <param name="P50Ms">Median duration of a call.</param>
 /// <param name="P95Ms">95th percentile duration: how slow the slow calls are.</param>
+/// <param name="CacheHitRate">Share (0–1) of this model's input tokens served from the provider's prompt cache; null when not reported.</param>
 /// <param name="AverageToolDefinitionsChars">Average size of the tool definitions sent with each call (they cost input tokens every time).</param>
 public sealed record ModelStatistics(
     string Model, int Calls, int Failures, double P50Ms, double P95Ms, double? AverageTtftMs,
-    long InputTokens, long OutputTokens, double? Cost, double AverageToolDefinitionsChars);
+    long InputTokens, long OutputTokens, double? CacheHitRate, double? Cost, double AverageToolDefinitionsChars);
 
 /// <param name="Offered">Model calls that were offered this tool.</param>
 /// <param name="AverageResultChars">Average size of what the tool returned to the model (it all goes into the context).</param>
@@ -41,7 +44,7 @@ public sealed partial class TraceStore
         {
             command.CommandText = """
                 SELECT operation, model, duration_ms, failed, status, ttft_ms, input_tokens, output_tokens, cost, currency,
-                       tool_name, tool_source, attributes, started_at
+                       tool_name, tool_source, attributes, started_at, cached_tokens
                 FROM spans
                 WHERE started_at >= $since AND operation IN ('turn', 'chat', 'execute_tool', 'approval')
                 """;
@@ -54,7 +57,7 @@ public sealed partial class TraceStore
                     reader.GetInt64(3) != 0 && Text(reader, 4) != Telemetry.StatusCancelled,
                     reader.IsDBNull(5) ? null : reader.GetDouble(5), Long(reader, 6) ?? 0, Long(reader, 7) ?? 0,
                     reader.IsDBNull(8) ? null : reader.GetDouble(8), Text(reader, 9), Text(reader, 10), Text(reader, 11),
-                    JsonSerializer.Deserialize<Dictionary<string, string>>(reader.GetString(12)) ?? [], ParseTime(reader.GetString(13))));
+                    JsonSerializer.Deserialize<Dictionary<string, string>>(reader.GetString(12)) ?? [], ParseTime(reader.GetString(13)), Long(reader, 14)));
             }
         }
 
@@ -63,9 +66,10 @@ public sealed partial class TraceStore
         var tools = rows.Where(r => r.Operation == Telemetry.OpTool && r.ToolName is not null).ToList();
         var currency = chats.FirstOrDefault(c => c.Currency is not null)?.Currency;
 
+        var (cachedTokens, cacheHitRate) = Cache(chats);
         var totals = new TraceTotals(
             turns.Count, turns.Count(t => t.Failed), chats.Count, tools.Count,
-            chats.Sum(c => c.Input), chats.Sum(c => c.Output),
+            chats.Sum(c => c.Input), chats.Sum(c => c.Output), cachedTokens, cacheHitRate,
             chats.Any(c => c.Cost is not null) ? chats.Sum(c => c.Cost ?? 0) : null, currency,
             turns.Count == 0 ? 0 : turns.Average(t => t.DurationMs));
 
@@ -76,7 +80,7 @@ public sealed partial class TraceStore
                 var ttfts = g.Where(c => c.TtftMs is not null).Select(c => c.TtftMs!.Value).ToList();
                 return new ModelStatistics(
                     g.Key, g.Count(), g.Count(c => c.Failed), Percentile(durations, 0.5), Percentile(durations, 0.95),
-                    ttfts.Count == 0 ? null : ttfts.Average(), g.Sum(c => c.Input), g.Sum(c => c.Output),
+                    ttfts.Count == 0 ? null : ttfts.Average(), g.Sum(c => c.Input), g.Sum(c => c.Output), Cache(g).Rate,
                     g.Any(c => c.Cost is not null) ? g.Sum(c => c.Cost ?? 0) : null,
                     g.Average(c => Number(c.Attributes, Telemetry.TagToolDefinitionsChars) ?? 0));
             })
@@ -123,6 +127,20 @@ public sealed partial class TraceStore
         return new TraceStatistics(totals, models, toolStats, skills, approvals);
     }
 
+    /// <summary>
+    /// Cached input tokens and their share of the input. Only calls whose provider reported a cached count take part,
+    /// so a provider without prompt-cache reporting gives null ("not reported") rather than a misleading 0%.
+    /// </summary>
+    private static (long? Cached, double? Rate) Cache(IEnumerable<Row> calls)
+    {
+        var reported = calls.Where(c => c.Cached is not null).ToList();
+        if (reported.Count == 0)
+            return (null, null);
+        var cached = reported.Sum(c => c.Cached!.Value);
+        var input = reported.Sum(c => c.Input);
+        return (cached, input > 0 ? Math.Clamp(cached / (double)input, 0, 1) : null);
+    }
+
     private static double Percentile(List<double> sorted, double p) =>
         sorted.Count == 0 ? 0 : sorted[(int)Math.Clamp(Math.Ceiling(p * sorted.Count) - 1, 0, sorted.Count - 1)];
 
@@ -131,5 +149,5 @@ public sealed partial class TraceStore
 
     private sealed record Row(
         string Operation, string? Model, double DurationMs, bool Failed, double? TtftMs, long Input, long Output,
-        double? Cost, string? Currency, string? ToolName, string? ToolSource, Dictionary<string, string> Attributes, DateTimeOffset StartedAt);
+        double? Cost, string? Currency, string? ToolName, string? ToolSource, Dictionary<string, string> Attributes, DateTimeOffset StartedAt, long? Cached);
 }

@@ -1,5 +1,12 @@
 # Harness.WinUI - Changelog
 
+## [Unreleased]
+
+### Changed
+- Observability → Statistics shows the prompt-cache hit rate (overall and per model), and its labels now
+  explain themselves: hover a card for what it counts, and each table has a short note on its columns.
+  The AI analysis also looks at the cache hit rate
+
 ## [1.0.8] - 2026-10-04
 
 ### Fixed

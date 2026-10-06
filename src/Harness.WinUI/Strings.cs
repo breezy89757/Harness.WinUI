@@ -327,28 +327,56 @@ public static class Strings
     public static string TraceViewLog => T("Log", "紀錄");
     public static string TraceViewStats => T("Statistics", "統計");
     public static string StatTurns => T("Turns", "回合");
+    public static string StatTurnsTip => T(
+        "One turn: you send a message and the agent works until it has replied, including every model and tool call in between.",
+        "一個回合：你送出一則訊息，到 agent 回覆完成為止（中間所有的模型呼叫與工具呼叫都算在內）。");
     public static string StatFailed => T("Failed", "失敗");
+    public static string StatFailedTip => T("Turns that ended with an error. Turns you stopped yourself aren't counted.", "以錯誤結束的回合。你自己按停止的不算。");
     public static string StatModelCalls => T("Model calls", "模型呼叫");
+    public static string StatModelCallsTip => T(
+        "Requests sent to the model. One turn usually makes several: each time the agent uses a tool, the model is called again with its result.",
+        "送給模型的請求次數。一個回合通常會有好幾次：agent 每用一次工具，就會帶著結果再呼叫模型一次。");
     public static string StatToolCalls => T("Tool calls", "工具呼叫");
+    public static string StatToolCallsTip => T("How many times the agent ran a tool (built-in, skill or MCP).", "agent 實際執行工具的次數（內建、技能或 MCP 都算）。");
     public static string StatTokens => T("Tokens in / out", "Token 輸入 / 輸出");
+    public static string StatTokensTip => T(
+        "Input: everything sent to the model (instructions, tool definitions, conversation so far). Output: what the model wrote back.",
+        "輸入：送給模型的全部內容（指示、工具說明、到目前為止的對話）。輸出：模型回寫的內容。");
+    public static string StatCacheHit => T("Cache hit rate", "快取命中率");
+    public static string StatCacheHitTip => T(
+        "The share of input tokens the provider read from its prompt cache instead of processing again. Higher is cheaper and faster. \"—\" means the provider doesn't report it.",
+        "輸入 token 之中，有多少比例是模型供應商直接從提示快取讀取、不必重新處理。越高越省錢也越快。顯示「—」代表供應商沒有回報。");
     public static string StatCost => T("Cost", "費用");
+    public static string StatCostTip => T("Estimated from the prices you set in Settings.", "依你在設定中填的單價估算。");
     public static string StatAverageTurn => T("Average turn", "平均回合時間");
+    public static string StatAverageTurnTip => T("Average time from sending a message to the finished reply.", "從送出訊息到回覆完成的平均時間。");
     public static string StatModels => T("Models", "模型");
+    public static string StatModelsNote => T(
+        "Time is per model call. Median: half the calls were faster. P95: only 5% were slower. First token: how long until the reply starts to appear. Cache hit: the share of input read from the prompt cache (higher is cheaper). Tool definitions: size of the tool descriptions sent with every call.",
+        "耗時以單次模型呼叫計算。中位數：一半的呼叫比它快。P95：只有 5% 的呼叫比它慢。首字：送出後多久開始出現回覆。快取命中：輸入中由提示快取讀取的比例（越高越省）。工具定義大小：每次呼叫都會附上的工具說明長度。");
     public static string StatTools => T("Tools", "工具");
     public static string StatToolsNote => T(
-        "Offered: model calls the tool was sent with (its definition costs input tokens every time). Tools offered but never called are candidates to turn off.",
-        "提供：送給模型時附上這個工具的次數（每次都會占用輸入 token）。常被提供卻從未呼叫的工具，可以考慮關閉。");
+        "Offered: how many model calls had this tool attached so the model could use it. Called / offered: how often it was actually used. Every attached tool adds its description to the input tokens, so greyed-out tools (offered but never called) are candidates to turn off.",
+        "提供：這個工具被附在幾次模型呼叫裡，讓模型可以使用。呼叫率：實際被用到的比例。每個被附上的工具都會把它的說明加進輸入 token，所以灰色的工具（常被提供、從未被呼叫）可以考慮關閉。");
     public static string StatSkills => T("Skills", "技能");
+    public static string StatSkillsNote => T(
+        "Loads: how many times the agent loaded the skill. Files read: skill files it opened after loading.",
+        "載入：agent 載入這個技能的次數。讀取檔案：載入後又打開技能資料夾裡檔案的次數。");
     public static string StatMcpServers => T("MCP servers", "MCP 伺服器");
+    public static string StatMcpServersNote => T("The calls to each MCP server's tools, added up.", "各個 MCP 伺服器的工具被呼叫的合計。");
     public static string StatApprovals => T("Approvals", "核准");
+    public static string StatApprovalsNote => T(
+        "Times the agent asked before running a tool, and what you answered. Average wait: how long it waited for you; the turn is paused meanwhile.",
+        "agent 執行工具前詢問你的次數，以及你的回答。平均等待：它等你回答的時間，這段時間整個回合都是暫停的。");
     public static string StatNone => T("Nothing recorded in this period.", "這段期間沒有資料。");
     public static string ColModel => T("Model", "模型");
     public static string ColCalls => T("Calls", "呼叫");
     public static string ColFailures => T("Failed", "失敗");
-    public static string ColP50 => T("Median", "中位數");
-    public static string ColP95 => T("P95", "P95");
+    public static string ColP50 => T("Median time", "耗時中位數");
+    public static string ColP95 => T("P95 time", "耗時 P95");
     public static string ColTtft => T("First token", "首字");
     public static string ColInput => T("Input", "輸入");
+    public static string ColCacheHit => T("Cache hit", "快取命中");
     public static string ColOutput => T("Output", "輸出");
     public static string ColCost => T("Cost", "費用");
     public static string ColToolDefs => T("Tool definitions", "工具定義大小");
@@ -369,15 +397,15 @@ public static class Strings
     public static string ColWait => T("Average wait", "平均等待");
     public static string AnalysisTitle => T("AI analysis", "AI 分析");
     public static string AnalysisNote => T(
-        "Your model reads the records of the selected period through read-only tools and answers. The records it reads (including message content) are sent to the model you configured; the analysis itself isn't recorded.",
-        "由你設定的模型透過唯讀工具讀取所選期間的紀錄並回答。它讀到的紀錄（包含訊息內容）會送到你設定的模型；分析本身不會被記錄。");
-    public static string AnalysisPlaceholder => T("e.g. Which step is slowest? Which tools could I turn off?", "例如：哪個步驟最慢？哪些工具可以關掉？");
+        "Hand this period's statistics and records to your model and let it explain them and suggest improvements. Click \"Analyze this period\" for an overview, or ask your own question. The data is sent to the model you set up in Settings, including message content if you record it. The analysis itself isn't recorded.",
+        "把這段期間的統計與紀錄交給你設定的模型，由它解讀並提出改善建議。按「分析這段期間」看整體分析，也可以自己提問。資料會送到你在設定中選的模型；如果你有記錄訊息內容，訊息內容也會一併送出。分析本身不會被記錄。");
+    public static string AnalysisPlaceholder => T("e.g. Which step is slowest? Which tools could I turn off? How can I raise the cache hit rate?", "例如：哪個步驟最慢？哪些工具可以關掉？怎樣提高快取命中率？");
     public static string AnalysisAsk => T("Ask", "提問");
     public static string AnalysisStop => T("Stop", "停止");
     public static string AnalysisOverview => T("Analyze this period", "分析這段期間");
     public static string AnalysisOverviewQuestion => T(
-        "Analyze this period: where time goes (slow model calls, tools, approval waits), failures and their causes, cost, and how tools and skills are used. Give concrete suggestions.",
-        "請分析這段期間：時間花在哪裡（慢的模型呼叫、工具、等待核准）、失敗與原因、成本，以及工具與技能的使用情況，並給出具體建議。");
+        "Analyze this period: where time goes (slow model calls, tools, approval waits), failures and their causes, cost, prompt-cache hit rate, and how tools and skills are used. Give concrete suggestions.",
+        "請分析這段期間：時間花在哪裡（慢的模型呼叫、工具、等待核准）、失敗與原因、成本、快取命中率，以及工具與技能的使用情況，並給出具體建議。");
     public static string AnalysisNoModel => T("No model is configured. Set one up in Settings first.", "尚未設定模型，請先到設定中填入。");
     public static string AnalysisFailed(string message) => T($"The analysis failed: {message}", $"分析失敗：{message}");
     public static string ExportSettings => T("OTLP export…", "OTLP 匯出…");

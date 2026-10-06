@@ -53,25 +53,26 @@ public sealed partial class ObservabilityWindow
         }
 
         var cards = new VariableSizedWrapGrid { Orientation = Orientation.Horizontal, ItemWidth = 184, ItemHeight = 84 };
-        cards.Children.Add(Card(Strings.StatTurns, totals.Turns.ToString("N0", CultureInfo.CurrentCulture)));
-        cards.Children.Add(Card(Strings.StatFailed, totals.FailedTurns.ToString("N0", CultureInfo.CurrentCulture), totals.FailedTurns > 0));
-        cards.Children.Add(Card(Strings.StatModelCalls, totals.ModelCalls.ToString("N0", CultureInfo.CurrentCulture)));
-        cards.Children.Add(Card(Strings.StatToolCalls, totals.ToolCalls.ToString("N0", CultureInfo.CurrentCulture)));
-        cards.Children.Add(Card(Strings.StatTokens, $"{ChatMarkup.FormatTokens(totals.InputTokens)} / {ChatMarkup.FormatTokens(totals.OutputTokens)}"));
+        cards.Children.Add(Card(Strings.StatTurns, totals.Turns.ToString("N0", CultureInfo.CurrentCulture), Strings.StatTurnsTip));
+        cards.Children.Add(Card(Strings.StatFailed, totals.FailedTurns.ToString("N0", CultureInfo.CurrentCulture), Strings.StatFailedTip, totals.FailedTurns > 0));
+        cards.Children.Add(Card(Strings.StatModelCalls, totals.ModelCalls.ToString("N0", CultureInfo.CurrentCulture), Strings.StatModelCallsTip));
+        cards.Children.Add(Card(Strings.StatToolCalls, totals.ToolCalls.ToString("N0", CultureInfo.CurrentCulture), Strings.StatToolCallsTip));
+        cards.Children.Add(Card(Strings.StatTokens, $"{ChatMarkup.FormatTokens(totals.InputTokens)} / {ChatMarkup.FormatTokens(totals.OutputTokens)}", Strings.StatTokensTip));
+        cards.Children.Add(Card(Strings.StatCacheHit, Percent(totals.CacheHitRate), Strings.StatCacheHitTip));
         if (totals.Cost is { } cost)
-            cards.Children.Add(Card(Strings.StatCost, ChatMarkup.FormatCost((decimal)cost, totals.Currency ?? "")));
-        cards.Children.Add(Card(Strings.StatAverageTurn, FormatDuration(totals.AverageTurnMs)));
+            cards.Children.Add(Card(Strings.StatCost, ChatMarkup.FormatCost((decimal)cost, totals.Currency ?? ""), Strings.StatCostTip));
+        cards.Children.Add(Card(Strings.StatAverageTurn, FormatDuration(totals.AverageTurnMs), Strings.StatAverageTurnTip));
         StatsPanel.Children.Add(cards);
 
         if (stats.Models.Count > 0)
         {
-            StatsSection(Strings.StatModels, null, Table(
-                [Strings.ColModel, Strings.ColCalls, Strings.ColFailures, Strings.ColP50, Strings.ColP95, Strings.ColTtft, Strings.ColInput, Strings.ColOutput, Strings.ColCost, Strings.ColToolDefs],
+            StatsSection(Strings.StatModels, Strings.StatModelsNote, Table(
+                [Strings.ColModel, Strings.ColCalls, Strings.ColFailures, Strings.ColP50, Strings.ColP95, Strings.ColTtft, Strings.ColInput, Strings.ColCacheHit, Strings.ColOutput, Strings.ColCost, Strings.ColToolDefs],
                 stats.Models.Select(m => new[]
                 {
                     m.Model, N(m.Calls), N(m.Failures), FormatDuration(m.P50Ms), FormatDuration(m.P95Ms),
                     m.AverageTtftMs is { } t ? FormatDuration(t) : "—",
-                    ChatMarkup.FormatTokens(m.InputTokens), ChatMarkup.FormatTokens(m.OutputTokens),
+                    ChatMarkup.FormatTokens(m.InputTokens), Percent(m.CacheHitRate), ChatMarkup.FormatTokens(m.OutputTokens),
                     m.Cost is { } c ? ChatMarkup.FormatCost((decimal)c, totals.Currency ?? "") : "—",
                     m.AverageToolDefinitionsChars > 0 ? Strings.Chars(m.AverageToolDefinitionsChars.ToString("N0", CultureInfo.CurrentCulture)) : "—",
                 })));
@@ -93,7 +94,7 @@ public sealed partial class ObservabilityWindow
 
         if (stats.Skills.Count > 0)
         {
-            StatsSection(Strings.StatSkills, null, Table(
+            StatsSection(Strings.StatSkills, Strings.StatSkillsNote, Table(
                 [Strings.ColSkill, Strings.ColLoads, Strings.ColFileReads, Strings.ColLastUsed],
                 stats.Skills.Select(s => new[]
                 {
@@ -110,17 +111,20 @@ public sealed partial class ObservabilityWindow
             })
             .ToList();
         if (servers.Count > 0)
-            StatsSection(Strings.StatMcpServers, null, Table([Strings.ColServer, Strings.ColCalls, Strings.ColFailures, Strings.ColAverage], servers));
+            StatsSection(Strings.StatMcpServers, Strings.StatMcpServersNote, Table([Strings.ColServer, Strings.ColCalls, Strings.ColFailures, Strings.ColAverage], servers));
 
         if (stats.Approvals.Count > 0)
         {
-            StatsSection(Strings.StatApprovals, null, Table(
+            StatsSection(Strings.StatApprovals, Strings.StatApprovalsNote, Table(
                 [Strings.ColDecision, Strings.ColCount, Strings.ColWait],
                 stats.Approvals.Select(a => new[] { Strings.TraceDecision(a.Decision), N(a.Count), FormatDuration(a.AverageWaitMs) })));
         }
     }
 
     private static string N(int n) => n.ToString("N0", CultureInfo.CurrentCulture);
+
+    /// <summary>A 0–1 share as a percentage, or a dash when the provider didn't report it.</summary>
+    private static string Percent(double? share) => share is { } s ? s.ToString("P0", CultureInfo.CurrentCulture) : "—";
 
     private void StatsSection(string title, string? note, UIElement table)
     {
@@ -142,7 +146,7 @@ public sealed partial class ObservabilityWindow
         });
     }
 
-    private static Border Card(string label, string value, bool alert = false)
+    private static Border Card(string label, string value, string tip, bool alert = false)
     {
         var panel = new StackPanel { Spacing = 4 };
         panel.Children.Add(Caption(label));
@@ -153,7 +157,7 @@ public sealed partial class ObservabilityWindow
             Foreground = alert ? (Brush)Application.Current.Resources["SystemFillColorCriticalBrush"] : (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
             TextTrimming = TextTrimming.CharacterEllipsis,
         });
-        return new Border
+        var card = new Border
         {
             Child = panel,
             Margin = new Thickness(0, 0, 8, 8),
@@ -163,6 +167,8 @@ public sealed partial class ObservabilityWindow
             BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
             Background = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
         };
+        ToolTipService.SetToolTip(card, tip);
+        return card;
     }
 
     /// <summary>
