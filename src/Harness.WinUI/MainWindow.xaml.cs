@@ -53,6 +53,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         _tools = tools;
         ViewModel = new ChatViewModel(chatSession, this, OpenHistory(), startupError);
         ViewModel.SkillsProvider = EnabledSkills;
+        ViewModel.Permissions = _permissions;
         ArtifactPanel.WindowHandle = WindowHandle;
 
         // The ViewModel is the approver for every gated tool call.
@@ -78,6 +79,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         ViewModel.ApprovalRequested += (_, tool) => _attention.Notify(Strings.NotifyApprovalTitle, Strings.NotifyApprovalBody(tool));
 
         ConfigureZoom();
+        ConfigureShortcuts();
         ConfigureAttachments();
         ConfigureToolbar();
         ResizeWindow(960, 720);
@@ -424,6 +426,12 @@ public sealed partial class MainWindow : Window, IChatMessageSink
                     break;
                 case "zoom":
                     StepZoom(message.GetProperty("step").GetInt32());
+                    break;
+                case "retry":
+                    _ = ViewModel.RetryAsync();
+                    break;
+                case "shortcut":
+                    RunShortcut(message.GetProperty("name").GetString() ?? string.Empty);
                     break;
                 case "copy":
                     if (message.GetProperty("text").GetString() is { Length: > 0 } text)

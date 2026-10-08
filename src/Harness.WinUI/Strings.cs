@@ -53,6 +53,20 @@ public static class Strings
     public static string SaveFileFailed(string message) => T($"Couldn't save the file: {message}", $"無法儲存檔案：{message}");
     public static string SkillSuggestions => T("Skills", "技能");
     public static string CopyTooltip => T("Copy", "複製");
+    public static string Retry => T("Retry", "重試");
+    public static string RetryTooltip => T("Send the same message again", "再送一次同樣的訊息");
+    public static string ReadOnlyMode => T("Read-only mode", "唯讀模式");
+    public static string ReadOnlyOnDetail => T("on", "開啟中");
+    public static string ReadOnlyTooltipOff => T(
+        "Read-only mode: when on, the agent can read and search but can't change files or run commands",
+        "唯讀模式：開啟後，agent 只能讀取與搜尋，不能修改檔案或執行指令");
+    public static string ReadOnlyTooltipOn => T(
+        "Read-only mode is on: nothing is changed and no commands run. Click to turn it off",
+        "唯讀模式已開啟：不會修改任何東西，也不會執行指令。按一下關閉");
+    public static string ReadOnlyTurnedOn => T("Read-only mode on", "唯讀模式已開啟");
+    public static string ReadOnlyTurnedOff => T("Read-only mode off", "唯讀模式已關閉");
+    public static string NewChatTooltip => T("New chat (Ctrl+N)", "新對話（Ctrl+N）");
+    public static string HistoryTooltip => T("History (Ctrl+H)", "對話紀錄（Ctrl+H）");
     public static string Copied => T("Copied", "已複製");
     public static string ResumedContextLost => T(
         "The earlier context of this conversation couldn't be restored (the provider may have expired it), so the next message starts fresh. The transcript above is still saved.",
@@ -87,6 +101,8 @@ public static class Strings
     public static string Declined => T("declined", "已拒絕");
     public static string AllowThisAction => T("Allow this action?", "允許執行這個動作嗎？");
     public static string AllowOnce => T("Allow once", "允許一次");
+    public static string AllowForConversation => T("Allow for this chat", "本次對話都允許");
+    public static string AllowForConversationStartingWith(string prefix) => T($"Allow “{prefix} …” for this chat", $"本次對話都允許「{prefix} …」");
     public static string AlwaysAllow => T("Always allow", "永遠允許");
     public static string AlwaysAllowStartingWith(string prefix) => T($"Always allow “{prefix} …”", $"永遠允許「{prefix} …」");
     public static string AlwaysAllowedHeader => T("Always allowed", "永遠允許的動作");
@@ -333,6 +349,7 @@ public static class Strings
     {
         "AllowOnce" => T("allowed once", "允許一次"),
         "AlwaysAllow" => T("always allowed", "永遠允許"),
+        "AllowForSession" => T("allowed for the chat", "本次對話允許"),
         "Deny" => T("denied", "拒絕"),
         _ => T("no answer", "未回應"),
     };
@@ -452,6 +469,19 @@ public static class Strings
     public static string MoreTooltip => T("More", "更多");
     public static string CustomizeToolbar => T("Customize toolbar", "自訂工具列");
     public static string CustomizeToolbarEllipsis => T("Customize toolbar…", "自訂工具列…");
+
+    // About
+    public static string AboutMenu => T("About Harness.WinUI…", "關於 Harness.WinUI…");
+    public static string AboutTitle => T("About Harness.WinUI", "關於 Harness.WinUI");
+    public static string AboutVersion(string version) => T($"Version {version}", $"版本 {version}");
+    public static string AboutBody => T(
+        "A lightweight, native Windows AI agent that works with any OpenAI-compatible endpoint. Free and open source under the MIT License.",
+        "輕量的 Windows 原生 AI 助手，可接任何 OpenAI 相容的端點。免費，並以 MIT 授權開源。");
+    public static string AboutSourceCode => T("Source code and license (GitHub)", "原始碼與授權（GitHub）");
+    public static string AboutReportIssue => T("Report an issue or ask a question", "回報問題或提問");
+    public static string AboutPrivacy => T("Privacy policy", "隱私權政策");
+    public static string AboutThirdParty => T("Third-party notices", "第三方元件聲明");
+    public static string Close => T("Close", "關閉");
     public static string Apply => T("Apply", "套用");
     public static string ShowOnToolbar => T("Show on toolbar", "顯示在工具列上");
 

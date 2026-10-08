@@ -13,6 +13,8 @@ public enum ToolApprovalDecision
     Deny,
     AllowOnce,
     AlwaysAllow,
+    /// <summary>Like AllowOnce, and the same action is allowed without asking until the conversation changes.</summary>
+    AllowForSession,
 }
 
 /// <param name="CallId">Matches <see cref="Agent.ToolCallStarted.CallId"/> so the UI can attach the prompt to that step.</param>
@@ -28,12 +30,18 @@ public interface IToolApprover
     Task<ToolApprovalDecision> RequestApprovalAsync(ToolApprovalRequest request, CancellationToken cancellationToken);
 }
 
-/// <summary>Persisted "always allow" choices, keyed by server + tool, in permissions.json in the data folder (<see cref="AppPaths"/>).</summary>
+/// <summary>
+/// What may run without asking. "Always allow" choices are persisted, keyed by server + tool, in permissions.json in the
+/// data folder (<see cref="AppPaths"/>); "allow for this conversation" choices live in memory until the conversation
+/// changes; and read-only mode, when on, stops everything that changes something, whatever was allowed.
+/// </summary>
 public sealed class ToolPermissionStore
 {
     private readonly string _path;
     private readonly HashSet<string> _alwaysAllowed;
+    private readonly HashSet<string> _session = new(StringComparer.Ordinal);
     private readonly Lock _lock = new();
+    private volatile bool _readOnlyMode;
 
     public ToolPermissionStore(string? path = null)
     {
@@ -51,10 +59,36 @@ public sealed class ToolPermissionStore
         }
     }
 
+    /// <summary>On: tools that change files or run commands are refused outright (reading and searching still work). Not remembered across launches.</summary>
+    public bool ReadOnlyMode
+    {
+        get => _readOnlyMode;
+        set => _readOnlyMode = value;
+    }
+
     public bool IsAlwaysAllowed(string serverName, string toolName)
     {
         lock (_lock)
             return _alwaysAllowed.Contains(Key(serverName, toolName));
+    }
+
+    public bool IsAllowedThisConversation(string serverName, string toolName)
+    {
+        lock (_lock)
+            return _session.Contains(Key(serverName, toolName));
+    }
+
+    public void AllowForConversation(string serverName, string toolName)
+    {
+        lock (_lock)
+            _session.Add(Key(serverName, toolName));
+    }
+
+    /// <summary>Forgets the "allow for this conversation" choices: a new or another conversation starts asking again.</summary>
+    public void ClearConversationAllowances()
+    {
+        lock (_lock)
+            _session.Clear();
     }
 
     public void AllowAlways(string serverName, string toolName)
@@ -131,10 +165,14 @@ public sealed class ApprovalGatedFunction : DelegatingAIFunction
         // The current span is this call's execute_tool span (when recording): say where the tool comes from.
         Activity.Current?.SetTag(Telemetry.TagToolSource, _serverName);
 
+        // Read-only mode refuses whatever changes something: no question, whatever was allowed before.
+        if (!_readOnly && _permissions.ReadOnlyMode)
+            return "Read-only mode is on, so nothing that changes files or runs commands is allowed right now. Don't try it again or work around it: tell the user you can't do this while read-only mode is on, and that they can turn it off with the lock button in the toolbar.";
+
         var scope = _scope?.Invoke(arguments);
         var permission = _scope is null ? _originalName : scope is null ? null : $"{_originalName} {scope}";
         var canAlwaysAllow = _canAlwaysAllow && permission is not null;
-        if (!_readOnly && !(canAlwaysAllow && _permissions.IsAlwaysAllowed(_serverName, permission!)))
+        if (!_readOnly && !(canAlwaysAllow && (_permissions.IsAlwaysAllowed(_serverName, permission!) || _permissions.IsAllowedThisConversation(_serverName, permission!))))
         {
             var callId = FunctionInvokingChatClient.CurrentContext?.CallContent.CallId ?? Guid.NewGuid().ToString("N");
             var request = new ToolApprovalRequest(callId, _serverName, Name, new Dictionary<string, object?>(arguments), canAlwaysAllow, scope);
@@ -151,6 +189,8 @@ public sealed class ApprovalGatedFunction : DelegatingAIFunction
 
             if (decision == ToolApprovalDecision.AlwaysAllow && canAlwaysAllow)
                 _permissions.AllowAlways(_serverName, permission!);
+            else if (decision == ToolApprovalDecision.AllowForSession && canAlwaysAllow)
+                _permissions.AllowForConversation(_serverName, permission!);
         }
 
         return await base.InvokeCoreAsync(arguments, cancellationToken).ConfigureAwait(false);

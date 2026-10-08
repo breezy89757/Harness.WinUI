@@ -1,5 +1,20 @@
 # Harness.WinUI - Changelog
 
+## [Unreleased]
+
+### Added
+- Read-only mode: a lock button in the toolbar. While it's on, the agent can read and search but anything that
+  changes files or runs commands is refused (including tools an MCP App calls), whatever was allowed before. The
+  model is told when you switch it, so it doesn't keep answering as if it were still on. It isn't remembered across
+  launches
+- "Allow for this chat" on the approval card: the same action runs without asking until you start a new chat or open
+  another one. It is never saved; "Always allow" still is
+- Retry: when a reply fails or you stop it, a Retry button under it sends the same message again, with the agent back
+  where it was before that message
+- Shortcuts: Ctrl+N starts a new chat and Ctrl+H opens the history
+- More menu → About Harness.WinUI: the version, that the app is open source (MIT), and links to the source code,
+  where to report an issue, the privacy policy and the third-party notices
+
 ## [1.0.9] - 2026-10-06
 
 ### Added

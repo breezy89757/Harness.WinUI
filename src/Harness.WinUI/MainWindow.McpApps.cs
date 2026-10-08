@@ -155,6 +155,10 @@ public sealed partial class MainWindow : IMcpAppHost
 
     public Task<bool> ApproveToolCallAsync(string serverName, string toolName, IReadOnlyDictionary<string, object?> arguments)
     {
+        // Read-only mode covers tools a view calls too, not only the agent's own.
+        if (_permissions.ReadOnlyMode)
+            return Task.FromResult(false);
+
         var decided = new TaskCompletionSource<bool>();
         _attention.Notify(Strings.NotifyApprovalTitle, Strings.NotifyApprovalBody(toolName));
         DispatcherQueue.TryEnqueue(async () =>

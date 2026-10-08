@@ -97,6 +97,9 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
     /// </summary>
     public Func<string?>? AppContextProvider { get; set; }
 
+    /// <summary>What may run without asking; "allow for this chat" choices are forgotten here when the conversation changes.</summary>
+    public Harness.Core.Tools.ToolPermissionStore? Permissions { get; set; }
+
     /// <summary>The skills a message may start with ("/skill-name"): the enabled ones.</summary>
     public Func<IReadOnlyList<Harness.Core.Skills.Skill>>? SkillsProvider { get; set; }
 
@@ -242,6 +245,7 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         {
             "allow" => ToolApprovalDecision.AllowOnce,
             "always" => ToolApprovalDecision.AlwaysAllow,
+            "session" => ToolApprovalDecision.AllowForSession,
             _ => ToolApprovalDecision.Deny,
         });
     }
@@ -286,6 +290,9 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         _conversationId = null;
         _conversationTitle = null;
         _resumedFromHistory = false;
+        _retry = null;
+        _readOnlyTold = false;
+        Permissions?.ClearConversationAllowances();
         ConversationCostText = string.Empty;
         await _messageSink.ClearConversationAsync().ConfigureAwait(true);
     }
@@ -408,9 +415,59 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         return true;
     }
 
+    // Whether the model has been told read-only mode is on. A new or another conversation starts over (the model there knows nothing).
+    private bool _readOnlyTold;
+
+    /// <summary>A note for the model when read-only mode differs from what it was last told; null when it's up to date.</summary>
+    private string? ReadOnlyModeNote()
+    {
+        var on = Permissions?.ReadOnlyMode == true;
+        if (on == _readOnlyTold)
+            return null;
+        _readOnlyTold = on;
+        return on
+            ? "(The user turned read-only mode on: in this conversation don't change files or run commands, and don't try; tools that only read still work.)"
+            : "(The user turned read-only mode off: tools that change files or run commands work again, with the usual approval.)";
+    }
+
+    /// <summary>What "Retry" resends: the last turn that failed or was stopped, and the agent's state from before it.</summary>
+    private sealed record RetryPoint(string UserMessage, IReadOnlyList<Attachment> Attachments, bool RestoreState, string? State, bool ReadOnlyTold);
+
+    private RetryPoint? _retry;
+
+    /// <summary>
+    /// Sends the last failed or stopped message again, with the agent back where it was before that turn (a
+    /// stop already restores it; an error leaves the failed turn in the agent's memory, which a retry shouldn't repeat).
+    /// </summary>
+    public async Task RetryAsync()
+    {
+        if (IsBusy || _retry is not { } retry)
+            return;
+
+        _retry = null;
+        await _messageSink.SetRetryAsync(null, null).ConfigureAwait(true);
+        if (retry.RestoreState && _chatSession is { } session)
+        {
+            // Back to before that turn, including what the model had been told about read-only mode.
+            _readOnlyTold = retry.ReadOnlyTold;
+            try
+            {
+                await session.RestoreStateAsync(retry.State).ConfigureAwait(true);
+            }
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException)
+            {
+                session.Reset();
+            }
+        }
+        await SendMessageAsync(retry.UserMessage, retry.Attachments).ConfigureAwait(true);
+    }
+
     private async Task SendMessageAsync(string userMessage, IReadOnlyList<Attachment>? attachments = null)
     {
         attachments ??= [];
+        var readOnlyToldBefore = _readOnlyTold;
+        _retry = null;
+        await _messageSink.SetRetryAsync(null, null).ConfigureAwait(true);
         var userHtml = ChatMarkdownRenderer.RenderBody(userMessage) + ChatMarkup.AttachmentsHtml(attachments);
         await _messageSink.AppendMessageAsync(NextMessageId(), "user", userHtml).ConfigureAwait(true);
 
@@ -443,6 +500,7 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         string? errorText = null;
         var stopped = false;
         (bool Taken, string? State) stateBeforeTurn = default;
+        var sessionWasReset = false;
         using var cancellation = new CancellationTokenSource();
         _turnCancellation = cancellation;
         var lastFlushUtc = DateTime.MinValue;
@@ -517,6 +575,9 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
             // A message that starts with /skill-name tells the model to use that skill; the transcript keeps what was typed.
             var request = SkillsProvider is { } skills ? Harness.Core.Skills.SkillCatalog.ExpandInvocation(userMessage, skills()) : userMessage;
             var forModel = AppContextProvider?.Invoke() is { } appContext ? appContext + "\n\n" + request : request;
+            // The model only knows what it was told: say so when read-only mode changed since the last message.
+            if (ReadOnlyModeNote() is { } modeNote)
+                forModel = modeNote + "\n\n" + forModel;
 
             session.WebSearch = WebSearch;
             await foreach (var evt in session.SendAsync(forModel, AppPreferences.ParseEffort(ReasoningEffort), cancellation.Token, attachments))
@@ -648,7 +709,10 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
             try
             {
                 if (stateBeforeTurn.Taken)
+                {
                     await session.RestoreStateAsync(stateBeforeTurn.State).ConfigureAwait(true);
+                    _readOnlyTold = readOnlyToldBefore; // the model never saw this turn's note
+                }
             }
             catch (Exception ex) when (ex is not OutOfMemoryException)
             {
@@ -662,6 +726,7 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
             {
                 // The provider may no longer have the saved conversation (server-side history expires).
                 session.Reset();
+                sessionWasReset = true;
                 _resumedFromHistory = false;
                 errorText += "\n\n" + Strings.ResumedContextLost;
             }
@@ -687,6 +752,11 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
                 tooltip = Strings.StoppedTooltip + (string.IsNullOrEmpty(tooltip) ? string.Empty : "\n\n" + tooltip);
             }
             await _messageSink.SetMessageMetaAsync(id, meta, tooltip, traceId).ConfigureAwait(true);
+            if (stopped || errorText is not null)
+            {
+                _retry = new RetryPoint(userMessage, attachments, stateBeforeTurn.Taken && !sessionWasReset, stateBeforeTurn.State, readOnlyToldBefore);
+                await _messageSink.SetRetryAsync(id, Strings.Retry, Strings.RetryTooltip).ConfigureAwait(true);
+            }
 
             var reply = new StoredMessage(
                 "assistant", errorText ?? text.ToString(),
@@ -776,6 +846,9 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         IsBusy = true;
         try
         {
+            _retry = null;
+            _readOnlyTold = false;
+            Permissions?.ClearConversationAllowances();
             await _messageSink.ClearConversationAsync().ConfigureAwait(true);
             foreach (var message in conversation.Messages)
                 await ReplayAsync(message).ConfigureAwait(true);

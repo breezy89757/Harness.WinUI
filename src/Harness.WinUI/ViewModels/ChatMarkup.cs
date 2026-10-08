@@ -125,12 +125,15 @@ internal static class ChatMarkup
         var where = request.ToolName == CommandTool.Name ? $"<div class='tool-where'>{WebUtility.HtmlEncode(Strings.CommandWhere)}</div>" : string.Empty;
         var alwaysLabel = request.AlwaysAllowScope is { } scope ? Strings.AlwaysAllowStartingWith(scope) : Strings.AlwaysAllow;
         var alwaysButton = request.CanAlwaysAllow ? $"<button data-decision='always'>{WebUtility.HtmlEncode(alwaysLabel)}</button>" : string.Empty;
+        var sessionLabel = request.AlwaysAllowScope is { } sessionScope ? Strings.AllowForConversationStartingWith(sessionScope) : Strings.AllowForConversation;
+        var sessionButton = request.CanAlwaysAllow ? $"<button data-decision='session'>{WebUtility.HtmlEncode(sessionLabel)}</button>" : string.Empty;
         return $"""
             <div><code>{WebUtility.HtmlEncode(request.ToolName)}</code><span class='tool-server'>({WebUtility.HtmlEncode(request.ServerName)})</span>
             {where}<pre class='tool-args'>{WebUtility.HtmlEncode(Truncate(args, 4000))}</pre>
             <div class='approval' data-call='{WebUtility.HtmlEncode(request.CallId)}'>
               <span>{WebUtility.HtmlEncode(Strings.AllowThisAction)}</span>
               <button class='primary' data-decision='allow'>{WebUtility.HtmlEncode(Strings.AllowOnce)}</button>
+              {sessionButton}
               {alwaysButton}
               <button data-decision='deny'>{WebUtility.HtmlEncode(Strings.Deny)}</button>
             </div></div>

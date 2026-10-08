@@ -189,7 +189,7 @@
                         AutomationProperties.Name="{x:Bind local:Strings.NewChat}"
                         VerticalAlignment="Bottom"
                         Padding="10,8"
-                        ToolTipService.ToolTip="{x:Bind local:Strings.NewChat}"
+                        ToolTipService.ToolTip="{x:Bind local:Strings.NewChatTooltip}"
                         Command="{x:Bind ViewModel.NewChatCommand}">
                         <FontIcon FontSize="16" Glyph="&#xE710;" />
                     </Button>
@@ -200,7 +200,7 @@
                         AutomationProperties.Name="{x:Bind local:Strings.History}"
                         VerticalAlignment="Bottom"
                         Padding="10,8"
-                        ToolTipService.ToolTip="{x:Bind local:Strings.History}"
+                        ToolTipService.ToolTip="{x:Bind local:Strings.HistoryTooltip}"
                         IsEnabled="{x:Bind local:MainWindow.IsNotBusy(ViewModel.IsBusy), Mode=OneWay}">
                         <FontIcon FontSize="16" Glyph="&#xE81C;" />
                         <Button.Flyout>
@@ -329,6 +329,17 @@
                                 Visibility="{x:Bind ViewModel.McpHasErrors, Mode=OneWay}" />
                         </StackPanel>
                     </Button>
+
+                    <ToggleButton
+                        x:Name="ReadOnlyButton"
+                        AutomationProperties.AutomationId="ReadOnlyButton"
+                        AutomationProperties.Name="{x:Bind local:Strings.ReadOnlyMode}"
+                        VerticalAlignment="Bottom"
+                        Padding="10,8"
+                        ToolTipService.ToolTip="{x:Bind local:Strings.ReadOnlyTooltipOff}"
+                        Click="ReadOnlyButton_Click">
+                        <FontIcon FontSize="16" Glyph="&#xE72E;" />
+                    </ToggleButton>
 
                     <Button
                         x:Name="QualityButton"

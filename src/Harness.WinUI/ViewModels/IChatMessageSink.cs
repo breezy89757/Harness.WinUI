@@ -36,6 +36,11 @@ public interface IChatMessageSink
     Task SetMessageMetaAsync(string id, string text, string? tooltip, string? traceId = null);
 
     /// <summary>
+    /// Offers "Retry" under the reply with this id (and nowhere else); a null <paramref name="id"/> removes it.
+    /// </summary>
+    Task SetRetryAsync(string? id, string? label, string? tooltip = null);
+
+    /// <summary>
     /// Shows an artifact in the side panel: live content while it streams, then — once
     /// <see cref="Harness.Core.Artifacts.ArtifactSegment.IsComplete"/> — saved and rendered.
     /// </summary>

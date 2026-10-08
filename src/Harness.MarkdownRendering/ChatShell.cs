@@ -207,6 +207,12 @@ public static class ChatShell
         .copy-msg { width: 20px; height: 18px; margin-top: 4px; }
         .turn:hover .copy-msg { opacity: 1; }
         .turn:has(.content:empty) .copy-msg { display: none; }
+        /* Shown under the last reply that failed or was stopped. */
+        .retry-btn { font: inherit; font-size: 0.75em; margin: 4px 0 0 6px; padding: 0 12px; border-radius: 6px; cursor: pointer;
+                     border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); }
+        .retry-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+        .retry-btn:disabled { opacity: 0.5; cursor: default; }
+        .retry-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
         </style>
         """;
 
@@ -410,6 +416,19 @@ public static class ChatShell
             return b;
         }
 
+        // "Retry" under one reply (the last that failed or was stopped); no id removes it.
+        function setRetry(id, label, tooltip) {
+            document.querySelectorAll('.retry-btn').forEach(b => b.remove());
+            const t = id ? turn(id) : null;
+            if (!t || !label) return;
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'retry-btn';
+            b.textContent = label;
+            if (tooltip) b.title = tooltip;
+            withStickyScroll(() => t.querySelector('.foot').appendChild(b));
+        }
+
         function setCopyLabel(text) {
             copyLabel = text;
             document.querySelectorAll('.copy-code, .copy-msg').forEach(b => { b.title = text; b.setAttribute('aria-label', text); });
@@ -488,6 +507,12 @@ public static class ChatShell
         }
         document.addEventListener('keydown', e => {
             if (!e.ctrlKey || e.altKey || e.metaKey) return;
+            const shortcut = e.shiftKey ? undefined : ({ n: 'newChat', h: 'history' })[e.key.toLowerCase()];
+            if (shortcut) {
+                e.preventDefault();
+                post({ type: 'shortcut', name: shortcut });
+                return;
+            }
             const step = (e.key === '+' || e.key === '=') ? 1 : e.key === '-' ? -1 : e.key === '0' ? 0 : null;
             if (step === null) return;
             e.preventDefault();
@@ -510,6 +535,12 @@ public static class ChatShell
         });
 
         document.addEventListener('click', e => {
+            const retry = e.target.closest('button.retry-btn');
+            if (retry) {
+                retry.disabled = true;
+                post({ type: 'retry' });
+                return;
+            }
             const copy = e.target.closest('button.copy-code, button.copy-msg');
             if (copy) {
                 const text = copy.classList.contains('copy-code')

@@ -15,7 +15,7 @@ namespace Harness.WinUI;
 public sealed partial class MainWindow
 {
     /// <param name="Open">Runs the button's action; flyouts open at the given element (the More button).</param>
-    private sealed record ToolbarItem(string Id, Button Button, string Glyph, Func<string> Label, Action<FrameworkElement> Open, Func<bool> IsEnabled);
+    private sealed record ToolbarItem(string Id, ButtonBase Button, string Glyph, Func<string> Label, Action<FrameworkElement> Open, Func<bool> IsEnabled);
 
     private ToolbarItem[] _toolbarItems = [];
 
@@ -32,6 +32,8 @@ public sealed partial class MainWindow
                 _ => SettingsButton_Click(MoreButton, new RoutedEventArgs()), Always),
             new("tools", ToolsButton, "", () => WithDetail(Strings.ToolsTooltip, ViewModel.McpBadgeText),
                 _ => ToolsButton_Click(MoreButton, new RoutedEventArgs()), Always),
+            new("readOnly", ReadOnlyButton, "", () => WithDetail(Strings.ReadOnlyMode, _permissions.ReadOnlyMode ? Strings.ReadOnlyOnDetail : null),
+                _ => SetReadOnlyMode(!_permissions.ReadOnlyMode), Always),
             new("quality", QualityButton, "", () => Strings.ResponseQuality,
                 at => QualityFlyout.ShowAt(at), Always),
             new("usage", UsageButton, "", () => WithDetail(Strings.UsageTooltip, ViewModel.ConversationCostText),
@@ -192,6 +194,10 @@ public sealed partial class MainWindow
         var customize = new MenuFlyoutItem { Text = Strings.CustomizeToolbarEllipsis, Icon = new FontIcon { Glyph = "" } };
         customize.Click += (_, _) => DispatcherQueue.TryEnqueue(() => ShowToolbarCustomizer(MoreButton));
         MoreFlyout.Items.Add(customize);
+
+        var about = new MenuFlyoutItem { Text = Strings.AboutMenu, Icon = new FontIcon { Glyph = "" } };
+        about.Click += (_, _) => DispatcherQueue.TryEnqueue(ShowAbout);
+        MoreFlyout.Items.Add(about);
     }
 
     private void ToolbarPanel_ContextRequested(UIElement sender, ContextRequestedEventArgs e)
