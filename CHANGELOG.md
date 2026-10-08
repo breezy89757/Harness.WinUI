@@ -1,6 +1,6 @@
 # Harness.WinUI - Changelog
 
-## [Unreleased]
+## [1.0.10] - 2026-10-09
 
 ### Added
 - Read-only mode: a lock button in the toolbar. While it's on, the agent can read and search but anything that
