@@ -196,18 +196,32 @@ public static class Strings
     public static string ProviderIntro => T(
         "An OpenAI-compatible endpoint, model and API key. The API key is encrypted on this device and never stored in plain text.",
         "OpenAI 相容的 endpoint、模型與 API key。API key 會在這台電腦上加密儲存，不會以明碼存放。");
+    public static string ProfileList => T("Connection", "連線");
+    public static string ProfileHelp => T(
+        "Save several, such as a cloud service and a local model. The one showing when you press Save is the one Harness.WinUI uses.",
+        "可以存多組，例如雲端服務和本機模型。按儲存時畫面上顯示的那一組，就是 Harness.WinUI 使用的。");
+    public static string ProfileAdd => T("Add", "新增");
+    public static string ProfileDelete => T("Delete", "刪除");
+    public static string ProfileName => T("Name (optional)", "名稱（選填）");
+    public static string ProfileNamePlaceholder => T("e.g. Local Ollama", "例如：本機 Ollama");
+    public static string ProfileNew => T("New connection", "新的連線");
+    public static string ProfileIncomplete(string label) => T($"“{label}” is incomplete: it needs an endpoint, a model and an API key.", $"「{label}」還沒填完：需要 endpoint、模型與 API key。");
     public static string Endpoint => "Endpoint";
     public static string Model => T("Model", "模型");
     public static string ImageModel => T("Image model (optional)", "生圖模型（選填）");
     public static string ImageModelPlaceholder => T("gpt-image-2 — leave blank to disable image generation", "gpt-image-2 — 留白則停用生圖");
     public static string ApiKey => "API key";
     public static string ApiKeyEnter => T("Enter API key", "輸入 API key");
-    public static string ApiKeyKeep => T("Leave blank to keep the current key", "留白則沿用目前的 key");
-    public static string ApiType => "API";
+    public static string ApiKeyKeep => T("Leave blank to keep the current key", "留白則沿用目前的 key");    public static string ApiType => "API";
     public static string ApiAuto => T("Auto (recommended)", "自動（建議）");
     public static string ApiHelp => T(
         "Auto uses Responses for Azure OpenAI and OpenAI (needed for reasoning models to use tools) and Chat Completions for other gateways such as LiteLLM.",
         "自動：Azure OpenAI 與 OpenAI 使用 Responses（推理模型要搭配工具時必須），其他 gateway（例如 LiteLLM）使用 Chat Completions。");
+    public static string CustomInstructionsHeader => T("Your instructions", "自訂指示");
+    public static string CustomInstructionsHelp => T(
+        "Added to the built-in instructions in every conversation, for example how you want replies written or what things are called where you work. An AGENTS.md file at the root of the sandbox folder is read too, for that folder only; the agent can't change it.",
+        "會加在內建指示後面，套用到每個對話，例如你希望回覆怎麼寫、你工作上的東西叫什麼。沙盒資料夾最上層如果有 AGENTS.md 也會一併讀入，只對那個資料夾有效，agent 本身無法修改它。");
+    public static string CustomInstructionsPlaceholder => T("e.g. Always reply in Traditional Chinese (Taiwan usage).", "例如：一律用台灣用語的繁體中文回覆。");
     public static string SandboxHeader => T("Sandbox folder", "沙盒資料夾");
     public static string SandboxHelp => T(
         "Harness.WinUI's file tools can only read and write inside this folder (Word, Excel, PowerPoint and PDF files can be read too). Leave empty to turn file tools off.",
@@ -278,8 +292,11 @@ public static class Strings
     public static string UsageNone => T("No usage yet.", "還沒有用量紀錄。");
     public static string UsageUnavailable => T("Usage tracking is unavailable.", "無法記錄用量。");
     public static string PricingHeader => T("Pricing", "費用");
-    public static string PricingNote => T("Prices per 1M tokens for the model above. Leave empty to show tokens only.",
-                                          "上方模型每 100 萬 token 的價格。留空則只顯示 token 數。");
+    public static string PricingNote => T("Prices per 1M tokens for the model of the connection you're on. Leave empty to show tokens only.",
+                                          "目前這組連線的模型，每 100 萬 token 的價格。留空則只顯示 token 數。");
+    public static string SettingsTabConnection => T("Connection", "連線");
+    public static string SettingsTabGeneral => T("General", "一般");
+    public static string SettingsTabPermissions => T("Permissions", "權限");
     public static string Currency => T("Currency", "幣別");
     public static string PriceInput => T("Input", "輸入");
     public static string PriceCachedInput => T("Cached input", "快取輸入");
@@ -381,6 +398,15 @@ public static class Strings
     public static string StatCostTip => T("Estimated from the prices you set in Settings.", "依你在設定中填的單價估算。");
     public static string StatAverageTurn => T("Average turn", "平均回合時間");
     public static string StatAverageTurnTip => T("Average time from sending a message to the finished reply.", "從送出訊息到回覆完成的平均時間。");
+    public static string StatDaily => T("Day by day", "每日趨勢");
+    public static string StatDailyNote => T(
+        "One bar per day (your local time) of the period; hover a bar for the exact figures.",
+        "所選期間內每天一根長條（你的本地時間），滑鼠停在長條上可看精確數字。");
+    public static string StatDailyCost(string currency) => T($"Cost per day ({currency})", $"每日費用（{currency}）");
+    public static string StatDailyCalls => T("Model calls per day", "每日模型呼叫次數");
+    public static string StatDailyTokens => T("Tokens per day (in + out)", "每日 token（輸入＋輸出）");
+    public static string DailyTip(string day, string value) => $"{day}: {value}";
+    public static string DailyPeak(string day, string value) => T($"Highest: {day} ({value})", $"最高：{day}（{value}）");
     public static string StatModels => T("Models", "模型");
     public static string StatModelsNote => T(
         "Time is per model call. Median: half the calls were faster. P95: only 5% were slower. First token: how long until the reply starts to appear. Cache hit: the share of input read from the prompt cache (higher is cheaper). Tool definitions: size of the tool descriptions sent with every call.",
@@ -470,17 +496,6 @@ public static class Strings
     public static string CustomizeToolbar => T("Customize toolbar", "自訂工具列");
     public static string CustomizeToolbarEllipsis => T("Customize toolbar…", "自訂工具列…");
 
-    // About
-    public static string AboutMenu => T("About Harness.WinUI…", "關於 Harness.WinUI…");
-    public static string AboutTitle => T("About Harness.WinUI", "關於 Harness.WinUI");
-    public static string AboutVersion(string version) => T($"Version {version}", $"版本 {version}");
-    public static string AboutBody => T(
-        "A lightweight, native Windows AI agent that works with any OpenAI-compatible endpoint. Free and open source under the MIT License.",
-        "輕量的 Windows 原生 AI 助手，可接任何 OpenAI 相容的端點。免費，並以 MIT 授權開源。");
-    public static string AboutSourceCode => T("Source code and license (GitHub)", "原始碼與授權（GitHub）");
-    public static string AboutReportIssue => T("Report an issue or ask a question", "回報問題或提問");
-    public static string AboutPrivacy => T("Privacy policy", "隱私權政策");
-    public static string AboutThirdParty => T("Third-party notices", "第三方元件聲明");
     public static string Close => T("Close", "關閉");
     public static string Apply => T("Apply", "套用");
     public static string ShowOnToolbar => T("Show on toolbar", "顯示在工具列上");

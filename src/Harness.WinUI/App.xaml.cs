@@ -179,7 +179,8 @@ public partial class App : Application
         try
         {
             var session = new ChatSession(
-                ChatClientFactory.Create(resolved), options, () => _tools.All, ChatClientFactory.SupportsReasoningSummaries(resolved));
+                ChatClientFactory.Create(resolved), options, () => _tools.All, ChatClientFactory.SupportsReasoningSummaries(resolved),
+                _tools.ExtraInstructions);
             _tools.SetImageGeneration(ImageSettingsFor(resolved));
             return (session, options, null, false);
         }

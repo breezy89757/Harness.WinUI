@@ -39,6 +39,9 @@ public sealed record AppPreferences
     /// <summary>Prices per million tokens by model name; a model without one shows tokens only.</summary>
     public Dictionary<string, Usage.ModelPrice>? ModelPrices { get; init; }
 
+    /// <summary>The user's own instructions to the model, added to the built-in ones in every conversation (see <see cref="Agent.CustomInstructions"/>).</summary>
+    public string? CustomInstructions { get; init; }
+
     /// <summary>Skills (by name) the user turned off; every other discovered skill is offered to the model.</summary>
     public List<string>? DisabledSkills { get; init; }
 

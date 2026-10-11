@@ -292,14 +292,15 @@ public sealed partial class MainWindow : Window, IChatMessageSink
     private async Task<bool> ShowSettingsAsync()
     {
         var saved = LocalSettingsStore.Load();
-        var dialog = new SettingsDialog(
-            saved?.Endpoint ?? _options.Provider.Endpoint,
-            saved?.Model ?? _options.Provider.Model,
-            saved?.Api ?? ProviderApiExtensions.Parse(_options.Provider.Api),
-            saved is not null ? saved.ImageModel : _options.Provider.ImageModel,
-            hasExistingApiKey: saved is not null,
-            WindowHandle,
-            _permissions)
+        var (profiles, active) = LocalSettingsStore.LoadProfiles();
+        // Nothing saved yet: start from the developer config (appsettings), without a key.
+        IReadOnlyList<ProviderProfile> shown = profiles.Count > 0 ? profiles :
+        [
+            new ProviderProfile(
+                string.Empty, _options.Provider.Endpoint, _options.Provider.Model, string.Empty,
+                ProviderApiExtensions.Parse(_options.Provider.Api), _options.Provider.ImageModel),
+        ];
+        var dialog = new SettingsDialog(shown, active, WindowHandle, _permissions)
         {
             XamlRoot = Content.XamlRoot,
         };
@@ -350,7 +351,8 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         try
         {
             ViewModel.UpdateSession(new ChatSession(
-                ChatClientFactory.Create(provider), _options, () => _tools.All, ChatClientFactory.SupportsReasoningSummaries(provider)));
+                ChatClientFactory.Create(provider), _options, () => _tools.All, ChatClientFactory.SupportsReasoningSummaries(provider),
+                _tools.ExtraInstructions));
             _tools.SetImageGeneration(App.ImageSettingsFor(provider));
         }
         catch (Exception ex)

@@ -64,6 +64,8 @@ public sealed partial class ObservabilityWindow
         cards.Children.Add(Card(Strings.StatAverageTurn, FormatDuration(totals.AverageTurnMs), Strings.StatAverageTurnTip));
         StatsPanel.Children.Add(cards);
 
+        AddDailyCharts(stats, totals.Currency ?? string.Empty);
+
         if (stats.Models.Count > 0)
         {
             StatsSection(Strings.StatModels, Strings.StatModelsNote, Table(
@@ -119,6 +121,76 @@ public sealed partial class ObservabilityWindow
                 [Strings.ColDecision, Strings.ColCount, Strings.ColWait],
                 stats.Approvals.Select(a => new[] { Strings.TraceDecision(a.Decision), N(a.Count), FormatDuration(a.AverageWaitMs) })));
         }
+    }
+
+    /// <summary>Bars per day for the period: cost (or tokens when no prices are set) and model calls.</summary>
+    private void AddDailyCharts(TraceStatistics stats, string currency)
+    {
+        var days = stats.Days;
+        if (days.Count < 2 || days.All(d => d.ModelCalls == 0))
+            return;
+
+        StatsPanel.Children.Add(new TextBlock
+        {
+            Text = Strings.StatDaily,
+            Margin = new Thickness(0, 12, 0, 0),
+            Style = (Style)Application.Current.Resources["SubtitleTextBlockStyle"],
+        });
+        StatsPanel.Children.Add(Caption(Strings.StatDailyNote));
+
+        var hasCost = days.Any(d => d.Cost is > 0);
+        StatsPanel.Children.Add(hasCost
+            ? DayChart(Strings.StatDailyCost(currency), days, d => d.Cost ?? 0, d => ChatMarkup.FormatCost((decimal)(d.Cost ?? 0), currency))
+            : DayChart(Strings.StatDailyTokens, days, d => d.InputTokens + d.OutputTokens, d => ChatMarkup.FormatTokens(d.InputTokens + d.OutputTokens)));
+        StatsPanel.Children.Add(DayChart(Strings.StatDailyCalls, days, d => d.ModelCalls, d => N(d.ModelCalls)));
+    }
+
+    private const double BarAreaHeight = 72;
+
+    /// <summary>A small bar chart: one bar per day, scaled to the biggest, with the first, middle and last dates under it.</summary>
+    private static StackPanel DayChart(string title, IReadOnlyList<DayStatistics> days, Func<DayStatistics, double> value, Func<DayStatistics, string> format)
+    {
+        var resources = Application.Current.Resources;
+        var max = days.Max(value);
+        // Every day gets the same fixed width, so a chart of 7 days and one of 30 look alike per bar.
+        const double ColumnWidth = 26, ColumnGap = 4;
+        var chartWidth = Math.Max(days.Count * (ColumnWidth + ColumnGap) - ColumnGap, 150);
+        var bars = new Grid { Height = BarAreaHeight, ColumnSpacing = ColumnGap, Width = chartWidth, HorizontalAlignment = HorizontalAlignment.Left };
+        for (var i = 0; i < days.Count; i++)
+        {
+            bars.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(ColumnWidth) });
+            var v = value(days[i]);
+            // A day with any activity gets a visible sliver even when it is tiny next to the biggest.
+            var height = max <= 0 || v <= 0 ? 0 : Math.Max(3, v / max * BarAreaHeight);
+            var bar = new Border
+            {
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Height = height,
+                CornerRadius = new CornerRadius(2, 2, 0, 0),
+                Background = (Brush)resources["AccentFillColorDefaultBrush"],
+            };
+            ToolTipService.SetToolTip(bar, Strings.DailyTip(days[i].Day.ToString("MM/dd", CultureInfo.CurrentCulture), format(days[i])));
+            // The whole column answers to the pointer, so a tiny bar (or an empty day) can still be hovered.
+            var column = new Border { Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), Child = bar };
+            ToolTipService.SetToolTip(column, Strings.DailyTip(days[i].Day.ToString("MM/dd", CultureInfo.CurrentCulture), format(days[i])));
+            Grid.SetColumn(column, i);
+            bars.Children.Add(column);
+        }
+
+        var labels = new Grid { Width = chartWidth, HorizontalAlignment = HorizontalAlignment.Left };
+        labels.Children.Add(Caption(days[0].Day.ToString("MM/dd", CultureInfo.CurrentCulture)));
+        var last = Caption(days[^1].Day.ToString("MM/dd", CultureInfo.CurrentCulture));
+        last.HorizontalAlignment = HorizontalAlignment.Right;
+        labels.Children.Add(last);
+
+        var peakDay = days.First(d => value(d) >= max);
+        var peak = Caption(Strings.DailyPeak(peakDay.Day.ToString("MM/dd", CultureInfo.CurrentCulture), format(peakDay)));
+        var panel = new StackPanel { Spacing = 4, Margin = new Thickness(0, 8, 0, 0) };
+        panel.Children.Add(new TextBlock { Text = title, Style = (Style)resources["BodyStrongTextBlockStyle"] });
+        panel.Children.Add(bars);
+        panel.Children.Add(labels);
+        panel.Children.Add(peak);
+        return panel;
     }
 
     private static string N(int n) => n.ToString("N0", CultureInfo.CurrentCulture);

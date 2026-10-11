@@ -296,7 +296,7 @@ public static class FileTools
 
     private static string WriteFile(Sandbox sandbox, string path, string content)
     {
-        var file = sandbox.Resolve(path);
+        var file = sandbox.ResolveForWrite(path);
         if (Directory.Exists(file))
             return $"Error: '{path}' is a folder.";
 
@@ -308,7 +308,7 @@ public static class FileTools
 
     private static string EditFile(Sandbox sandbox, string path, string oldText, string newText, bool replaceAll)
     {
-        var file = sandbox.Resolve(path);
+        var file = sandbox.ResolveForWrite(path);
         if (!File.Exists(file))
             return $"Error: file '{path}' doesn't exist.";
         if (DocumentText.IsDocument(file) || IsBinary(file))
@@ -353,8 +353,8 @@ public static class FileTools
 
     private static string Move(Sandbox sandbox, string source, string destination)
     {
-        var from = sandbox.Resolve(source);
-        var to = sandbox.Resolve(destination);
+        var from = sandbox.ResolveForWrite(source);
+        var to = sandbox.ResolveForWrite(destination);
         if (from == sandbox.Root)
             return "Error: the sandbox root itself can't be moved.";
         if (File.Exists(to) || Directory.Exists(to))

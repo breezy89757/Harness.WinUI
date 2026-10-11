@@ -29,9 +29,13 @@ public sealed record SkillStatistics(string Name, int Loads, int FileReads, Date
 
 public sealed record ApprovalStatistics(string Decision, int Count, double AverageWaitMs);
 
+/// <summary>One calendar day (local time) of the period; days without activity are included, as zeros.</summary>
+public sealed record DayStatistics(
+    DateOnly Day, int Turns, int ModelCalls, int ToolCalls, long InputTokens, long OutputTokens, double? Cost);
+
 public sealed record TraceStatistics(
     TraceTotals Totals, IReadOnlyList<ModelStatistics> Models, IReadOnlyList<ToolStatistics> Tools,
-    IReadOnlyList<SkillStatistics> Skills, IReadOnlyList<ApprovalStatistics> Approvals);
+    IReadOnlyList<SkillStatistics> Skills, IReadOnlyList<ApprovalStatistics> Approvals, IReadOnlyList<DayStatistics> Days);
 
 public sealed partial class TraceStore
 {
@@ -124,7 +128,28 @@ public sealed partial class TraceStore
             .OrderByDescending(a => a.Count)
             .ToList();
 
-        return new TraceStatistics(totals, models, toolStats, skills, approvals);
+        return new TraceStatistics(totals, models, toolStats, skills, approvals, Daily(since, turns, chats, tools));
+    }
+
+    /// <summary>Per local calendar day from <paramref name="since"/> to today, so quiet days show as gaps instead of vanishing.</summary>
+    private static List<DayStatistics> Daily(DateTimeOffset since, List<Row> turns, List<Row> chats, List<Row> tools)
+    {
+        static DateOnly DayOf(Row r) => DateOnly.FromDateTime(r.StartedAt.ToLocalTime().DateTime);
+        var turnsByDay = turns.GroupBy(DayOf).ToDictionary(g => g.Key, g => g.Count());
+        var toolsByDay = tools.GroupBy(DayOf).ToDictionary(g => g.Key, g => g.Count());
+        var chatsByDay = chats.GroupBy(DayOf).ToDictionary(g => g.Key, g => g.ToList());
+
+        var days = new List<DayStatistics>();
+        var last = DateOnly.FromDateTime(DateTime.Now);
+        for (var day = DateOnly.FromDateTime(since.ToLocalTime().DateTime); day <= last; day = day.AddDays(1))
+        {
+            var dayChats = chatsByDay.GetValueOrDefault(day) ?? [];
+            days.Add(new DayStatistics(
+                day, turnsByDay.GetValueOrDefault(day), dayChats.Count, toolsByDay.GetValueOrDefault(day),
+                dayChats.Sum(c => c.Input), dayChats.Sum(c => c.Output),
+                dayChats.Any(c => c.Cost is not null) ? dayChats.Sum(c => c.Cost ?? 0) : null));
+        }
+        return days;
     }
 
     /// <summary>

@@ -20,17 +20,30 @@ namespace Harness.WinUI;
 /// </summary>
 public sealed partial class SettingsDialog : ContentDialog
 {
-    /// <summary>
-    /// True when a key is already saved in <see cref="LocalSettingsStore"/> — lets the user leave the
-    /// API Key field blank to keep the existing key instead of retyping it.
-    /// </summary>
-    private readonly bool _hasExistingApiKey;
+    /// <summary>A connection as it's being edited: the dialog keeps all of them in memory and saves them together.</summary>
+    private sealed class Draft
+    {
+        public string Name = string.Empty;
+        public string Endpoint = string.Empty;
+        public string Model = string.Empty;
+        public string ApiKey = string.Empty;
+        public string ImageModel = string.Empty;
+        public ProviderApi Api = ProviderApi.Auto;
+    }
+
+    private readonly List<Draft> _drafts;
+    private int _current = -1;
+
+    /// <summary>True while the boxes are being filled from a connection, so that isn't taken as the user editing.</summary>
+    private bool _loading;
+    private readonly Dictionary<string, Harness.Core.Usage.ModelPrice> _prices;
     private readonly nint _windowHandle;
     private readonly string _initialLanguage;
     private readonly string _initialSandbox;
     private readonly ToolPermissionStore _permissions;
     private readonly List<(string ServerName, string ToolName)> _removedPermissions = [];
 
+    /// <summary>The connection that was showing when the user saved: the one to use now.</summary>
     public ResolvedProvider? Saved { get; private set; }
 
     public bool LanguageChanged { get; private set; }
@@ -38,38 +51,148 @@ public sealed partial class SettingsDialog : ContentDialog
     /// <summary>Set when the sandbox folder changed: the new folder, or empty when file tools were turned off.</summary>
     public string? NewSandboxFolder { get; private set; }
 
-    public SettingsDialog(
-        string? initialEndpoint, string? initialModel, ProviderApi initialApi, string? initialImageModel,
-        bool hasExistingApiKey, nint windowHandle, ToolPermissionStore permissions)
+    /// <param name="profiles">The saved connections (keys included, never shown); at least one, possibly half-empty.</param>
+    /// <param name="active">Index of the connection to show first.</param>
+    public SettingsDialog(IReadOnlyList<ProviderProfile> profiles, int active, nint windowHandle, ToolPermissionStore permissions)
     {
         InitializeComponent();
 
         _permissions = permissions;
         ShowAlwaysAllowed();
 
-        _hasExistingApiKey = hasExistingApiKey;
         _windowHandle = windowHandle;
 
-        EndpointTextBox.Text = initialEndpoint ?? string.Empty;
-        ModelTextBox.Text = initialModel ?? string.Empty;
-        ImageModelTextBox.Text = initialImageModel ?? string.Empty;
-        ApiKeyPasswordBox.PlaceholderText = hasExistingApiKey ? Strings.ApiKeyKeep : Strings.ApiKeyEnter;
-        SelectByTag(ApiComboBox, initialApi.ToString());
-
         var preferences = AppPreferences.Load();
+        _prices = new Dictionary<string, Harness.Core.Usage.ModelPrice>(preferences.ModelPrices ?? [], StringComparer.OrdinalIgnoreCase);
+
+        _drafts = profiles.Select(p => new Draft
+        {
+            Name = p.Name, Endpoint = p.Endpoint, Model = p.Model, ApiKey = p.ApiKey, ImageModel = p.ImageModel ?? string.Empty, Api = p.Api,
+        }).ToList();
+        _loading = true;
+        foreach (var draft in _drafts)
+            ProfileComboBox.Items.Add(new ComboBoxItem { Content = Label(draft.Name, draft.Endpoint, draft.Model) });
+        _current = Math.Clamp(active, 0, _drafts.Count - 1);
+        ProfileComboBox.SelectedIndex = _current;
+        _loading = false;
+        LoadFields();
+
         _initialLanguage = preferences.Language;
         SelectByTag(LanguageComboBox, _initialLanguage);
 
         _initialSandbox = preferences.SandboxFolder ?? string.Empty;
         SandboxTextBox.Text = _initialSandbox;
+        CustomInstructionsTextBox.Text = preferences.CustomInstructions ?? string.Empty;
 
         CurrencyTextBox.Text = preferences.Currency;
-        var price = preferences.PriceFor(initialModel);
+
+        UpdateSaveButtonState();
+    }
+
+    /// <summary>What the connection list shows: its name, or "model · host" until it has one.</summary>
+    private static string Label(string name, string endpoint, string model)
+    {
+        if (!string.IsNullOrWhiteSpace(name))
+            return name.Trim();
+        endpoint = endpoint.Trim();
+        model = model.Trim();
+        var host = Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) ? uri.Authority : endpoint;
+        return (model.Length, host.Length) switch
+        {
+            (0, 0) => Strings.ProfileNew,
+            (0, _) => host,
+            (_, 0) => model,
+            _ => $"{model} · {host}",
+        };
+    }
+
+    private void LoadFields()
+    {
+        var draft = _drafts[_current];
+        _loading = true;
+        ProfileNameTextBox.Text = draft.Name;
+        EndpointTextBox.Text = draft.Endpoint;
+        ModelTextBox.Text = draft.Model;
+        ImageModelTextBox.Text = draft.ImageModel;
+        ApiKeyPasswordBox.Password = string.Empty;
+        ApiKeyPasswordBox.PlaceholderText = draft.ApiKey.Length > 0 ? Strings.ApiKeyKeep : Strings.ApiKeyEnter;
+        SelectByTag(ApiComboBox, draft.Api.ToString());
+
+        _prices.TryGetValue(draft.Model, out var price);
         PriceInputBox.Value = price is null ? double.NaN : (double)price.Input;
         PriceCachedBox.Value = price is null ? double.NaN : (double)price.CachedInput;
         PriceOutputBox.Value = price is null ? double.NaN : (double)price.Output;
 
+        ProfileDeleteButton.IsEnabled = _drafts.Count > 1;
+        _loading = false;
         UpdateSaveButtonState();
+    }
+
+    /// <summary>Copies the boxes into the connection being shown (and its price into the price list).</summary>
+    private void CommitFields()
+    {
+        var draft = _drafts[_current];
+        draft.Name = ProfileNameTextBox.Text?.Trim() ?? string.Empty;
+        draft.Endpoint = EndpointTextBox.Text?.Trim() ?? string.Empty;
+        draft.Model = ModelTextBox.Text?.Trim() ?? string.Empty;
+        draft.ImageModel = ImageModelTextBox.Text?.Trim() ?? string.Empty;
+        draft.Api = ProviderApiExtensions.Parse(SelectedTag(ApiComboBox));
+        if (!string.IsNullOrWhiteSpace(ApiKeyPasswordBox.Password))
+            draft.ApiKey = ApiKeyPasswordBox.Password;
+        CommitPrice(draft.Model);
+    }
+
+    /// <summary>
+    /// Sets this model's entry in the prices from the three boxes (removed when all are empty).
+    /// An empty cached price means no cache discount: cached tokens cost the same as input.
+    /// </summary>
+    private void CommitPrice(string model)
+    {
+        if (model.Length == 0)
+            return;
+        _prices.Remove(model);
+
+        static decimal? Read(NumberBox box) => double.IsNaN(box.Value) ? null : (decimal)Math.Max(0, box.Value);
+        var input = Read(PriceInputBox);
+        var cached = Read(PriceCachedBox);
+        var output = Read(PriceOutputBox);
+        if (input is not null || cached is not null || output is not null)
+            _prices[model] = new Harness.Core.Usage.ModelPrice(input ?? 0, cached ?? input ?? 0, output ?? 0);
+    }
+
+    private void ProfileComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || ProfileComboBox.SelectedIndex < 0)
+            return;
+        CommitFields();
+        _current = ProfileComboBox.SelectedIndex;
+        LoadFields();
+    }
+
+    private void ProfileAdd_Click(object sender, RoutedEventArgs e)
+    {
+        CommitFields();
+        _drafts.Add(new Draft());
+        _loading = true;
+        ProfileComboBox.Items.Add(new ComboBoxItem { Content = Strings.ProfileNew });
+        _current = _drafts.Count - 1;
+        ProfileComboBox.SelectedIndex = _current;
+        _loading = false;
+        LoadFields();
+        EndpointTextBox.Focus(FocusState.Programmatic);
+    }
+
+    private void ProfileDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if (_drafts.Count <= 1)
+            return;
+        _loading = true;
+        _drafts.RemoveAt(_current);
+        ProfileComboBox.Items.RemoveAt(_current);
+        _current = Math.Min(_current, _drafts.Count - 1);
+        ProfileComboBox.SelectedIndex = _current;
+        _loading = false;
+        LoadFields();
     }
 
     /// <summary>One row per always-allowed action, each with a Remove button (removals apply on Save).</summary>
@@ -116,13 +239,20 @@ public sealed partial class SettingsDialog : ContentDialog
 
     private static string SelectedTag(ComboBox comboBox) => (comboBox.SelectedItem as ComboBoxItem)?.Tag as string ?? string.Empty;
 
-    private void Field_Changed(object sender, RoutedEventArgs e) => UpdateSaveButtonState();
+    private void Field_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loading)
+            return;
+        if (ProfileComboBox.Items[_current] is ComboBoxItem item)
+            item.Content = Label(ProfileNameTextBox.Text ?? string.Empty, EndpointTextBox.Text ?? string.Empty, ModelTextBox.Text ?? string.Empty);
+        UpdateSaveButtonState();
+    }
 
     private void UpdateSaveButtonState()
     {
         var hasEndpoint = !string.IsNullOrWhiteSpace(EndpointTextBox.Text);
         var hasModel = !string.IsNullOrWhiteSpace(ModelTextBox.Text);
-        var hasApiKey = !string.IsNullOrWhiteSpace(ApiKeyPasswordBox.Password) || _hasExistingApiKey;
+        var hasApiKey = !string.IsNullOrWhiteSpace(ApiKeyPasswordBox.Password) || _drafts[_current].ApiKey.Length > 0;
 
         IsPrimaryButtonEnabled = hasEndpoint && hasModel && hasApiKey;
     }
@@ -139,33 +269,40 @@ public sealed partial class SettingsDialog : ContentDialog
 
     private void SettingsDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
-        var endpoint = EndpointTextBox.Text?.Trim() ?? string.Empty;
-        var model = ModelTextBox.Text?.Trim() ?? string.Empty;
-        var typedApiKey = ApiKeyPasswordBox.Password ?? string.Empty;
-        var api = ProviderApiExtensions.Parse(SelectedTag(ApiComboBox));
-        var imageModel = string.IsNullOrWhiteSpace(ImageModelTextBox.Text) ? null : ImageModelTextBox.Text.Trim();
+        CommitFields();
+        var shown = _drafts[_current];
 
-        if (string.IsNullOrWhiteSpace(endpoint) || string.IsNullOrWhiteSpace(model))
+        if (string.IsNullOrWhiteSpace(shown.Endpoint) || string.IsNullOrWhiteSpace(shown.Model))
         {
             args.Cancel = true;
-            ShowError(Strings.EndpointModelRequired);
+            ShowError(Strings.EndpointModelRequired, ConnectionTab);
+            return;
+        }
+        if (shown.ApiKey.Length == 0)
+        {
+            args.Cancel = true;
+            ShowError(Strings.ApiKeyRequired, ConnectionTab);
             return;
         }
 
-        string apiKeyToSave;
-        if (!string.IsNullOrWhiteSpace(typedApiKey))
+        // The others: one left completely empty (an Add that wasn't used) is dropped, one half filled in is an error.
+        var profiles = new List<ProviderProfile>();
+        var active = 0;
+        for (var i = 0; i < _drafts.Count; i++)
         {
-            apiKeyToSave = typedApiKey;
-        }
-        else if (_hasExistingApiKey && LocalSettingsStore.Load() is { } existing)
-        {
-            apiKeyToSave = existing.ApiKey;
-        }
-        else
-        {
-            args.Cancel = true;
-            ShowError(Strings.ApiKeyRequired);
-            return;
+            var d = _drafts[i];
+            if (i != _current && d.Endpoint.Length == 0 && d.Model.Length == 0 && d.ApiKey.Length == 0 && d.Name.Length == 0)
+                continue;
+            if (d.Endpoint.Length == 0 || d.Model.Length == 0 || d.ApiKey.Length == 0)
+            {
+                args.Cancel = true;
+                ShowError(Strings.ProfileIncomplete(Label(d.Name, d.Endpoint, d.Model)), ConnectionTab);
+                ProfileComboBox.SelectedIndex = i;
+                return;
+            }
+            if (i == _current)
+                active = profiles.Count;
+            profiles.Add(new ProviderProfile(d.Name, d.Endpoint, d.Model, d.ApiKey, d.Api, d.ImageModel.Length == 0 ? null : d.ImageModel));
         }
 
         // Validate the sandbox folder before saving anything, so a bad path doesn't leave a half-saved state.
@@ -181,7 +318,7 @@ public sealed partial class SettingsDialog : ContentDialog
             catch (Exception ex)
             {
                 args.Cancel = true;
-                ShowError(Strings.SandboxFailed(ex.Message));
+                ShowError(Strings.SandboxFailed(ex.Message), GeneralTab);
                 return;
             }
         }
@@ -190,13 +327,13 @@ public sealed partial class SettingsDialog : ContentDialog
         if (!System.Text.RegularExpressions.Regex.IsMatch(currency, "^[A-Z]{3}$"))
         {
             args.Cancel = true;
-            ShowError(Strings.CurrencyInvalid);
+            ShowError(Strings.CurrencyInvalid, PricingTab);
             return;
         }
 
         try
         {
-            LocalSettingsStore.Save(endpoint, model, apiKeyToSave, api, imageModel);
+            LocalSettingsStore.Save(profiles, active);
 
             var language = SelectedTag(LanguageComboBox);
             LanguageChanged = !string.Equals(language, _initialLanguage, StringComparison.OrdinalIgnoreCase);
@@ -206,7 +343,8 @@ public sealed partial class SettingsDialog : ContentDialog
                 Language = language,
                 SandboxFolder = sandboxChanged ? sandbox : current.SandboxFolder,
                 Currency = currency,
-                ModelPrices = PricesWith(current.ModelPrices, model),
+                ModelPrices = _prices.Count == 0 ? null : _prices,
+                CustomInstructions = string.IsNullOrWhiteSpace(CustomInstructionsTextBox.Text) ? null : CustomInstructionsTextBox.Text.Trim(),
             }).Save();
             if (sandboxChanged)
                 NewSandboxFolder = sandbox;
@@ -220,31 +358,20 @@ public sealed partial class SettingsDialog : ContentDialog
             return;
         }
 
-        Saved = new ResolvedProvider(endpoint, model, apiKeyToSave, api, ProviderSource.LocalEncryptedSettings, imageModel);
+        var chosen = profiles[active];
+        Saved = new ResolvedProvider(chosen.Endpoint, chosen.Model, chosen.ApiKey, chosen.Api, ProviderSource.LocalEncryptedSettings, chosen.ImageModel);
     }
 
-    /// <summary>
-    /// The saved prices with this model's entry set from the three boxes (removed when all are empty).
-    /// An empty cached price means no cache discount: cached tokens cost the same as input.
-    /// </summary>
-    private Dictionary<string, Harness.Core.Usage.ModelPrice>? PricesWith(Dictionary<string, Harness.Core.Usage.ModelPrice>? saved, string model)
+    // Positions of the pages in the Pivot (see SettingsDialog.xaml).
+    private const int ConnectionTab = 0;
+    private const int PricingTab = 1;
+    private const int GeneralTab = 2;
+
+    /// <summary>Shows the message under the pages, and switches to the page the problem is on.</summary>
+    private void ShowError(string message, int? tab = null)
     {
-        var prices = new Dictionary<string, Harness.Core.Usage.ModelPrice>(saved ?? [], StringComparer.OrdinalIgnoreCase);
-        foreach (var key in prices.Keys.Where(k => string.Equals(k, model, StringComparison.OrdinalIgnoreCase)).ToList())
-            prices.Remove(key);
-
-        static decimal? Read(NumberBox box) => double.IsNaN(box.Value) ? null : (decimal)Math.Max(0, box.Value);
-        var input = Read(PriceInputBox);
-        var cached = Read(PriceCachedBox);
-        var output = Read(PriceOutputBox);
-        if (input is not null || cached is not null || output is not null)
-            prices[model] = new Harness.Core.Usage.ModelPrice(input ?? 0, cached ?? input ?? 0, output ?? 0);
-
-        return prices.Count == 0 ? null : prices;
-    }
-
-    private void ShowError(string message)
-    {
+        if (tab is { } index)
+            SettingsPivot.SelectedIndex = index;
         ErrorTextBlock.Text = message;
         ErrorTextBlock.Visibility = Visibility.Visible;
     }

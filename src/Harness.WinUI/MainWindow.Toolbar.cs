@@ -194,10 +194,6 @@ public sealed partial class MainWindow
         var customize = new MenuFlyoutItem { Text = Strings.CustomizeToolbarEllipsis, Icon = new FontIcon { Glyph = "" } };
         customize.Click += (_, _) => DispatcherQueue.TryEnqueue(() => ShowToolbarCustomizer(MoreButton));
         MoreFlyout.Items.Add(customize);
-
-        var about = new MenuFlyoutItem { Text = Strings.AboutMenu, Icon = new FontIcon { Glyph = "" } };
-        about.Click += (_, _) => DispatcherQueue.TryEnqueue(ShowAbout);
-        MoreFlyout.Items.Add(about);
     }
 
     private void ToolbarPanel_ContextRequested(UIElement sender, ContextRequestedEventArgs e)

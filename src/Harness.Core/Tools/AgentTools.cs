@@ -35,6 +35,10 @@ public sealed class AgentTools : IAsyncDisposable
     /// <summary>Where the file tools work, or null when they're off.</summary>
     public string? SandboxRoot => _sandbox?.Root;
 
+    /// <summary>The user's own instructions for the model right now: Settings plus the sandbox folder's AGENTS.md (null when there are none).</summary>
+    public string? ExtraInstructions() =>
+        Harness.Core.Agent.CustomInstructions.Compose(AppPreferences.Load().CustomInstructions, SandboxRoot);
+
     /// <summary>Raised when the built-in tool set changes (sandbox or image settings); MCP changes raise <see cref="McpHost.Changed"/>.</summary>
     public event EventHandler? Changed;
 

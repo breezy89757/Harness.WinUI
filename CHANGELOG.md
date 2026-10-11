@@ -1,5 +1,27 @@
 # Harness.WinUI - Changelog
 
+## [1.0.11] - 2026-10-11
+
+### Added
+- Several model connections: Settings now keeps a list (for example a cloud service and a local Ollama) with Add and
+  Delete. The one showing when you press Save is the one in use. Your existing connection is the first entry; the file
+  still holds the active one in the old place, so an older version keeps working
+- Your own instructions for the model: a box in Settings (added to the built-in instructions in every conversation),
+  and an AGENTS.md at the root of the sandbox folder (for work in that folder). Both are read on every message, so a
+  change applies right away. The agent can't change AGENTS.md itself, so a page or file that talked it into rewriting
+  its instructions can't make them stick across conversations
+- Statistics → Day by day: a bar per day for the cost (or the tokens, when no prices are set) and for the model calls,
+  with the busiest day named. Days without activity show as gaps
+
+### Changed
+- Settings is split into pages (Connection, Pricing, General, Permissions) instead of one long scroll; a problem found
+  on saving takes you to the page it is on
+- README: a local OpenAI-compatible server such as Ollama can be added as a connection. Ollama's default context length
+  (4096 tokens) is too small for tools, so raise it (`OLLAMA_CONTEXT_LENGTH=16384`)
+
+### Removed
+- More menu → About Harness.WinUI (added in 1.0.10): it was in the way more than it helped
+
 ## [1.0.10] - 2026-10-09
 
 ### Added

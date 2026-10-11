@@ -14,162 +14,243 @@
     PrimaryButtonClick="SettingsDialog_PrimaryButtonClick"
     mc:Ignorable="d">
 
-    <ScrollViewer MaxHeight="620" VerticalScrollBarVisibility="Auto">
-        <StackPanel MinWidth="360" MaxWidth="460" Spacing="12" Padding="0,0,12,0">
+    <StackPanel MinWidth="380" MaxWidth="480" Spacing="8">
+        <!-- One page per kind of setting, so nothing important sits far down a long scroll. -->
+        <Pivot x:Name="SettingsPivot" AutomationProperties.AutomationId="SettingsPivot">
 
-            <!-- Language -->
-            <TextBlock Text="{x:Bind local:Strings.LanguageHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
-            <ComboBox
-                x:Name="LanguageComboBox"
-                HorizontalAlignment="Stretch"
-                AutomationProperties.AutomationId="SettingsLanguageComboBox"
-                AutomationProperties.Name="{x:Bind local:Strings.LanguageHeader}">
-                <ComboBoxItem Content="{x:Bind local:Strings.LanguageSystem}" Tag="system" />
-                <ComboBoxItem Content="English" Tag="en" />
-                <ComboBoxItem Content="繁體中文" Tag="zh-TW" />
-            </ComboBox>
-            <TextBlock
-                Text="{x:Bind local:Strings.LanguageRestartNote}"
-                TextWrapping="Wrap"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Style="{StaticResource CaptionTextBlockStyle}" />
+            <!-- Model connections -->
+            <PivotItem Header="{x:Bind local:Strings.SettingsTabConnection}">
+                <ScrollViewer Height="520" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="12" Padding="0,8,12,0">
+                        <TextBlock
+                            Text="{x:Bind local:Strings.ProviderIntro}"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}" />
 
-            <!-- Model provider -->
-            <TextBlock Margin="0,8,0,0" Text="{x:Bind local:Strings.ProviderHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
-            <TextBlock
-                Text="{x:Bind local:Strings.ProviderIntro}"
-                TextWrapping="Wrap"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Style="{StaticResource CaptionTextBlockStyle}" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ComboBox
+                                x:Name="ProfileComboBox"
+                                HorizontalAlignment="Stretch"
+                                Header="{x:Bind local:Strings.ProfileList}"
+                                AutomationProperties.AutomationId="SettingsProfileComboBox"
+                                SelectionChanged="ProfileComboBox_SelectionChanged" />
+                            <Button
+                                Grid.Column="1"
+                                VerticalAlignment="Bottom"
+                                Content="{x:Bind local:Strings.ProfileAdd}"
+                                AutomationProperties.AutomationId="SettingsProfileAddButton"
+                                Click="ProfileAdd_Click" />
+                            <Button
+                                x:Name="ProfileDeleteButton"
+                                Grid.Column="2"
+                                VerticalAlignment="Bottom"
+                                Content="{x:Bind local:Strings.ProfileDelete}"
+                                AutomationProperties.AutomationId="SettingsProfileDeleteButton"
+                                Click="ProfileDelete_Click" />
+                        </Grid>
+                        <TextBlock
+                            Text="{x:Bind local:Strings.ProfileHelp}"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}" />
 
-            <TextBox
-                x:Name="EndpointTextBox"
-                Header="{x:Bind local:Strings.Endpoint}"
-                AutomationProperties.AutomationId="SettingsEndpointTextBox"
-                PlaceholderText="https://your-resource.openai.azure.com/openai/v1"
-                TextWrapping="Wrap"
-                TextChanged="Field_Changed" />
+                        <TextBox
+                            x:Name="ProfileNameTextBox"
+                            Header="{x:Bind local:Strings.ProfileName}"
+                            AutomationProperties.AutomationId="SettingsProfileNameTextBox"
+                            PlaceholderText="{x:Bind local:Strings.ProfileNamePlaceholder}"
+                            TextChanged="Field_Changed" />
 
-            <TextBox
-                x:Name="ModelTextBox"
-                Header="{x:Bind local:Strings.Model}"
-                AutomationProperties.AutomationId="SettingsModelTextBox"
-                PlaceholderText="gpt-4o-mini"
-                TextChanged="Field_Changed" />
+                        <TextBox
+                            x:Name="EndpointTextBox"
+                            Header="{x:Bind local:Strings.Endpoint}"
+                            AutomationProperties.AutomationId="SettingsEndpointTextBox"
+                            PlaceholderText="https://your-resource.openai.azure.com/openai/v1"
+                            TextWrapping="Wrap"
+                            TextChanged="Field_Changed" />
 
-            <TextBox
-                x:Name="ImageModelTextBox"
-                Header="{x:Bind local:Strings.ImageModel}"
-                AutomationProperties.AutomationId="SettingsImageModelTextBox"
-                PlaceholderText="{x:Bind local:Strings.ImageModelPlaceholder}" />
+                        <TextBox
+                            x:Name="ModelTextBox"
+                            Header="{x:Bind local:Strings.Model}"
+                            AutomationProperties.AutomationId="SettingsModelTextBox"
+                            PlaceholderText="gpt-4o-mini"
+                            TextChanged="Field_Changed" />
 
-            <PasswordBox
-                x:Name="ApiKeyPasswordBox"
-                Header="{x:Bind local:Strings.ApiKey}"
-                AutomationProperties.AutomationId="SettingsApiKeyPasswordBox"
-                PasswordRevealMode="Peek"
-                PasswordChanged="Field_Changed" />
+                        <TextBox
+                            x:Name="ImageModelTextBox"
+                            Header="{x:Bind local:Strings.ImageModel}"
+                            AutomationProperties.AutomationId="SettingsImageModelTextBox"
+                            PlaceholderText="{x:Bind local:Strings.ImageModelPlaceholder}" />
 
-            <ComboBox
-                x:Name="ApiComboBox"
-                Header="{x:Bind local:Strings.ApiType}"
-                HorizontalAlignment="Stretch"
-                AutomationProperties.AutomationId="SettingsApiComboBox">
-                <ComboBoxItem Content="{x:Bind local:Strings.ApiAuto}" Tag="Auto" />
-                <ComboBoxItem Content="Responses" Tag="Responses" />
-                <ComboBoxItem Content="Chat Completions" Tag="ChatCompletions" />
-            </ComboBox>
-            <TextBlock
-                Text="{x:Bind local:Strings.ApiHelp}"
-                TextWrapping="Wrap"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Style="{StaticResource CaptionTextBlockStyle}" />
+                        <PasswordBox
+                            x:Name="ApiKeyPasswordBox"
+                            Header="{x:Bind local:Strings.ApiKey}"
+                            AutomationProperties.AutomationId="SettingsApiKeyPasswordBox"
+                            PasswordRevealMode="Peek"
+                            PasswordChanged="Field_Changed" />
+
+                        <ComboBox
+                            x:Name="ApiComboBox"
+                            Header="{x:Bind local:Strings.ApiType}"
+                            HorizontalAlignment="Stretch"
+                            AutomationProperties.AutomationId="SettingsApiComboBox">
+                            <ComboBoxItem Content="{x:Bind local:Strings.ApiAuto}" Tag="Auto" />
+                            <ComboBoxItem Content="Responses" Tag="Responses" />
+                            <ComboBoxItem Content="Chat Completions" Tag="ChatCompletions" />
+                        </ComboBox>
+                        <TextBlock
+                            Text="{x:Bind local:Strings.ApiHelp}"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </PivotItem>
 
             <!-- Pricing (for the cost shown under replies) -->
-            <TextBlock Margin="0,8,0,0" Text="{x:Bind local:Strings.PricingHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
-            <TextBlock
-                Text="{x:Bind local:Strings.PricingNote}"
-                TextWrapping="Wrap"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Style="{StaticResource CaptionTextBlockStyle}" />
-            <Grid ColumnSpacing="8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBox
-                    x:Name="CurrencyTextBox"
-                    Width="72"
-                    MaxLength="3"
-                    CharacterCasing="Upper"
-                    Header="{x:Bind local:Strings.Currency}"
-                    AutomationProperties.AutomationId="SettingsCurrencyTextBox" />
-                <NumberBox
-                    x:Name="PriceInputBox"
-                    Grid.Column="1"
-                    Minimum="0"
-                    Header="{x:Bind local:Strings.PriceInput}"
-                    AutomationProperties.AutomationId="SettingsPriceInput" />
-                <NumberBox
-                    x:Name="PriceCachedBox"
-                    Grid.Column="2"
-                    Minimum="0"
-                    Header="{x:Bind local:Strings.PriceCachedInput}"
-                    AutomationProperties.AutomationId="SettingsPriceCached" />
-                <NumberBox
-                    x:Name="PriceOutputBox"
-                    Grid.Column="3"
-                    Minimum="0"
-                    Header="{x:Bind local:Strings.PriceOutput}"
-                    AutomationProperties.AutomationId="SettingsPriceOutput" />
-            </Grid>
+            <PivotItem Header="{x:Bind local:Strings.PricingHeader}">
+                <ScrollViewer Height="520" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="12" Padding="0,8,12,0">
+                        <TextBlock
+                            Text="{x:Bind local:Strings.PricingNote}"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox
+                                x:Name="CurrencyTextBox"
+                                Width="72"
+                                MaxLength="3"
+                                CharacterCasing="Upper"
+                                Header="{x:Bind local:Strings.Currency}"
+                                AutomationProperties.AutomationId="SettingsCurrencyTextBox" />
+                            <NumberBox
+                                x:Name="PriceInputBox"
+                                Grid.Column="1"
+                                Minimum="0"
+                                Header="{x:Bind local:Strings.PriceInput}"
+                                AutomationProperties.AutomationId="SettingsPriceInput" />
+                            <NumberBox
+                                x:Name="PriceCachedBox"
+                                Grid.Column="2"
+                                Minimum="0"
+                                Header="{x:Bind local:Strings.PriceCachedInput}"
+                                AutomationProperties.AutomationId="SettingsPriceCached" />
+                            <NumberBox
+                                x:Name="PriceOutputBox"
+                                Grid.Column="3"
+                                Minimum="0"
+                                Header="{x:Bind local:Strings.PriceOutput}"
+                                AutomationProperties.AutomationId="SettingsPriceOutput" />
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+            </PivotItem>
 
-            <!-- Sandbox folder -->
-            <TextBlock Margin="0,8,0,0" Text="{x:Bind local:Strings.SandboxHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
-            <Grid ColumnSpacing="8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBox
-                    x:Name="SandboxTextBox"
-                    AutomationProperties.AutomationId="SettingsSandboxTextBox"
-                    AutomationProperties.Name="{x:Bind local:Strings.SandboxHeader}"
-                    PlaceholderText="{x:Bind local:Strings.SandboxNone}"
-                    TextWrapping="Wrap" />
-                <Button
-                    Grid.Column="1"
-                    VerticalAlignment="Top"
-                    Content="{x:Bind local:Strings.Browse}"
-                    AutomationProperties.AutomationId="SettingsSandboxBrowseButton"
-                    Click="BrowseSandbox_Click" />
-            </Grid>
-            <TextBlock
-                Text="{x:Bind local:Strings.SandboxHelp}"
-                TextWrapping="Wrap"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Style="{StaticResource CaptionTextBlockStyle}" />
+            <!-- Instructions, sandbox folder, language -->
+            <PivotItem Header="{x:Bind local:Strings.SettingsTabGeneral}">
+                <ScrollViewer Height="520" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="12" Padding="0,8,12,0">
+                        <!-- The user's own instructions -->
+                        <TextBlock Text="{x:Bind local:Strings.CustomInstructionsHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <TextBox
+                            x:Name="CustomInstructionsTextBox"
+                            AutomationProperties.AutomationId="SettingsCustomInstructions"
+                            AutomationProperties.Name="{x:Bind local:Strings.CustomInstructionsHeader}"
+                            PlaceholderText="{x:Bind local:Strings.CustomInstructionsPlaceholder}"
+                            AcceptsReturn="True"
+                            TextWrapping="Wrap"
+                            MinHeight="96"
+                            MaxHeight="220"
+                            MaxLength="4000" />
+                        <TextBlock
+                            Text="{x:Bind local:Strings.CustomInstructionsHelp}"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}" />
+
+                        <!-- Sandbox folder -->
+                        <TextBlock Margin="0,8,0,0" Text="{x:Bind local:Strings.SandboxHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox
+                                x:Name="SandboxTextBox"
+                                AutomationProperties.AutomationId="SettingsSandboxTextBox"
+                                AutomationProperties.Name="{x:Bind local:Strings.SandboxHeader}"
+                                PlaceholderText="{x:Bind local:Strings.SandboxNone}"
+                                TextWrapping="Wrap" />
+                            <Button
+                                Grid.Column="1"
+                                VerticalAlignment="Top"
+                                Content="{x:Bind local:Strings.Browse}"
+                                AutomationProperties.AutomationId="SettingsSandboxBrowseButton"
+                                Click="BrowseSandbox_Click" />
+                        </Grid>
+                        <TextBlock
+                            Text="{x:Bind local:Strings.SandboxHelp}"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}" />
+
+                        <!-- Language -->
+                        <TextBlock Margin="0,8,0,0" Text="{x:Bind local:Strings.LanguageHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <ComboBox
+                            x:Name="LanguageComboBox"
+                            HorizontalAlignment="Stretch"
+                            AutomationProperties.AutomationId="SettingsLanguageComboBox"
+                            AutomationProperties.Name="{x:Bind local:Strings.LanguageHeader}">
+                            <ComboBoxItem Content="{x:Bind local:Strings.LanguageSystem}" Tag="system" />
+                            <ComboBoxItem Content="English" Tag="en" />
+                            <ComboBoxItem Content="繁體中文" Tag="zh-TW" />
+                        </ComboBox>
+                        <TextBlock
+                            Text="{x:Bind local:Strings.LanguageRestartNote}"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </PivotItem>
 
             <!-- What runs without asking -->
-            <TextBlock Margin="0,8,0,0" Text="{x:Bind local:Strings.AlwaysAllowedHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
-            <TextBlock
-                Text="{x:Bind local:Strings.AlwaysAllowedHelp}"
-                TextWrapping="Wrap"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Style="{StaticResource CaptionTextBlockStyle}" />
-            <StackPanel
-                x:Name="AlwaysAllowedPanel"
-                Spacing="4"
-                AutomationProperties.AutomationId="SettingsAlwaysAllowedList"
-                AutomationProperties.Name="{x:Bind local:Strings.AlwaysAllowedHeader}" />
+            <PivotItem Header="{x:Bind local:Strings.SettingsTabPermissions}">
+                <ScrollViewer Height="520" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="12" Padding="0,8,12,0">
+                        <TextBlock Text="{x:Bind local:Strings.AlwaysAllowedHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <TextBlock
+                            Text="{x:Bind local:Strings.AlwaysAllowedHelp}"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}" />
+                        <StackPanel
+                            x:Name="AlwaysAllowedPanel"
+                            Spacing="4"
+                            AutomationProperties.AutomationId="SettingsAlwaysAllowedList"
+                            AutomationProperties.Name="{x:Bind local:Strings.AlwaysAllowedHeader}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </PivotItem>
+        </Pivot>
 
-            <TextBlock
-                x:Name="ErrorTextBlock"
-                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                TextWrapping="Wrap"
-                Visibility="Collapsed" />
-        </StackPanel>
-    </ScrollViewer>
+        <TextBlock
+            x:Name="ErrorTextBlock"
+            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+            TextWrapping="Wrap"
+            Visibility="Collapsed" />
+    </StackPanel>
 </ContentDialog>

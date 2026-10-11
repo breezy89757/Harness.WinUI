@@ -33,7 +33,7 @@ Harness.WinUI reads and writes files, plugs into MCP tools, and previews what it
 ### Features
 
 - **Native and lightweight**: WinUI 3 + .NET 10, no Electron, no Node.js. Model calls, tools and file handling all run in one process.
-- **Any OpenAI-compatible endpoint**: Azure OpenAI, OpenAI, LiteLLM and more. Official services use the Responses API (reasoning models need it to call tools); everything else uses Chat Completions.
+- **Any OpenAI-compatible endpoint**: Azure OpenAI, OpenAI, LiteLLM, and local servers such as Ollama. Official services use the Responses API (reasoning models need it to call tools); everything else uses Chat Completions.
 - **See what the agent is doing**: reasoning, the arguments and result of every tool call, token usage, model name and response time are all shown.
 - **Live artifact panel**: web pages, SVG, Mermaid diagrams and Markdown documents preview in a side panel while they are being written, with version history, Save As, and Open in browser.
 - **Built-in file tools, confined to a sandbox**: list, read, search, write and exact replace. Reads text from `.docx`, `.xlsx`, `.pptx` and `.pdf`, and **creates real Word and Excel files**.
@@ -50,6 +50,7 @@ Harness.WinUI reads and writes files, plugs into MCP tools, and previews what it
 - **Conversation history**: stored locally in SQLite; reopening the app restores the model's context too.
 - **Stop anytime, tune quality**: stop a reply mid-stream (or press Esc). Switch reasoning effort and image quality whenever you like.
 - **Observability**: turn on recording to see every turn's model calls, tool calls and approval waits on a timeline, the exact request and response sent to the provider, statistics per model, tool and skill, and ask your model to analyze them. Records stay on your PC; optional OTLP export to Aspire Dashboard, Langfuse and the like.
+- **Your own instructions**: a box in Settings adds your instructions to every conversation ("always reply in Traditional Chinese", what things are called where you work), and an `AGENTS.md` at the root of the sandbox folder adds instructions for work in that folder. The agent can't edit that file.
 - **Make it yours**: Ctrl + plus / minus (or Ctrl + wheel) changes the text size; right-click the toolbar to choose which buttons show.
 - **English and Traditional Chinese UI**: the model replies in the language you write in.
 
@@ -125,6 +126,8 @@ On first launch the settings dialog opens automatically. Fill in:
 
 For development you can use a config file instead: put the endpoint and model in `appsettings.local.json` (gitignored) and the API key in the `HARNESS_PROVIDER_APIKEY` environment variable.
 
+**Local models**: a local OpenAI-compatible server (for example Ollama at `http://localhost:11434/v1`) works too: add it as another connection in Settings, with any text as the API key. Ollama's default context length (4096 tokens) is too small for the tool definitions plus instructions, so the model silently stops using tools; start Ollama with `OLLAMA_CONTEXT_LENGTH=16384` (or more).
+
 #### Try it
 
 - "Turn notes.txt in the sandbox into a weekly report in Word"
@@ -178,7 +181,7 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 ### 特色
 
 - **原生又輕量**：WinUI 3 + .NET 10，不用 Electron，也不用 Node.js。模型連線、工具、檔案處理全部在同一個行程內完成。
-- **任何 OpenAI 相容端點都能接**：Azure OpenAI、OpenAI、LiteLLM 等。官方服務自動走 Responses API（推理模型呼叫工具需要這個），其他走 Chat Completions。
+- **任何 OpenAI 相容端點都能接**：Azure OpenAI、OpenAI、LiteLLM，以及 Ollama 這類本機伺服器。官方服務自動走 Responses API（推理模型呼叫工具需要這個），其他走 Chat Completions。
 - **看得到 agent 在做什麼**：思考過程、每一次工具呼叫的參數和結果、token 用量、模型名稱、回應時間都會顯示出來。
 - **即時成品面板**：網頁、SVG、Mermaid 圖表、Markdown 文件會在側邊面板邊寫邊預覽，而且有版本紀錄，可以另存或用瀏覽器開啟。
 - **內建檔案工具，只能在沙盒內動作**：列出、讀取、搜尋、寫入、精確取代。可以讀 `.docx`、`.xlsx`、`.pptx`、`.pdf` 的文字，也能**直接產生真正的 Word / Excel 檔**。
@@ -195,6 +198,7 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 - **對話紀錄**：存在本機 SQLite，重新打開時連模型的上下文一起接回來。
 - **隨時停止、可調品質**：回覆進行中可以按停止（或 Esc）。推理強度和生圖品質可以隨時切換。
 - **可觀測性**：開啟記錄後，可以在時間軸上看到每個回合的模型呼叫、工具呼叫與核准等待，送給供應商的原始請求與回應，各模型、工具、技能的統計，還能請模型分析這些紀錄。紀錄只存在本機；可選擇用 OTLP 匯出到 Aspire Dashboard、Langfuse 等。
+- **你自己的指示**：設定裡有一個文字框，可以替每個對話加上你的指示（例如「一律用繁體中文回覆」、你工作上的東西叫什麼）；沙盒資料夾最上層放一份 `AGENTS.md`，則會加上只對那個資料夾有效的指示。agent 本身無法修改這份檔案。
 - **依你的習慣調整**：Ctrl + 加號 / 減號（或 Ctrl + 滾輪）調整字型大小；在工具列按右鍵可選擇要顯示哪些按鈕。
 - **繁體中文與英文介面**：介面可選繁中或英文。模型會用你輸入的語言回覆，中文一律用台灣用語的繁體中文。
 
@@ -267,6 +271,8 @@ dotnet build Harness.WinUI.sln -p:Platform=x64
 | 生圖模型（選填） | 例如 `gpt-image-2`，沿用同一個端點和 key |
 
 開發時也可以改用設定檔：在 `appsettings.local.json`（已 gitignore）填端點和模型，API key 放在環境變數 `HARNESS_PROVIDER_APIKEY`。
+
+**本機模型**：也能接本機的 OpenAI 相容伺服器（例如 Ollama 的 `http://localhost:11434/v1`），在設定裡新增一組連線即可，API Key 隨便填。Ollama 預設的 context 長度（4096 token）放不下工具定義加指示，模型會默默不再使用工具；請用 `OLLAMA_CONTEXT_LENGTH=16384`（或更大）啟動 Ollama。
 
 #### 試試看
 

@@ -46,6 +46,19 @@ public sealed class Sandbox
         return candidate;
     }
 
+    /// <summary>
+    /// <see cref="Resolve"/> for a path the agent is about to change. The AGENTS.md at the root is the user's
+    /// instructions to the agent and stays theirs to edit: an agent that a web page or file had talked into rewriting
+    /// it could otherwise plant instructions that follow the user into every later conversation.
+    /// </summary>
+    public string ResolveForWrite(string? path)
+    {
+        var full = Resolve(path);
+        if (string.Equals(full, Path.Combine(Root, Harness.Core.Agent.CustomInstructions.FileName), StringComparison.OrdinalIgnoreCase))
+            throw new UnauthorizedAccessException($"{Harness.Core.Agent.CustomInstructions.FileName} holds the user's own instructions to you, so you can't change it. Ask the user to edit it themselves.");
+        return full;
+    }
+
     /// <summary>Path as shown to the model: relative to the root, with forward slashes.</summary>
     public string Relative(string fullPath)
     {
