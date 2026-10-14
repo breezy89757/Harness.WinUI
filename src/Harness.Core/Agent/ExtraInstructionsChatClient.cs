@@ -5,22 +5,30 @@ using Microsoft.Extensions.AI;
 namespace Harness.Core.Agent;
 
 /// <summary>
-/// Adds extra instructions (the user's own, see <see cref="CustomInstructions"/>) to the instructions of every model
-/// call. They are asked for each time, not once when the agent is built, so edits take effect on the next message.
+/// Adds extra instructions (the user's own, see <see cref="CustomInstructions"/>, and their memories) to the instructions of
+/// every model call. They are asked for each time, not once when the agent is built, so edits take effect on the next message.
 /// </summary>
-public sealed class ExtraInstructionsChatClient(IChatClient inner, Func<string?> extra) : DelegatingChatClient(inner)
+/// <param name="extra">Makes the text from the first thing the user said in the conversation (null if it isn't known).</param>
+public sealed class ExtraInstructionsChatClient(IChatClient inner, Func<string?, string?> extra) : DelegatingChatClient(inner)
 {
     public override Task<ChatResponse> GetResponseAsync(
-        IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
-        base.GetResponseAsync(messages, WithExtra(options), cancellationToken);
+        IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        var list = messages as IReadOnlyList<ChatMessage> ?? [.. messages];
+        return base.GetResponseAsync(list, WithExtra(list, options), cancellationToken);
+    }
 
     public override IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
-        IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
-        base.GetStreamingResponseAsync(messages, WithExtra(options), cancellationToken);
-
-    private ChatOptions? WithExtra(ChatOptions? options)
+        IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
     {
-        var text = extra();
+        var list = messages as IReadOnlyList<ChatMessage> ?? [.. messages];
+        return base.GetStreamingResponseAsync(list, WithExtra(list, options), cancellationToken);
+    }
+
+    private ChatOptions? WithExtra(IReadOnlyList<ChatMessage> messages, ChatOptions? options)
+    {
+        var first = messages.FirstOrDefault(m => m.Role == ChatRole.User)?.Text;
+        var text = extra(first);
         if (string.IsNullOrEmpty(text))
             return options;
 

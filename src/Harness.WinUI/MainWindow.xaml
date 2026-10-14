@@ -403,6 +403,17 @@
                     </Button>
 
                     <Button
+                        x:Name="MemoryButton"
+                        AutomationProperties.AutomationId="MemoryButton"
+                        AutomationProperties.Name="{x:Bind local:Strings.MemoryTitle}"
+                        VerticalAlignment="Bottom"
+                        Padding="10,8"
+                        ToolTipService.ToolTip="{x:Bind local:Strings.MemoryTitle}"
+                        Click="MemoryButton_Click">
+                        <FontIcon FontSize="16" Glyph="&#xE8F1;" />
+                    </Button>
+
+                    <Button
                         x:Name="MoreButton"
                         AutomationProperties.AutomationId="MoreButton"
                         AutomationProperties.Name="{x:Bind local:Strings.MoreTooltip}"

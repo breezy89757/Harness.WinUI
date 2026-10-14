@@ -25,6 +25,10 @@ public sealed record StoredMessage(
 
 public sealed record ConversationSummary(string Id, string Title, DateTimeOffset UpdatedAt);
 
+/// <summary>One message that matched a search: where it is (conversation and position) and a piece of its text around the match.</summary>
+/// <param name="Seq">The message's position in its conversation, counting from 1.</param>
+public sealed record MessageHit(string ConversationId, string Title, long Seq, string Role, DateTimeOffset At, string Snippet);
+
 /// <param name="SessionState">Serialized agent session, so the conversation can continue where it left off.</param>
 public sealed record StoredConversation(string Id, string Title, IReadOnlyList<StoredMessage> Messages, string? SessionState);
 
@@ -96,6 +100,103 @@ public sealed class ConversationStore
         while (reader.Read())
             results.Add(new ConversationSummary(reader.GetString(0), reader.GetString(1), ParseTime(reader.GetString(2))));
         return results;
+    }
+
+    /// <summary>
+    /// Messages (what the user wrote and what the model answered, not tool output) that contain every word of
+    /// <paramref name="query"/>, newest first, each with a snippet around the first word found.
+    /// </summary>
+    /// <param name="excludeConversationId">A conversation to leave out, e.g. the one the search is made from.</param>
+    public IReadOnlyList<MessageHit> Search(
+        string query, DateTimeOffset? since = null, DateTimeOffset? until = null, string? excludeConversationId = null, int limit = 10)
+    {
+        var words = query.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Take(8).ToList();
+        if (words.Count == 0)
+            return [];
+
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        var where = new List<string> { "m.role IN ('user', 'assistant')" };
+        for (var i = 0; i < words.Count; i++)
+        {
+            // LIKE wildcards in what was typed are literal characters, not patterns.
+            where.Add($"m.text LIKE $w{i} ESCAPE '\\'");
+            command.Parameters.AddWithValue($"$w{i}", "%" + words[i].Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%");
+        }
+        if (since is { } from)
+        {
+            where.Add("m.created_at >= $since");
+            command.Parameters.AddWithValue("$since", from.UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
+        }
+        if (until is { } to)
+        {
+            where.Add("m.created_at < $until");
+            command.Parameters.AddWithValue("$until", to.UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
+        }
+        if (excludeConversationId is not null)
+        {
+            where.Add("m.conversation_id <> $exclude");
+            command.Parameters.AddWithValue("$exclude", excludeConversationId);
+        }
+        command.Parameters.AddWithValue("$limit", Math.Clamp(limit, 1, 50));
+        command.CommandText = $"""
+            SELECT m.conversation_id, c.title, m.seq, m.role, m.created_at, m.text
+            FROM messages m JOIN conversations c ON c.id = m.conversation_id
+            WHERE {string.Join(" AND ", where)}
+            ORDER BY m.created_at DESC, m.seq DESC LIMIT $limit
+            """;
+
+        var hits = new List<MessageHit>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            hits.Add(new MessageHit(
+                reader.GetString(0), reader.GetString(1), reader.GetInt64(2), reader.GetString(3),
+                ParseTime(reader.GetString(4)), Snippet(reader.GetString(5), words)));
+        }
+        return hits;
+    }
+
+    /// <summary>About 200 characters of <paramref name="text"/> around the first of <paramref name="words"/> found in it, on one line.</summary>
+    private static string Snippet(string text, IReadOnlyList<string> words)
+    {
+        const int Radius = 100;
+        var at = words.Select(w => text.IndexOf(w, StringComparison.OrdinalIgnoreCase)).Where(i => i >= 0).DefaultIfEmpty(0).Min();
+        var start = Math.Max(0, at - Radius);
+        var end = Math.Min(text.Length, at + Radius);
+        var piece = text[start..end].ReplaceLineEndings(" ").Trim();
+        return (start > 0 ? "…" : "") + piece + (end < text.Length ? "…" : "");
+    }
+
+    /// <summary>The titles and times of these conversations (those that exist).</summary>
+    public IReadOnlyList<ConversationSummary> Describe(IEnumerable<string> ids)
+    {
+        var wanted = ids.Distinct().Take(500).ToList();
+        if (wanted.Count == 0)
+            return [];
+
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        var names = wanted.Select((id, i) => "$i" + i).ToList();
+        for (var i = 0; i < wanted.Count; i++)
+            command.Parameters.AddWithValue(names[i], wanted[i]);
+        command.CommandText = $"SELECT id, title, updated_at FROM conversations WHERE id IN ({string.Join(", ", names)})";
+
+        var results = new List<ConversationSummary>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+            results.Add(new ConversationSummary(reader.GetString(0), reader.GetString(1), ParseTime(reader.GetString(2))));
+        return results;
+    }
+
+    /// <summary>The position the next message appended to this conversation will have (1 for a conversation not saved yet).</summary>
+    public long NextSeq(string id)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COALESCE(MAX(seq), 0) + 1 FROM messages WHERE conversation_id = $id";
+        command.Parameters.AddWithValue("$id", id);
+        return (long)command.ExecuteScalar()!;
     }
 
     public StoredConversation? Load(string id)

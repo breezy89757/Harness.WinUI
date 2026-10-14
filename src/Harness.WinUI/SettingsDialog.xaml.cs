@@ -1,5 +1,6 @@
 // Harness.WinUI — Licensed under the MIT License.
 
+using System.Globalization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -83,6 +84,12 @@ public sealed partial class SettingsDialog : ContentDialog
         _initialSandbox = preferences.SandboxFolder ?? string.Empty;
         SandboxTextBox.Text = _initialSandbox;
         CustomInstructionsTextBox.Text = preferences.CustomInstructions ?? string.Empty;
+        SearchHistoryToggle.IsOn = preferences.SearchHistory;
+        MemoryToggle.IsOn = preferences.MemoryEnabled;
+        MemoryBudgetBox.Value = preferences.MemoryBudgetTokens;
+        SelectByTag(MemoryScopeCombo, preferences.MemoryDefaultScope);
+        MemoryArchiveBox.Value = preferences.MemoryArchiveDays;
+        SelectByTag(MemoryRemindCombo, preferences.MemoryRemindAfter.ToString(CultureInfo.InvariantCulture));
 
         CurrencyTextBox.Text = preferences.Currency;
 
@@ -345,6 +352,12 @@ public sealed partial class SettingsDialog : ContentDialog
                 Currency = currency,
                 ModelPrices = _prices.Count == 0 ? null : _prices,
                 CustomInstructions = string.IsNullOrWhiteSpace(CustomInstructionsTextBox.Text) ? null : CustomInstructionsTextBox.Text.Trim(),
+                SearchHistory = SearchHistoryToggle.IsOn,
+                MemoryEnabled = MemoryToggle.IsOn,
+                MemoryBudgetTokens = double.IsNaN(MemoryBudgetBox.Value) ? 2000 : (int)Math.Clamp(MemoryBudgetBox.Value, 0, 8000),
+                MemoryDefaultScope = SelectedTag(MemoryScopeCombo) is { Length: > 0 } scope ? scope : "global",
+                MemoryArchiveDays = double.IsNaN(MemoryArchiveBox.Value) ? 90 : (int)Math.Clamp(MemoryArchiveBox.Value, 0, 3650),
+                MemoryRemindAfter = int.TryParse(SelectedTag(MemoryRemindCombo), CultureInfo.InvariantCulture, out var remind) ? remind : 0,
             }).Save();
             if (sandboxChanged)
                 NewSandboxFolder = sandbox;

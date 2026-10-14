@@ -181,6 +181,20 @@
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}" />
 
+                        <!-- Searching past conversations -->
+                        <TextBlock Margin="0,8,0,0" Text="{x:Bind local:Strings.SearchHistoryHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <ToggleSwitch
+                            x:Name="SearchHistoryToggle"
+                            OnContent="{x:Bind local:Strings.SearchHistoryOn}"
+                            OffContent="{x:Bind local:Strings.SearchHistoryOff}"
+                            AutomationProperties.AutomationId="SettingsSearchHistory"
+                            AutomationProperties.Name="{x:Bind local:Strings.SearchHistoryHeader}" />
+                        <TextBlock
+                            Text="{x:Bind local:Strings.SearchHistoryHelp}"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}" />
+
                         <!-- Sandbox folder -->
                         <TextBlock Margin="0,8,0,0" Text="{x:Bind local:Strings.SandboxHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
                         <Grid ColumnSpacing="8">
@@ -220,6 +234,79 @@
                         </ComboBox>
                         <TextBlock
                             Text="{x:Bind local:Strings.LanguageRestartNote}"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </PivotItem>
+
+            <!-- Long-term memory -->
+            <PivotItem Header="{x:Bind local:Strings.SettingsTabMemory}">
+                <ScrollViewer Height="520" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="12" Padding="0,8,12,0">
+                        <TextBlock Text="{x:Bind local:Strings.MemoryHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <ToggleSwitch
+                            x:Name="MemoryToggle"
+                            OnContent="{x:Bind local:Strings.MemoryOn}"
+                            OffContent="{x:Bind local:Strings.MemoryOff}"
+                            AutomationProperties.AutomationId="SettingsMemoryEnabled"
+                            AutomationProperties.Name="{x:Bind local:Strings.MemoryHeader}" />
+                        <TextBlock
+                            Text="{x:Bind local:Strings.MemoryHelp}"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}" />
+
+                        <NumberBox
+                            x:Name="MemoryBudgetBox"
+                            Header="{x:Bind local:Strings.MemoryBudget}"
+                            Minimum="0"
+                            Maximum="8000"
+                            SmallChange="250"
+                            SpinButtonPlacementMode="Inline"
+                            AutomationProperties.AutomationId="SettingsMemoryBudget" />
+                        <TextBlock
+                            Text="{x:Bind local:Strings.MemoryBudgetHelp}"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}" />
+
+                        <ComboBox
+                            x:Name="MemoryScopeCombo"
+                            Header="{x:Bind local:Strings.MemoryDefaultScope}"
+                            HorizontalAlignment="Stretch"
+                            AutomationProperties.AutomationId="SettingsMemoryScope">
+                            <ComboBoxItem Content="{x:Bind local:Strings.MemoryScopeGlobal}" Tag="global" />
+                            <ComboBoxItem Content="{x:Bind local:Strings.MemoryScopeSandbox}" Tag="sandbox" />
+                        </ComboBox>
+
+                        <NumberBox
+                            x:Name="MemoryArchiveBox"
+                            Header="{x:Bind local:Strings.MemoryArchiveDays}"
+                            Minimum="0"
+                            Maximum="3650"
+                            SmallChange="30"
+                            SpinButtonPlacementMode="Inline"
+                            AutomationProperties.AutomationId="SettingsMemoryArchive" />
+                        <TextBlock
+                            Text="{x:Bind local:Strings.MemoryArchiveHelp}"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}" />
+
+                        <ComboBox
+                            x:Name="MemoryRemindCombo"
+                            Header="{x:Bind local:Strings.MemoryRemind}"
+                            HorizontalAlignment="Stretch"
+                            AutomationProperties.AutomationId="SettingsMemoryRemind">
+                            <ComboBoxItem Content="{x:Bind local:Strings.MemoryRemindNever}" Tag="0" />
+                            <ComboBoxItem Content="{x:Bind local:Strings.MemoryRemindAfter(5)}" Tag="5" />
+                            <ComboBoxItem Content="{x:Bind local:Strings.MemoryRemindAfter(10)}" Tag="10" />
+                            <ComboBoxItem Content="{x:Bind local:Strings.MemoryRemindAfter(20)}" Tag="20" />
+                        </ComboBox>
+                        <TextBlock
+                            Text="{x:Bind local:Strings.MemoryConsolidateHelp}"
                             TextWrapping="Wrap"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}" />

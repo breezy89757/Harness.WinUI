@@ -4,6 +4,7 @@ using System.Runtime.Versioning;
 using Microsoft.Extensions.AI;
 using Harness.Core.Config;
 using Harness.Core.Files;
+using Harness.Core.Memory;
 using Harness.Core.Skills;
 
 namespace Harness.Core.Tools;
@@ -35,9 +36,116 @@ public sealed class AgentTools : IAsyncDisposable
     /// <summary>Where the file tools work, or null when they're off.</summary>
     public string? SandboxRoot => _sandbox?.Root;
 
-    /// <summary>The user's own instructions for the model right now: Settings plus the sandbox folder's AGENTS.md (null when there are none).</summary>
-    public string? ExtraInstructions() =>
-        Harness.Core.Agent.CustomInstructions.Compose(AppPreferences.Load().CustomInstructions, SandboxRoot);
+    /// <summary>
+    /// What is added to the model's instructions right now: the user's own (Settings plus the sandbox folder's AGENTS.md) and, when
+    /// memory is on, their memories (null when there is nothing to add).
+    /// </summary>
+    /// <param name="firstUserMessage">The first thing the user said in this conversation, which decides which memories matter most.</param>
+    public string? ExtraInstructions(string? firstUserMessage)
+    {
+        var own = Harness.Core.Agent.CustomInstructions.Compose(AppPreferences.Load().CustomInstructions, SandboxRoot);
+        var memories = _memory ? MemoryFor(firstUserMessage) : null;
+        return own is null ? memories : memories is null ? own : own + "\n\n" + memories;
+    }
+
+    #region Memory
+
+    private bool _memory;
+    private MemoryStore? _memoryStore;
+    private readonly Dictionary<string, string?> _memorySnapshots = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, IReadOnlyList<string>> _memorySnapshotIds = new(StringComparer.Ordinal);
+    private readonly Lock _memoryLock = new();
+
+    /// <summary>The user's long-term memory (the same store the memory window works on).</summary>
+    public MemoryStore Memory => _memoryStore ??= new MemoryStore();
+
+    /// <summary>Turns the agent's memory on or off: its tools, and the memories put in front of the model.</summary>
+    public void SetMemory(bool enabled)
+    {
+        if (_memory == enabled)
+            return;
+        _memory = enabled;
+        Rebuild();
+    }
+
+    /// <summary>
+    /// The memories for this conversation, chosen once when the conversation first asks and then kept as they were, so the
+    /// start of every later request stays the same (a prompt cache only helps while it does). A memory saved meanwhile
+    /// is found by search_memory, and is in front of the model from the next conversation on.
+    /// </summary>
+    private string? MemoryFor(string? firstUserMessage)
+    {
+        var key = CurrentConversationId() ?? "";
+        lock (_memoryLock)
+        {
+            if (_memorySnapshots.TryGetValue(key, out var kept))
+                return kept;
+
+            var preferences = AppPreferences.Load();
+            string? block = null;
+            IReadOnlyList<string> ids = [];
+            try
+            {
+                var items = Memory.Select(SandboxRoot, firstUserMessage, preferences.MemoryBudgetTokens * 3, preferences.MemoryArchiveDays);
+                block = MemoryInstructions.Compose(items);
+                ids = [.. items.Select(i => i.Id)];
+                if (items.Count > 0)
+                    Memory.Touch(ids);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // The memory folder can't be read: chat without memories rather than failing.
+            }
+
+            if (_memorySnapshots.Count > 50)
+            {
+                _memorySnapshots.Clear();
+                _memorySnapshotIds.Clear();
+            }
+            _memorySnapshots[key] = block;
+            _memorySnapshotIds[key] = ids;
+            return block;
+        }
+    }
+
+    /// <summary>The memories this conversation was given at its start (empty when there were none, or memory is off).</summary>
+    public IReadOnlyList<string> MemoryUsedBy(string? conversationId)
+    {
+        lock (_memoryLock)
+            return _memory && conversationId is not null && _memorySnapshotIds.TryGetValue(conversationId, out var ids) ? ids : [];
+    }
+
+    #endregion
+
+    private bool _searchHistory;
+
+    /// <summary>The id of the conversation being held, or null; the history search leaves that conversation out of its results.</summary>
+    public Func<string?> CurrentConversationId { get; set; } = () => null;
+
+    /// <summary>The conversation the agent is in and where its next user message will be saved (what a new memory is traced back to).</summary>
+    private (string? Id, long NextSeq) CurrentConversation()
+    {
+        var id = CurrentConversationId();
+        if (id is null)
+            return (null, 0);
+        try
+        {
+            return (id, new Harness.Core.History.ConversationStore().NextSeq(id));
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException)
+        {
+            return (id, 0);
+        }
+    }
+
+    /// <summary>Offers (or stops offering) search_history, which looks through the user's past conversations.</summary>
+    public void SetHistorySearch(bool enabled)
+    {
+        if (_searchHistory == enabled)
+            return;
+        _searchHistory = enabled;
+        Rebuild();
+    }
 
     /// <summary>Raised when the built-in tool set changes (sandbox or image settings); MCP changes raise <see cref="McpHost.Changed"/>.</summary>
     public event EventHandler? Changed;
@@ -148,6 +256,21 @@ public sealed class AgentTools : IAsyncDisposable
         }
         tools.AddRange(McpServerManager.CreateAgentTools(Mcp, _approver, _permissions));
         tools.Add(WebFetchTool.Create(_approver));
+        if (_searchHistory)
+        {
+            try
+            {
+                tools.Add(HistorySearchTool.Create(new Harness.Core.History.ConversationStore(), _approver, _permissions, () => CurrentConversationId()));
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException)
+            {
+                // History can't be opened (the app then doesn't save conversations either): there is nothing to search.
+            }
+        }
+        if (_memory)
+        {
+            tools.AddRange(MemoryTools.Create(Memory, _approver, _permissions, () => SandboxRoot, CurrentConversation));
+        }
         if (_image is not null)
             tools.Add(ImageGenerationTool.Create(_image, () => ImageQuality));
 

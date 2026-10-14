@@ -88,6 +88,8 @@ public static class ChatShell
         .turn.user { align-self: flex-end; align-items: flex-end; }
         .turn.assistant { align-self: flex-start; align-items: flex-start; }
         .turn.system { align-self: center; align-items: center; opacity: 0.75; font-size: 0.85em; }
+        .turn.flash .message { animation: flash 1.6s ease-out; }
+        @keyframes flash { 0%, 40% { box-shadow: 0 0 0 3px var(--accent, #0067c0); } 100% { box-shadow: 0 0 0 3px transparent; } }
         .message { padding: 10px 16px; border-radius: 12px; word-wrap: break-word; max-width: 100%; }
         .turn.user .message { background: var(--bubble-user-bg); }
         .turn.assistant .message { background: var(--bubble-assistant-bg); }
@@ -184,6 +186,8 @@ public static class ChatShell
         .meta { font-size: 0.75em; color: var(--muted); margin-top: 4px; padding: 0 6px; cursor: default; }
         .meta:empty { display: none; }
         .meta.traced { cursor: pointer; }
+        .memory-chip { font-size: 0.75em; color: var(--muted); margin: 4px 0 0 6px; padding: 0 9px; border: 1px solid var(--line); border-radius: 99px; background: transparent; cursor: pointer; font-family: inherit; }
+        .memory-chip:hover { color: var(--accent); border-color: var(--accent); }
         .meta.traced:hover { color: var(--accent); text-decoration: underline; }
 
         @media (prefers-reduced-motion: reduce) {
@@ -242,6 +246,16 @@ public static class ChatShell
         }
 
         function turn(id) { return document.getElementById('msg-' + id); }
+
+        // Scrolls to the n-th message of the conversation (counting from 0, notices excluded) and flashes it.
+        function scrollToTurn(index) {
+            const t = document.querySelectorAll('#messages > .turn:not(.system)')[index];
+            if (!t) return;
+            t.scrollIntoView({ block: 'center' });
+            t.classList.remove('flash');
+            void t.offsetWidth;
+            t.classList.add('flash');
+        }
 
         function clearMessages() {
             statusTimers.forEach(t => { if (t.handle) clearInterval(t.handle); });
@@ -397,6 +411,22 @@ public static class ChatShell
                     meta.classList.add('traced');
                     meta.onclick = () => post({ type: 'openTrace', trace });
                 }
+            });
+        }
+
+        // "Used N memories" under a reply: opens the memory window on those memories.
+        function setMessageMemory(id, text, title, ids) {
+            const t = turn(id);
+            if (!t) return;
+            withStickyScroll(() => {
+                const foot = t.querySelector('.foot');
+                foot.querySelector('.memory-chip')?.remove();
+                const chip = document.createElement('button');
+                chip.className = 'memory-chip';
+                chip.textContent = text;
+                chip.title = title || '';
+                chip.onclick = () => post({ type: 'openMemory', ids });
+                foot.insertBefore(chip, foot.querySelector('.meta').nextSibling);
             });
         }
 
@@ -565,7 +595,9 @@ public static class ChatShell
             const link = e.target.closest('a[href]');
             if (link) {
                 e.preventDefault();
-                if (!link.getAttribute('href').startsWith('#')) post({ type: 'openLink', href: link.href });
+                const href = link.getAttribute('href');
+                if (href.startsWith('harness://')) post({ type: 'openConversation', href });
+                else if (!href.startsWith('#')) post({ type: 'openLink', href: link.href });
             }
         });
         </script>

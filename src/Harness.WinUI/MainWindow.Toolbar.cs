@@ -40,6 +40,8 @@ public sealed partial class MainWindow
                 at => UsageButton.Flyout.ShowAt(at), Always),
             new("observability", ObservabilityButton, "\uE9D9", () => Strings.ObservabilityTitle,
                 _ => OpenObservability(null), Always),
+            new("memory", MemoryButton, "", () => Strings.MemoryTitle,
+                _ => OpenMemory(), Always),
         ];
         ApplyToolbar(HiddenToolbarButtons());
 
@@ -95,8 +97,15 @@ public sealed partial class MainWindow
     private static string WithDetail(string label, string? detail) =>
         string.IsNullOrEmpty(detail) ? label : $"{label} ({detail})";
 
-    private static HashSet<string> HiddenToolbarButtons() =>
-        [.. AppPreferences.Load().HiddenToolbarButtons ?? []];
+    private static HashSet<string> HiddenToolbarButtons()
+    {
+        var preferences = AppPreferences.Load();
+        HashSet<string> hidden = [.. preferences.HiddenToolbarButtons ?? []];
+        // The memory button is there only while memory is turned on.
+        if (!preferences.MemoryEnabled)
+            hidden.Add("memory");
+        return hidden;
+    }
 
     private void ApplyToolbar(HashSet<string> hidden)
     {

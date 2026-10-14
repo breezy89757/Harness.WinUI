@@ -11,7 +11,7 @@ namespace Harness.WinUI;
 /// language is chosen once at startup (changing it needs a restart). XAML binds with
 /// <c>{x:Bind local:Strings.Name}</c>.
 /// </summary>
-public static class Strings
+public static partial class Strings
 {
     public static bool IsChinese { get; private set; }
 
@@ -222,6 +222,13 @@ public static class Strings
         "Added to the built-in instructions in every conversation, for example how you want replies written or what things are called where you work. An AGENTS.md file at the root of the sandbox folder is read too, for that folder only; the agent can't change it.",
         "會加在內建指示後面，套用到每個對話，例如你希望回覆怎麼寫、你工作上的東西叫什麼。沙盒資料夾最上層如果有 AGENTS.md 也會一併讀入，只對那個資料夾有效，agent 本身無法修改它。");
     public static string CustomInstructionsPlaceholder => T("e.g. Always reply in Traditional Chinese (Taiwan usage).", "例如：一律用台灣用語的繁體中文回覆。");
+    public static string SearchHistoryHeader => T("Search past conversations", "搜尋過去的對話");
+    public static string SearchHistoryOn => T("The agent can search them", "agent 可以搜尋");
+    public static string SearchHistoryOff => T("Off", "關閉");
+    public static string SearchHistoryHelp => T(
+        "Lets the agent look through your saved conversations to answer questions like \"when did I work on this, and in which conversation?\". Its answers link to the conversation. Every search asks for your approval first, and what it finds is sent to your model.",
+        "讓 agent 能翻你存下來的對話，回答「我什麼時候在哪個對話做過這件事？」這類問題，答案會附上可以點開的連結。每次搜尋都會先問你，找到的內容會送給你的模型。");
+    public static string ConversationNotFound => T("That conversation isn't in your history any more.", "歷史紀錄裡已經找不到那個對話了。");
     public static string SandboxHeader => T("Sandbox folder", "沙盒資料夾");
     public static string SandboxHelp => T(
         "Harness.WinUI's file tools can only read and write inside this folder (Word, Excel, PowerPoint and PDF files can be read too). Leave empty to turn file tools off.",

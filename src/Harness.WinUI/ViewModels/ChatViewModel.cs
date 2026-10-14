@@ -41,6 +41,17 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
 
     // The conversation being shown; assigned when its first exchange is saved.
     private string? _conversationId;
+
+    /// <summary>The memories a conversation was given (by its id), for the label under its first reply; null when memory is off.</summary>
+    public Func<string?, IReadOnlyList<string>>? MemoryUsedProvider { get; set; }
+
+    private readonly HashSet<string> _memoryLabelShown = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The id of the conversation being held. A new conversation gets its id the first time something asks for it (the
+    /// history search, the memory, or saving the first exchange: all end up with the same one).
+    /// </summary>
+    public string CurrentConversationId => _conversationId ??= Guid.NewGuid().ToString("N");
     private string? _conversationTitle;
 
     // True after reopening a saved conversation until a reply succeeds (see SendAsync's error handling).
@@ -752,6 +763,8 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
                 tooltip = Strings.StoppedTooltip + (string.IsNullOrEmpty(tooltip) ? string.Empty : "\n\n" + tooltip);
             }
             await _messageSink.SetMessageMetaAsync(id, meta, tooltip, traceId).ConfigureAwait(true);
+            if (MemoryUsedProvider?.Invoke(_conversationId) is { Count: > 0 } usedMemories && _conversationId is { } labelFor && _memoryLabelShown.Add(labelFor))
+                await _messageSink.SetMessageMemoryAsync(id, Strings.MemoryUsedChip(usedMemories.Count), Strings.MemoryUsedChipTooltip, usedMemories).ConfigureAwait(true);
             if (stopped || errorText is not null)
             {
                 _retry = new RetryPoint(userMessage, attachments, stateBeforeTurn.Taken && !sessionWasReset, stateBeforeTurn.State, readOnlyToldBefore);

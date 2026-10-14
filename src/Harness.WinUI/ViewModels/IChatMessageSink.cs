@@ -35,6 +35,9 @@ public interface IChatMessageSink
     /// </summary>
     Task SetMessageMetaAsync(string id, string text, string? tooltip, string? traceId = null);
 
+    /// <summary>Shows "used N memories" under the reply with this id; a click opens the memory window on <paramref name="memoryIds"/>.</summary>
+    Task SetMessageMemoryAsync(string id, string text, string? tooltip, IReadOnlyList<string> memoryIds);
+
     /// <summary>
     /// Offers "Retry" under the reply with this id (and nowhere else); a null <paramref name="id"/> removes it.
     /// </summary>

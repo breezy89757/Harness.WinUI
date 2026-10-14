@@ -42,6 +42,24 @@ public sealed record AppPreferences
     /// <summary>The user's own instructions to the model, added to the built-in ones in every conversation (see <see cref="Agent.CustomInstructions"/>).</summary>
     public string? CustomInstructions { get; init; }
 
+    /// <summary>Let the agent search past conversations (search_history; each search is asked about). Off by default.</summary>
+    public bool SearchHistory { get; init; }
+
+    /// <summary>Long-term memory: the agent can save and search notes, and the relevant ones are put in front of it at the start of a conversation. Off by default.</summary>
+    public bool MemoryEnabled { get; init; }
+
+    /// <summary>The most tokens of memories put in front of the model at the start of a conversation (0: none, the agent can still search).</summary>
+    public int MemoryBudgetTokens { get; init; } = 2000;
+
+    /// <summary>Where a memory the agent saves belongs when it doesn't say: "global" or "sandbox" (only while that folder is the sandbox).</summary>
+    public string MemoryDefaultScope { get; init; } = "global";
+
+    /// <summary>Days without use after which a memory stops being put in front of the model (0: never).</summary>
+    public int MemoryArchiveDays { get; init; } = 90;
+
+    /// <summary>Remind the user to consolidate when this many new memories have piled up (0: never remind).</summary>
+    public int MemoryRemindAfter { get; init; }
+
     /// <summary>Skills (by name) the user turned off; every other discovered skill is offered to the model.</summary>
     public List<string>? DisabledSkills { get; init; }
 

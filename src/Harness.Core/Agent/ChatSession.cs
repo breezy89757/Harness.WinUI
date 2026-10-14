@@ -21,10 +21,10 @@ public sealed class ChatSession
     private AgentSession? _session;
 
     /// <param name="reasoningSummaries">Ask the model to stream reasoning summaries (Responses API only).</param>
-    /// <param name="extraInstructions">The user's own instructions (see <see cref="CustomInstructions"/>), asked for on every model call.</param>
+    /// <param name="extraInstructions">The user's own instructions and memories (see <see cref="CustomInstructions"/>), asked for on every model call; given the first thing the user said in the conversation.</param>
     public ChatSession(
         IChatClient chatClient, HarnessOptions options, Func<IReadOnlyList<AITool>>? toolsProvider = null, bool reasoningSummaries = false,
-        Func<string?>? extraInstructions = null)
+        Func<string?, string?>? extraInstructions = null)
     {
         ArgumentNullException.ThrowIfNull(chatClient);
         ArgumentNullException.ThrowIfNull(options);

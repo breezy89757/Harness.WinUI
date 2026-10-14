@@ -1,5 +1,26 @@
 # Harness.WinUI - Changelog
 
+## [1.1.0] - 2026-10-14
+
+### Added
+- Long-term memory (Settings → Memory, off by default): the agent can save short notes about you and your work, find them
+  again, update or forget them. Every note is approved by you first, and nothing that looks like a key or a password is
+  ever saved. The notes are Markdown files in a `memory` folder (you can read and edit them), each remembering which
+  conversation it came from. At the start of a conversation the most relevant ones are put in front of the model, chosen
+  once so the prompt cache keeps working. Notes unused for 90 days (adjustable) stop being used until you bring them back
+- Memory window (toolbar): your memories as a list (like other assistants' "manage memory": what, where it came from, how
+  often it was used), as a timeline (when, and in which conversation, something was remembered), and as a connection
+  graph for exploring what belongs together. Search covers memories and past conversations; click a memory to edit it,
+  forget it (with undo) or see where it came from, and click its conversation to open it
+- Under a conversation's first reply, "Used N memories" shows which memories the agent was given; click it to see them
+- Tidy up ("整理記憶"): your model looks at the notes and at recent conversations and suggests what to add, merge, rewrite, drop,
+  relate or confirm. You see how much will be sent first, then pick which suggestions to apply; replaced and dropped notes
+  are kept so they can be restored
+- Search past conversations (Settings → General, off by default): the agent can look through your saved conversations
+  to answer "when did I work on this, and in which conversation?". Each search asks for your approval first (read-only
+  mode doesn't block it, since it changes nothing), because what it finds is sent to your model. The answer links to
+  the conversation; clicking the link opens it and jumps to that message
+
 ## [1.0.11] - 2026-10-11
 
 ### Added

@@ -47,7 +47,8 @@ Harness.WinUI reads and writes files, plugs into MCP tools, and previews what it
 - **Paste and drop attachments**: paste a screenshot or copied files with Ctrl+V, or drag files onto the window. Images go to the model as images; text, Office and PDF files as text.
 - **Know what it costs**: every reply shows its tokens and cost; the usage button totals the conversation, today, this month and all time. Set prices per 1M tokens in Settings.
 - **Notifications**: when the window is in the background, a Windows notification and a flashing taskbar button tell you a reply finished or something needs your approval.
-- **Conversation history**: stored locally in SQLite; reopening the app restores the model's context too.
+- **Conversation history**: stored locally in SQLite; reopening the app restores the model's context too. Optionally (Settings → General, off by default) the agent can search past conversations and link you to the message, each search approved by you first.
+- **Long-term memory** (Settings → Memory, off by default): the agent saves short notes about you and your work, each approved by you, and the relevant ones are put in front of it at the start of a conversation. They are plain Markdown files you can read and edit. The memory window shows them as a list, a timeline and a connection graph; "Tidy up" has your model suggest what to merge or drop.
 - **Stop anytime, tune quality**: stop a reply mid-stream (or press Esc). Switch reasoning effort and image quality whenever you like.
 - **Observability**: turn on recording to see every turn's model calls, tool calls and approval waits on a timeline, the exact request and response sent to the provider, statistics per model, tool and skill, and ask your model to analyze them. Records stay on your PC; optional OTLP export to Aspire Dashboard, Langfuse and the like.
 - **Your own instructions**: a box in Settings adds your instructions to every conversation ("always reply in Traditional Chinese", what things are called where you work), and an `AGENTS.md` at the root of the sandbox folder adds instructions for work in that folder. The agent can't edit that file.
@@ -195,7 +196,8 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 - **貼上、拖曳附件**：Ctrl+V 貼上截圖或複製的檔案，或直接把檔案拖進視窗。圖片以圖片送給模型，文字、Office、PDF 檔轉成文字。
 - **費用一目了然**：每則回覆都顯示 token 數和費用；用量按鈕可看本次對話、今天、本月和全部的累計。每 100 萬 token 的價格在設定中填入。
 - **通知**：視窗在背景時，回覆完成或需要你核准，會跳出 Windows 通知並閃爍工作列按鈕。
-- **對話紀錄**：存在本機 SQLite，重新打開時連模型的上下文一起接回來。
+- **對話紀錄**：存在本機 SQLite，重新打開時連模型的上下文一起接回來。也可以（設定 → 一般，預設關閉）讓 agent 搜尋過去的對話並連結到那則訊息，每次搜尋都先經你核准。
+- **長期記憶**（設定 → 記憶，預設關閉）：agent 會把關於你和你工作的短筆記存下來，每則都經你核准，對話開始時會把相關的放到它面前。筆記是你能直接閱讀、編輯的 Markdown 檔。記憶視窗可用清單、時間軸、關聯圖檢視；「整理記憶」會請你的模型建議哪些該合併或刪除。
 - **隨時停止、可調品質**：回覆進行中可以按停止（或 Esc）。推理強度和生圖品質可以隨時切換。
 - **可觀測性**：開啟記錄後，可以在時間軸上看到每個回合的模型呼叫、工具呼叫與核准等待，送給供應商的原始請求與回應，各模型、工具、技能的統計，還能請模型分析這些紀錄。紀錄只存在本機；可選擇用 OTLP 匯出到 Aspire Dashboard、Langfuse 等。
 - **你自己的指示**：設定裡有一個文字框，可以替每個對話加上你的指示（例如「一律用繁體中文回覆」、你工作上的東西叫什麼）；沙盒資料夾最上層放一份 `AGENTS.md`，則會加上只對那個資料夾有效的指示。agent 本身無法修改這份檔案。

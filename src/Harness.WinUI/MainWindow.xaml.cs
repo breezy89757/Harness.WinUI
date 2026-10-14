@@ -58,6 +58,11 @@ public sealed partial class MainWindow : Window, IChatMessageSink
 
         // The ViewModel is the approver for every gated tool call.
         _tools.Configure(ViewModel, _permissions);
+        _tools.CurrentConversationId = () => ViewModel.CurrentConversationId;
+        _tools.SetHistorySearch(AppPreferences.Load().SearchHistory);
+        _tools.SetMemory(AppPreferences.Load().MemoryEnabled);
+        ViewModel.MemoryUsedProvider = _tools.MemoryUsedBy;
+        MemoryButton.PointerEntered += (_, _) => RefreshMemoryTooltip();
         _tools.Mcp.Changed += (_, _) => DispatcherQueue.TryEnqueue(RefreshToolStatus);
         _tools.Changed += (_, _) => DispatcherQueue.TryEnqueue(RefreshToolStatus);
         RefreshToolStatus();
@@ -319,9 +324,43 @@ public sealed partial class MainWindow : Window, IChatMessageSink
 
         if (dialog.NewSandboxFolder is { } sandbox)
             _tools.SetSandbox(sandbox);
+        _tools.SetHistorySearch(AppPreferences.Load().SearchHistory);
+        ApplyMemorySetting();
         if (dialog.LanguageChanged)
             await OfferRestartAsync();
         return true;
+    }
+
+    /// <summary>
+    /// A click on a harness://conversation/{id}#{n} link (made by search_history): opens that conversation, if it isn't the one
+    /// on screen, and scrolls to its n-th message.
+    /// </summary>
+    private async Task OpenConversationLinkAsync(string? href)
+    {
+        if (!HistorySearchTool.TryParseLink(href, out var id, out var seq))
+            return;
+
+        if (id != ViewModel.CurrentConversationId)
+        {
+            if (ViewModel.IsBusy)
+                return;
+            await ViewModel.OpenConversationAsync(id);
+            if (id != ViewModel.CurrentConversationId)
+            {
+                await ShowNoticeAsync(Strings.ConversationNotFound);
+                return;
+            }
+        }
+        if (seq > 0)
+            await ExecuteShellScriptAsync($"scrollToTurn({seq - 1});");
+    }
+
+    private async Task ShowNoticeAsync(string text)
+    {
+        if (IsDialogOpen)
+            return;
+        await new ContentDialog { XamlRoot = Content.XamlRoot, Content = text, CloseButtonText = Strings.Close }.ShowAsync();
+        InputTextBox.Focus(FocusState.Programmatic);
     }
 
     /// <summary>UI strings are picked at startup, so a language change needs a restart.</summary>
@@ -419,6 +458,12 @@ public sealed partial class MainWindow : Window, IChatMessageSink
                     break;
                 case "openLink":
                     ShellLauncher.OpenLink(message.GetProperty("href").GetString());
+                    break;
+                case "openMemory":
+                    OpenMemory(message.GetProperty("ids").EnumerateArray().Select(e => e.GetString() ?? string.Empty).Where(s => s.Length > 0).ToList());
+                    break;
+                case "openConversation":
+                    _ = OpenConversationLinkAsync(message.GetProperty("href").GetString());
                     break;
                 case "openArtifact":
                     _ = ArtifactPanel.ShowAsync(message.GetProperty("id").GetString() ?? string.Empty);
@@ -565,6 +610,9 @@ public sealed partial class MainWindow : Window, IChatMessageSink
 
     public Task SetMessageMetaAsync(string id, string text, string? tooltip, string? traceId = null) =>
         ExecuteShellScriptAsync($"setMessageMeta({ToJs(id)}, {ToJs(text)}, {ToJs(tooltip)}, {ToJs(traceId)});");
+
+    public Task SetMessageMemoryAsync(string id, string text, string? tooltip, IReadOnlyList<string> memoryIds) =>
+        ExecuteShellScriptAsync($"setMessageMemory({ToJs(id)}, {ToJs(text)}, {ToJs(tooltip)}, {JsonSerializer.Serialize(memoryIds)});");
 
     public Task PresentArtifactAsync(ArtifactSegment artifact) =>
         RunOnUIThreadAsync(() => ArtifactPanel.PresentAsync(artifact));

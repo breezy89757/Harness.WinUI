@@ -136,6 +136,7 @@ public sealed class ApprovalGatedFunction : DelegatingAIFunction
     private readonly string _serverName;
     private readonly string _originalName;
     private readonly bool _readOnly;
+    private readonly bool _readsPrivateData;
     private readonly bool _canAlwaysAllow;
     private readonly IToolApprover _approver;
     private readonly ToolPermissionStore _permissions;
@@ -145,12 +146,17 @@ public sealed class ApprovalGatedFunction : DelegatingAIFunction
     /// When set, "Always allow" covers only calls with the same scope (e.g. commands starting with "uv run"),
     /// remembered as "tool scope"; a call whose scope is null is asked every time.
     /// </param>
+    /// <param name="readsPrivateData">
+    /// For a tool that changes nothing but returns something the user may not want sent to the model (their past
+    /// conversations): it is asked about like a tool that changes things, yet read-only mode doesn't refuse it.
+    /// </param>
     public ApprovalGatedFunction(
         AIFunction inner, string serverName, string originalName, bool readOnly,
         IToolApprover approver, ToolPermissionStore permissions, bool canAlwaysAllow = true,
-        Func<AIFunctionArguments, string?>? scope = null)
+        Func<AIFunctionArguments, string?>? scope = null, bool readsPrivateData = false)
         : base(inner)
     {
+        _readsPrivateData = readsPrivateData;
         _scope = scope;
         _serverName = serverName;
         _originalName = originalName;
@@ -172,7 +178,7 @@ public sealed class ApprovalGatedFunction : DelegatingAIFunction
         var scope = _scope?.Invoke(arguments);
         var permission = _scope is null ? _originalName : scope is null ? null : $"{_originalName} {scope}";
         var canAlwaysAllow = _canAlwaysAllow && permission is not null;
-        if (!_readOnly && !(canAlwaysAllow && (_permissions.IsAlwaysAllowed(_serverName, permission!) || _permissions.IsAllowedThisConversation(_serverName, permission!))))
+        if ((!_readOnly || _readsPrivateData) && !(canAlwaysAllow && (_permissions.IsAlwaysAllowed(_serverName, permission!) || _permissions.IsAllowedThisConversation(_serverName, permission!))))
         {
             var callId = FunctionInvokingChatClient.CurrentContext?.CallContent.CallId ?? Guid.NewGuid().ToString("N");
             var request = new ToolApprovalRequest(callId, _serverName, Name, new Dictionary<string, object?>(arguments), canAlwaysAllow, scope);
