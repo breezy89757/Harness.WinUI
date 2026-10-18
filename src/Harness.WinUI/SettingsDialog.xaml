@@ -181,6 +181,32 @@
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}" />
 
+                        <!-- Look and feel -->
+                        <TextBlock Margin="0,8,0,0" Text="{x:Bind local:Strings.AppearanceHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <ComboBox
+                            x:Name="WidthComboBox"
+                            HorizontalAlignment="Stretch"
+                            Header="{x:Bind local:Strings.WidthHeader}"
+                            AutomationProperties.AutomationId="SettingsWidthComboBox"
+                            AutomationProperties.Name="{x:Bind local:Strings.WidthHeader}">
+                            <ComboBoxItem Content="{x:Bind local:Strings.WidthNarrow}" Tag="narrow" />
+                            <ComboBoxItem Content="{x:Bind local:Strings.WidthStandard}" Tag="standard" />
+                            <ComboBoxItem Content="{x:Bind local:Strings.WidthWide}" Tag="wide" />
+                            <ComboBoxItem Content="{x:Bind local:Strings.WidthFull}" Tag="full" />
+                        </ComboBox>
+                        <TextBlock
+                            Text="{x:Bind local:Strings.WidthHelp}"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}" />
+                        <ToggleSwitch
+                            x:Name="TipsToggle"
+                            Header="{x:Bind local:Strings.TipsHeader}"
+                            OnContent="{x:Bind local:Strings.TipsOn}"
+                            OffContent="{x:Bind local:Strings.TipsOff}"
+                            AutomationProperties.AutomationId="SettingsTips"
+                            AutomationProperties.Name="{x:Bind local:Strings.TipsHeader}" />
+
                         <!-- Searching past conversations -->
                         <TextBlock Margin="0,8,0,0" Text="{x:Bind local:Strings.SearchHistoryHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
                         <ToggleSwitch

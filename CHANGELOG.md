@@ -1,5 +1,19 @@
 # Harness.WinUI - Changelog
 
+## [1.1.1] - 2026-10-18
+
+### Added
+- Conversation width (Settings → General → Appearance): narrow, standard, wide or the whole window
+- Ask the agent to change how the app looks ("make the conversation wider", "bigger text", "hide the usage button"): text
+  size, conversation width and which toolbar buttons show. It asks you every time, and can't change anything else
+- Tips on an empty conversation about what Harness.WinUI can do for you, one at a time. Close each one, or turn them off in
+  Settings → General → Appearance
+
+### Changed
+- The conversation column is wider by default (it was a fixed 900 px; it is now 84 times the text size, which is about
+  1176 px, and grows with the text size), so a big window has less empty space on the sides. Smaller windows look the
+  same as before. Choose "Narrow" for about the old width
+
 ## [1.1.0] - 2026-10-14
 
 ### Added

@@ -147,6 +147,17 @@ public sealed class AgentTools : IAsyncDisposable
         Rebuild();
     }
 
+    private Func<string, string, Task<string>>? _applyAppearance;
+    private IReadOnlyList<string> _toolbarButtons = [];
+
+    /// <summary>Lets the agent change the app's look (change_appearance); <paramref name="apply"/> does the change in the window.</summary>
+    public void SetAppearance(IReadOnlyList<string> toolbarButtons, Func<string, string, Task<string>> apply)
+    {
+        _toolbarButtons = toolbarButtons;
+        _applyAppearance = apply;
+        Rebuild();
+    }
+
     /// <summary>Raised when the built-in tool set changes (sandbox or image settings); MCP changes raise <see cref="McpHost.Changed"/>.</summary>
     public event EventHandler? Changed;
 
@@ -273,6 +284,8 @@ public sealed class AgentTools : IAsyncDisposable
         }
         if (_image is not null)
             tools.Add(ImageGenerationTool.Create(_image, () => ImageQuality));
+        if (_applyAppearance is { } applyAppearance)
+            tools.Add(AppearanceTool.Create(_approver, _permissions, _toolbarButtons, applyAppearance));
 
         Volatile.Write(ref _builtIn, tools);
         Changed?.Invoke(this, EventArgs.Empty);

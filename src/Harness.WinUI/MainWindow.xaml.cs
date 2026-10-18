@@ -87,6 +87,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         ConfigureShortcuts();
         ConfigureAttachments();
         ConfigureToolbar();
+        ConfigureAppearance();
         ResizeWindow(960, 720);
         InitializeAsync();
     }
@@ -144,6 +145,8 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         ConfigureChatWebView();
         await LoadShellAsync();
         await ApplyZoomAsync();
+        await ApplyWidthAsync();
+        await RefreshTipsAsync();
         await ExecuteShellScriptAsync($"setDropHint({JsonSerializer.Serialize(Strings.DropHint)}); setCopyLabel({JsonSerializer.Serialize(Strings.CopyTooltip)});");
         await ViewModel.InitializeAsync();
         InputTextBox.Focus(FocusState.Programmatic);
@@ -326,6 +329,8 @@ public sealed partial class MainWindow : Window, IChatMessageSink
             _tools.SetSandbox(sandbox);
         _tools.SetHistorySearch(AppPreferences.Load().SearchHistory);
         ApplyMemorySetting();
+        await ApplyWidthAsync();
+        await RefreshTipsAsync();
         if (dialog.LanguageChanged)
             await OfferRestartAsync();
         return true;
@@ -473,6 +478,12 @@ public sealed partial class MainWindow : Window, IChatMessageSink
                     break;
                 case "zoom":
                     StepZoom(message.GetProperty("step").GetInt32());
+                    break;
+                case "tipDismiss":
+                    DismissTip(message.GetProperty("id").GetString() ?? string.Empty);
+                    break;
+                case "tipsOff":
+                    TurnTipsOff();
                     break;
                 case "retry":
                     _ = ViewModel.RetryAsync();

@@ -33,6 +33,15 @@ public sealed record AppPreferences
     /// <summary>Text size of the conversation and composer, in percent (80-200).</summary>
     public int TextZoom { get; init; } = 100;
 
+    /// <summary>How wide the conversation gets on a big window: one of <see cref="Tools.Appearance.Widths"/>.</summary>
+    public string ConversationWidth { get; init; } = Tools.Appearance.DefaultWidth;
+
+    /// <summary>Show a short tip on an empty conversation (about what Harness.WinUI can do for you).</summary>
+    public bool ShowTips { get; init; } = true;
+
+    /// <summary>Tips the user closed, by id; they aren't shown again.</summary>
+    public List<string>? DismissedTips { get; init; }
+
     /// <summary>ISO 4217 code the model prices are in (and costs are shown in).</summary>
     public string Currency { get; init; } = "USD";
 

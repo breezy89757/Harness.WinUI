@@ -56,7 +56,7 @@ public static class ChatShell
                   "base-uri 'none'; form-action 'none'\">");
         sb.Append(GetStyles(fontSize));
         sb.Append("</head><body>");
-        sb.Append("<div id='messages'></div>");
+        sb.Append("<div id='messages'></div><div id='tip' hidden></div>");
         sb.Append(GetHighlightAndMermaidLinks(nonce));
         sb.Append(GetChatScript(nonce));
         sb.Append("</body></html>");
@@ -83,7 +83,16 @@ public static class ChatShell
             font-size: {{fontSize}}px; line-height: 1.6; color: var(--text-color);
             background-color: var(--bg-color); margin: 0; padding: 16px 24px 96px;
         }
-        #messages { display: flex; flex-direction: column; gap: 14px; max-width: 900px; margin: 0 auto; }
+        #messages { display: flex; flex-direction: column; gap: 14px; max-width: var(--column-width, 84em); margin: 0 auto; }
+        #tip { display: flex; align-items: flex-start; gap: 12px; max-width: 34em; margin: 18vh auto 0; padding: 10px 14px;
+               border: 1px solid var(--border-color); border-radius: 12px; color: var(--muted); font-size: 0.92em; }
+        #tip[hidden] { display: none; }
+        #tip .tip-body { flex: 1; min-width: 0; }
+        #tip .tip-label { font-weight: 600; margin-right: 6px; }
+        #tip button { font: inherit; color: inherit; background: transparent; border: 0; padding: 0; cursor: pointer; }
+        #tip button:hover { color: var(--text-color); }
+        #tip .tip-off { display: block; margin-top: 6px; font-size: 0.9em; text-decoration: underline; }
+        #tip .tip-close { flex: none; font-size: 1.1em; line-height: 1; }
         .turn { display: flex; flex-direction: column; max-width: 88%; }
         .turn.user { align-self: flex-end; align-items: flex-end; }
         .turn.assistant { align-self: flex-start; align-items: flex-start; }
@@ -262,6 +271,63 @@ public static class ChatShell
             statusTimers.clear();
             appViews.clear();
             document.getElementById('messages').replaceChildren();
+            scheduleTip();
+        }
+
+        // A tip on an empty conversation, one at a time: the host sends the ones still worth showing. It waits a moment so that
+        // reopening a conversation (clear, then its messages) doesn't flash it.
+        let tips = [], tipLabels = {}, tipIndex = -1, tipTimer = 0;
+        const tipBox = document.getElementById('tip');
+
+        function setTips(list, labels) {
+            tips = list;
+            tipLabels = labels;
+            scheduleTip();
+        }
+
+        function scheduleTip() {
+            clearTimeout(tipTimer);
+            tipTimer = setTimeout(showTip, 250);
+        }
+
+        function hideTip() {
+            clearTimeout(tipTimer);
+            tipBox.hidden = true;
+        }
+
+        function showTip() {
+            if (tips.length === 0 || document.getElementById('messages').childElementCount > 0) {
+                tipBox.hidden = true;
+                return;
+            }
+            tipIndex = tipIndex < 0 ? Math.floor(Math.random() * tips.length) : tipIndex + 1;
+            const tip = tips[tipIndex % tips.length];
+
+            const body = document.createElement('div');
+            body.className = 'tip-body';
+            const label = document.createElement('span');
+            label.className = 'tip-label';
+            label.textContent = tipLabels.tip;
+            const off = document.createElement('button');
+            off.className = 'tip-off';
+            off.textContent = tipLabels.off;
+            off.onclick = () => { tips = []; hideTip(); post({ type: 'tipsOff' }); };
+            body.append(label, tip.text, off);
+
+            const close = document.createElement('button');
+            close.className = 'tip-close';
+            close.textContent = '×';
+            close.title = tipLabels.dismiss;
+            close.setAttribute('aria-label', tipLabels.dismiss);
+            close.onclick = () => { tips = tips.filter(t => t.id !== tip.id); hideTip(); post({ type: 'tipDismiss', id: tip.id }); };
+
+            tipBox.replaceChildren(body, close);
+            tipBox.hidden = false;
+        }
+
+        // The widest the conversation gets (a CSS length, or 'none'); set by the host from the user's choice.
+        function setConversationWidth(width) {
+            document.documentElement.style.setProperty('--column-width', width);
         }
 
         // MCP App views: sandboxed iframes, each on its own origin, served by the host. This page only
@@ -315,6 +381,7 @@ public static class ChatShell
         }
 
         function appendMessage(id, role, html) {
+            hideTip();
             withStickyScroll(() => {
                 const t = document.createElement('div');
                 t.id = 'msg-' + id;

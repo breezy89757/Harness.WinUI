@@ -41,6 +41,7 @@ public sealed partial class SettingsDialog : ContentDialog
     private readonly nint _windowHandle;
     private readonly string _initialLanguage;
     private readonly string _initialSandbox;
+    private readonly bool _initialShowTips;
     private readonly ToolPermissionStore _permissions;
     private readonly List<(string ServerName, string ToolName)> _removedPermissions = [];
 
@@ -85,6 +86,9 @@ public sealed partial class SettingsDialog : ContentDialog
         SandboxTextBox.Text = _initialSandbox;
         CustomInstructionsTextBox.Text = preferences.CustomInstructions ?? string.Empty;
         SearchHistoryToggle.IsOn = preferences.SearchHistory;
+        SelectByTag(WidthComboBox, Appearance.NormalizeWidth(preferences.ConversationWidth));
+        _initialShowTips = preferences.ShowTips;
+        TipsToggle.IsOn = _initialShowTips;
         MemoryToggle.IsOn = preferences.MemoryEnabled;
         MemoryBudgetBox.Value = preferences.MemoryBudgetTokens;
         SelectByTag(MemoryScopeCombo, preferences.MemoryDefaultScope);
@@ -353,6 +357,10 @@ public sealed partial class SettingsDialog : ContentDialog
                 ModelPrices = _prices.Count == 0 ? null : _prices,
                 CustomInstructions = string.IsNullOrWhiteSpace(CustomInstructionsTextBox.Text) ? null : CustomInstructionsTextBox.Text.Trim(),
                 SearchHistory = SearchHistoryToggle.IsOn,
+                ConversationWidth = Appearance.NormalizeWidth(SelectedTag(WidthComboBox)),
+                ShowTips = TipsToggle.IsOn,
+                // Turning tips back on brings back the ones that were closed.
+                DismissedTips = TipsToggle.IsOn && !_initialShowTips ? null : current.DismissedTips,
                 MemoryEnabled = MemoryToggle.IsOn,
                 MemoryBudgetTokens = double.IsNaN(MemoryBudgetBox.Value) ? 2000 : (int)Math.Clamp(MemoryBudgetBox.Value, 0, 8000),
                 MemoryDefaultScope = SelectedTag(MemoryScopeCombo) is { Length: > 0 } scope ? scope : "global",

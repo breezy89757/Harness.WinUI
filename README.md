@@ -52,7 +52,7 @@ Harness.WinUI reads and writes files, plugs into MCP tools, and previews what it
 - **Stop anytime, tune quality**: stop a reply mid-stream (or press Esc). Switch reasoning effort and image quality whenever you like.
 - **Observability**: turn on recording to see every turn's model calls, tool calls and approval waits on a timeline, the exact request and response sent to the provider, statistics per model, tool and skill, and ask your model to analyze them. Records stay on your PC; optional OTLP export to Aspire Dashboard, Langfuse and the like.
 - **Your own instructions**: a box in Settings adds your instructions to every conversation ("always reply in Traditional Chinese", what things are called where you work), and an `AGENTS.md` at the root of the sandbox folder adds instructions for work in that folder. The agent can't edit that file.
-- **Make it yours**: Ctrl + plus / minus (or Ctrl + wheel) changes the text size; right-click the toolbar to choose which buttons show.
+- **Make it yours**: Ctrl + plus / minus (or Ctrl + wheel) changes the text size; right-click the toolbar to choose which buttons show; Settings sets how wide the conversation gets. You can also just ask the agent ("make the conversation wider", "bigger text"): it changes only how the app looks, and asks you each time. Short tips on an empty conversation point these out, and can be turned off.
 - **English and Traditional Chinese UI**: the model replies in the language you write in.
 
 ### Screenshots
@@ -74,6 +74,14 @@ The screenshots show the Traditional Chinese UI; the English UI has the same lay
 | Observability: each turn as a timeline, with what the model saw | Statistics, and AI analysis of the records |
 |---|---|
 | ![Observability](docs/screenshots/observability.png) | ![Observability statistics and AI analysis](docs/screenshots/observability-ai.png) |
+
+| A tip on an empty conversation | Ask the agent to change how the app looks; it asks first |
+|---|---|
+| ![A tip on an empty conversation](docs/screenshots/tip-appearance.png) | ![Approval to change the conversation width](docs/screenshots/appearance-approval.png) |
+
+| After approving: the conversation uses the whole window |
+|---|
+| ![The conversation after the change](docs/screenshots/appearance-result.png) |
 
 ### Download
 
@@ -201,7 +209,7 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 - **隨時停止、可調品質**：回覆進行中可以按停止（或 Esc）。推理強度和生圖品質可以隨時切換。
 - **可觀測性**：開啟記錄後，可以在時間軸上看到每個回合的模型呼叫、工具呼叫與核准等待，送給供應商的原始請求與回應，各模型、工具、技能的統計，還能請模型分析這些紀錄。紀錄只存在本機；可選擇用 OTLP 匯出到 Aspire Dashboard、Langfuse 等。
 - **你自己的指示**：設定裡有一個文字框，可以替每個對話加上你的指示（例如「一律用繁體中文回覆」、你工作上的東西叫什麼）；沙盒資料夾最上層放一份 `AGENTS.md`，則會加上只對那個資料夾有效的指示。agent 本身無法修改這份檔案。
-- **依你的習慣調整**：Ctrl + 加號 / 減號（或 Ctrl + 滾輪）調整字型大小；在工具列按右鍵可選擇要顯示哪些按鈕。
+- **依你的習慣調整**：Ctrl + 加號 / 減號（或 Ctrl + 滾輪）調整字型大小；在工具列按右鍵可選擇要顯示哪些按鈕；設定裡可以選對話欄要多寬。你也可以直接對 agent 說（「把對話欄放寬一點」、「字大一點」）：它只會改外觀，而且每次都先問你。空白的新對話裡會有簡短的小提示告訴你這些，也可以關掉。
 - **繁體中文與英文介面**：介面可選繁中或英文。模型會用你輸入的語言回覆，中文一律用台灣用語的繁體中文。
 
 ### 截圖
@@ -221,6 +229,14 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 | 可觀測性：每個回合的時間軸，以及模型實際看到的內容 | 統計與 AI 分析 |
 |---|---|
 | ![觀測](docs/screenshots/observability.png) | ![統計與 AI 分析](docs/screenshots/observability-ai.png) |
+
+| 空白的新對話裡的小提示 | 請 agent 調整外觀，改之前會先問你 |
+|---|---|
+| ![空白的新對話裡的小提示](docs/screenshots/tip-appearance.png) | ![核准調整對話欄寬度](docs/screenshots/appearance-approval.png) |
+
+| 核准之後：對話欄用滿整個視窗 |
+|---|
+| ![調整後的對話](docs/screenshots/appearance-result.png) |
 
 ### 下載
 

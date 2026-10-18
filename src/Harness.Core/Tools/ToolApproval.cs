@@ -147,8 +147,9 @@ public sealed class ApprovalGatedFunction : DelegatingAIFunction
     /// remembered as "tool scope"; a call whose scope is null is asked every time.
     /// </param>
     /// <param name="readsPrivateData">
-    /// For a tool that changes nothing but returns something the user may not want sent to the model (their past
-    /// conversations): it is asked about like a tool that changes things, yet read-only mode doesn't refuse it.
+    /// For a tool that changes no files and runs no commands, yet the user should be asked every time: it returns something they
+    /// may not want sent to the model (their past conversations), or it changes how the app looks. It is asked about like a tool
+    /// that changes things, yet read-only mode doesn't refuse it.
     /// </param>
     public ApprovalGatedFunction(
         AIFunction inner, string serverName, string originalName, bool readOnly,
