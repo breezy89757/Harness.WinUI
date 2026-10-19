@@ -1,6 +1,6 @@
 # Harness.WinUI - Changelog
 
-## [Unreleased]
+## [1.1.2] - 2026-10-19
 
 ### Added
 - A short trail in `diag.log` (data folder) for problems that leave nothing else behind: when the window stops responding
