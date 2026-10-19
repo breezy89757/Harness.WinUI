@@ -190,7 +190,7 @@ public sealed partial class McpHost : IAsyncDisposable
                 if (ui?.ResourceUri is { } resourceUri)
                 {
                     appTools[exposed] = new McpAppTool(server, tool.ProtocolTool, resourceUri);
-                    function = new AppToolFunction(function, this);
+                    function = new AppToolFunction(function, this, server, tool.Name);
                 }
 
                 var readOnly = tool.ProtocolTool.Annotations?.ReadOnlyHint == true;
@@ -219,13 +219,16 @@ public sealed partial class McpHost : IAsyncDisposable
     /// <c>content</c> only: <c>structuredContent</c> (e.g. every row of a query) is for the view, and is
     /// kept for it here instead of filling the model's context.
     /// </summary>
-    private sealed class AppToolFunction(AIFunction inner, McpHost host) : DelegatingAIFunction(inner)
+    private sealed class AppToolFunction(AIFunction inner, McpHost host, string serverName, string toolName) : DelegatingAIFunction(inner)
     {
         protected override async ValueTask<object?> InvokeCoreAsync(AIFunctionArguments arguments, CancellationToken cancellationToken)
         {
-            var result = await base.InvokeCoreAsync(arguments, cancellationToken).ConfigureAwait(false);
-            if (result is not JsonElement { ValueKind: JsonValueKind.Object } full)
-                return result;
+            // The call goes to the server directly: the SDK's own function turns a result that is a single piece of text into
+            // just that text, and the view (which needs the whole result) would never get it, so a tool like draw.io's
+            // create_diagram showed no view.
+            var call = await host.ClientFor(serverName)
+                .CallToolAsync(toolName, new Dictionary<string, object?>(arguments), cancellationToken: cancellationToken).ConfigureAwait(false);
+            var full = JsonSerializer.SerializeToElement(call, McpJsonUtilities.DefaultOptions);
 
             if (FunctionInvokingChatClient.CurrentContext?.CallContent.CallId is { } callId)
                 host._appResults[callId] = full;

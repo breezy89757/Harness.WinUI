@@ -55,18 +55,29 @@ public sealed partial class MainWindow
     // picture of the selection on the clipboard next to the text) become attachments instead.
     private async void InputTextBox_Paste(object sender, TextControlPasteEventArgs e)
     {
+        // Asking the clipboard goes to the program that copied; if that one is busy this waits. The trail says where.
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         DataPackageView content;
+        bool hasFiles, hasImage;
         try
         {
+            Diagnostics.Step("paste: Clipboard.GetContent");
             content = Clipboard.GetContent();
+            Diagnostics.Step("paste: checking for files");
+            hasFiles = content.Contains(StandardDataFormats.StorageItems);
+            Diagnostics.Step("paste: checking for an image");
+            hasImage = content.Contains(StandardDataFormats.Bitmap) && !content.Contains(StandardDataFormats.Text);
+            Diagnostics.Step("paste: checked");
+            if (clock.ElapsedMilliseconds > 1500)
+                Diagnostics.Log($"paste: asking the clipboard took {clock.ElapsedMilliseconds} ms; formats: {string.Join(", ", content.AvailableFormats)}");
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            return; // Clipboard busy (another app holds it); let the TextBox try.
+            // Clipboard busy or gone (another app holds it); let the TextBox try.
+            Diagnostics.Log($"paste: the clipboard could not be read after {clock.ElapsedMilliseconds} ms: {ex.GetType().Name} 0x{ex.HResult:X8} {ex.Message}");
+            return;
         }
 
-        var hasFiles = content.Contains(StandardDataFormats.StorageItems);
-        var hasImage = content.Contains(StandardDataFormats.Bitmap) && !content.Contains(StandardDataFormats.Text);
         if (!hasFiles && !hasImage)
             return;
 

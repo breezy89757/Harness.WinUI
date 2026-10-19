@@ -1,5 +1,15 @@
 # Harness.WinUI - Changelog
 
+## [Unreleased]
+
+### Added
+- A short trail in `diag.log` (data folder) for problems that leave nothing else behind: when the window stops responding
+  for several seconds, where it was (for example while pasting). Errors on other threads now go to `crash.log` too
+
+### Fixed
+- An MCP App whose tool answers with just one piece of text, such as draw.io's `create_diagram`, now shows its view in the
+  chat. Before, the call succeeded but only the text appeared and no diagram was drawn
+
 ## [1.1.1] - 2026-10-18
 
 ### Added

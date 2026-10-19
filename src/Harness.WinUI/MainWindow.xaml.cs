@@ -88,6 +88,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         ConfigureAttachments();
         ConfigureToolbar();
         ConfigureAppearance();
+        Diagnostics.StartUiWatchdog(DispatcherQueue);
         ResizeWindow(960, 720);
         InitializeAsync();
     }

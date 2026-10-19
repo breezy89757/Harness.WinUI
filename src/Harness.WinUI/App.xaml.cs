@@ -21,6 +21,13 @@ public partial class App : Application
         InitializeComponent();
         // A crash in XAML only leaves 0xc000027b in the event log; keep the actual exception.
         UnhandledException += (_, e) => LogCrash(e.Exception);
+        // Exceptions on other threads never reach the XAML handler above.
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+        {
+            if (e.ExceptionObject is Exception exception)
+                LogCrash(exception);
+        };
+        TaskScheduler.UnobservedTaskException += (_, e) => Diagnostics.Log($"unobserved task exception: {e.Exception.GetBaseException()}");
     }
 
     private static void LogCrash(Exception exception)
