@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-22
+
 ### Added
 - Code mode: a Chat | Code switch above the conversation. Code mode is a coding agent for a project folder, with its own
   instructions (read before answering, follow the project, small changes, check them with a build or tests, be careful
