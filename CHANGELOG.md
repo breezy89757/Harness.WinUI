@@ -1,5 +1,91 @@
 # Harness.WinUI - Changelog
 
+## [Unreleased]
+
+### Added
+- Code mode: a Chat | Code switch above the conversation. Code mode is a coding agent for a project folder, with its own
+  instructions (read before answering, follow the project, small changes, check them with a build or tests, be careful
+  with what can't be undone), no Word / Excel / image tools, and the project folder chosen from a button next to the
+  switch (recent folders or browse). Chat mode is what the app always was and stays the default
+- Conversations remember their mode and folder: the History list shows the current mode's, and in Code mode the current
+  folder's. In Code mode, "always allow" choices belong to the folder they were made in (Settings → Permissions shows which)
+- Task list (Code mode): for work with several steps the agent keeps a short list, shown above the message box with the
+  current step and what is done
+- Helper (Code mode): the agent can start a read-only helper with its own fresh context to explore the project and answer
+  one question, so reading many files doesn't fill the main conversation. It can't change anything and is stopped after
+  60 tool calls or 6 minutes
+- Presentations (Chat mode): ask for slides, a deck or a PPT and the agent writes them as a `slides` artifact. The side panel shows
+  each slide as soon as it is written (big slide, a strip of all slides below, arrow keys, notes, a play mode) and the toolbar exports
+  a real, editable .pptx: titles are PowerPoint's own placeholders, lists are bullet lists, tables are tables, speaker notes go to the
+  notes pages, and the slide master has title, content and section layouts. Pictures aren't part of a deck yet
+- Presentations follow the approach of Claude's slide artifacts and design systems: a structured deck that is previewed live and exported,
+  a company theme made from a template (the brand as data: logos, lines, fonts, layouts), and a design guide the model writes in Markdown
+  and reads when it writes decks
+- Charts in presentations: a slide can hold one chart (column, bar, line, area, pie or doughnut; stacked and value labels optional) that the
+  model writes as a JSON block with its type, categories and numbers, so the chart and its data are the model's to decide. The preview draws
+  it, and the .pptx gets a real PowerPoint chart with its data table inside: "Edit data" works in PowerPoint, and the chart can be restyled or
+  changed to another type there. Beside bullets a chart takes the right half of the slide, alone it takes the whole content area; bars start
+  at zero; colours come from the theme (a company theme's brand colour, its ink and greys)
+- Company themes: in the presentation panel, "Company theme" makes a theme of a PowerPoint template (.pptx): the slide size, the
+  logos, lines and page number the master and layouts draw, and where titles and text go and how they look. The preview draws slides
+  that way and the export is made on the template itself, so the file has the company's real slide master and layouts. A theme is
+  data in the user's folder (the template and its pictures); no company's brand is part of the program. Title and content layouts are
+  found by name and type; a template without a section layout uses its title layout for section slides. Without a theme the built-in
+  look is used
+- A company theme also gets a design guide: after a theme is made from a template, the model reads the facts the program found (what
+  each layout draws by itself, what the template's own sample slide puts in each text place, sizes, fonts) and writes design.md in the
+  theme's folder (what the logos and lines are for, what the cover's lines are, what not to add). The guide can be edited in Notepad from
+  the theme menu and is part of the model's instructions while the theme is in use, together with today's date for the cover, so a deck it
+  writes follows the template: the cover's first line is the presenter, the next the date, no logos or footers of its own, no placeholders.
+  The guide is kept next to the theme's folder, not in it: deleting a theme, or making it again from the template, keeps what was written
+- A finished deck can be edited in the preview: click any text (titles, lines, table cells) to change it, Enter adds a line, an empty
+  line goes away, the notes can be typed in, and slides can be added, copied, deleted and moved. The edits are kept with the deck (the
+  export uses them), and the next message tells the agent what the deck looks like now so it doesn't write its old version again
+- Undo: a reply that changed files offers "Undo changes": the files go back as they were, files it created are removed and
+  moves are undone (changes made by commands the agent ran are not covered). The approval card for edit_file / write_file
+  shows a coloured diff, and their results include the changed lines
+- Background programs (Code mode): `start_process`, `process_output` and `stop_process` run a server or a watcher alongside
+  the work (at most 4, all stopped when the app closes)
+- `/init` (Code mode) writes or improves AGENTS.md with the verified build and test commands, the layout and the
+  conventions. The agent can write AGENTS.md only for that one message
+- Helpers work at the same time: when the agent starts several in one reply (or reads several files), the calls that only read overlap
+  instead of waiting for each other. Everything that changes something still runs one at a time, in the order asked for
+- Each helper has its own step in the reply that lists what it is doing as it goes (the question, the files it reads and searches it
+  makes), then how many steps and how long it took. With an effort chosen for the agent, helpers use low effort
+- `/explore question` (Code mode, in the slash menu): looks into a question with 2 to 4 helpers working at the same time, each on
+  a different part of it, and answers from their reports; without a question it gives an overview of the project. Asking the
+  agent in plain words to use helpers worked only now and then, so the command says it outright
+- Helper cards above the message box: one per helper, with its question, what it is doing right now, how long it has worked and a
+  button that stops just that helper (it reports what it found so far; the others and the reply go on). They go away a few
+  seconds after the last one is done
+- The helper's tokens are counted in the reply's cost, and its steps show on the status line; a conversation's task list is
+  saved with it; the folder menu chooses which MCP servers Code mode offers
+- YOLO and read-only mode show as badges in the top bar (a click turns them off) and YOLO in the window title; the top bar
+  has a divider and even spacing
+- Tests for the file tools, undo, .gitignore handling, permissions, the task list, context trimming, background programs
+  and the history database: `dotnet test tests/Harness.Core.Tests`
+- YOLO mode (toolbar): the agent stops asking, for files and commands alike (chained commands too). It asks once when you
+  turn it on, turns off by itself when you close the app, and excludes read-only mode. Changing the app's own settings,
+  such as adding an MCP server, is still asked about every time
+
+### Changed
+- Code mode keeps a long session cheap where the app holds the conversation (Chat Completions endpoints such as LiteLLM): once tool
+  results add up to 160k characters the oldest large ones are left out of what is sent (what is shown and saved is untouched,
+  and the model can call the tool again). With the Responses API the conversation lives on the server and can't be shortened from
+  here, so requests now ask the server to leave out the oldest items when it outgrows the model's window (truncation: auto), instead of failing
+- list_directory, find_files and search_text leave out what .gitignore ignores (include_ignored to override) and no longer walk
+  skipped folders such as node_modules
+- Reading code: `read_file` numbers the lines, reads up to 2000 lines per call and says how many remain and where to
+  continue; `search_text` can show lines of context and list only the files that match. The step shows how much of a file
+  was read ("lines 1-240 of 993"). A folder that looks like a project gets short guidance in Chat mode too
+- A tool call that leaves out a required argument now gets a plain message naming it, so the model can fix the call
+
+### Fixed
+- Event handlers of the new features (mode switch, YOLO, theme menu, export) run guarded: a failure is logged instead of ending the app
+- Settings (preferences.json) are read from disk only when the file has changed, not on every model call
+- Clicking a notification now brings the window to the front (the notification object was being collected, so the click
+  never arrived, and Windows may only flash the taskbar button; the window now takes the foreground)
+
 ## [1.1.2] - 2026-10-19
 
 ### Added

@@ -43,11 +43,17 @@ public sealed class ConversationStore
 
     private readonly string _connectionString;
 
+    // Databases whose tables have been checked in this run (with when the file was created); a store made again for the same file (the
+    // memory tools do) skips that, unless the file is gone or was replaced.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, DateTime> s_ready = new(StringComparer.OrdinalIgnoreCase);
+
     public ConversationStore(string? path = null)
     {
         path ??= DefaultPath;
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         _connectionString = new SqliteConnectionStringBuilder { DataSource = path, Mode = SqliteOpenMode.ReadWriteCreate }.ToString();
+        if (File.Exists(path) && s_ready.TryGetValue(path, out var created) && created == File.GetCreationTimeUtc(path))
+            return;
 
         using var connection = Open();
         Execute(connection, """
@@ -70,28 +76,59 @@ public sealed class ConversationStore
             );
             CREATE INDEX IF NOT EXISTS ix_conversations_updated ON conversations (updated_at DESC);
             """);
+
+        // Code mode (1.2): which mode and project folder a conversation belongs to. Existing rows keep NULL, meaning chat.
+        if (!HasColumn(connection, "conversations", "mode"))
+            Execute(connection, "ALTER TABLE conversations ADD COLUMN mode TEXT; ALTER TABLE conversations ADD COLUMN workspace TEXT;");
+        // The agent's task list (Code mode), as JSON, so a reopened conversation shows it again.
+        if (!HasColumn(connection, "conversations", "tasks"))
+            Execute(connection, "ALTER TABLE conversations ADD COLUMN tasks TEXT;");
+        s_ready[path] = File.GetCreationTimeUtc(path);
+    }
+
+    private static bool HasColumn(SqliteConnection connection, string table, string column)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name = $name";
+        command.Parameters.AddWithValue("$name", column);
+        return (long)command.ExecuteScalar()! > 0;
     }
 
     public static string DefaultPath => AppPaths.Combine("history.db");
 
     /// <param name="search">Only conversations whose title or any message contains this text (case-insensitive for ASCII).</param>
-    public IReadOnlyList<ConversationSummary> List(int limit = 100, string? search = null)
+    /// <param name="mode">"chat" (conversations from before Code mode count as chat), "code", or null for every conversation.</param>
+    /// <param name="workspace">With mode "code": only conversations about this project folder; null for all of them.</param>
+    public IReadOnlyList<ConversationSummary> List(int limit = 100, string? search = null, string? mode = null, string? workspace = null)
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
         command.Parameters.AddWithValue("$limit", limit);
+
+        var filters = new List<string>();
+        if (mode == "code")
+        {
+            filters.Add("mode = 'code'");
+            if (workspace is not null)
+            {
+                filters.Add("workspace = $workspace");
+                command.Parameters.AddWithValue("$workspace", workspace);
+            }
+        }
+        else if (mode == "chat")
+        {
+            filters.Add("(mode IS NULL OR mode <> 'code')");
+        }
+
         if (string.IsNullOrWhiteSpace(search))
         {
-            command.CommandText = "SELECT id, title, updated_at FROM conversations ORDER BY updated_at DESC LIMIT $limit";
+            command.CommandText = $"SELECT id, title, updated_at FROM conversations {Where(filters)} ORDER BY updated_at DESC LIMIT $limit";
         }
         else
         {
             // LIKE wildcards in what the user typed are literal characters, not patterns.
-            command.CommandText = """
-                SELECT id, title, updated_at FROM conversations
-                WHERE title LIKE $pattern ESCAPE '\' OR id IN (SELECT conversation_id FROM messages WHERE text LIKE $pattern ESCAPE '\')
-                ORDER BY updated_at DESC LIMIT $limit
-                """;
+            filters.Add("(title LIKE $pattern ESCAPE '\\' OR id IN (SELECT conversation_id FROM messages WHERE text LIKE $pattern ESCAPE '\\'))");
+            command.CommandText = $"SELECT id, title, updated_at FROM conversations {Where(filters)} ORDER BY updated_at DESC LIMIT $limit";
             command.Parameters.AddWithValue("$pattern", "%" + search.Trim().Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%");
         }
 
@@ -101,6 +138,8 @@ public sealed class ConversationStore
             results.Add(new ConversationSummary(reader.GetString(0), reader.GetString(1), ParseTime(reader.GetString(2))));
         return results;
     }
+
+    private static string Where(List<string> filters) => filters.Count == 0 ? string.Empty : "WHERE " + string.Join(" AND ", filters);
 
     /// <summary>
     /// Messages (what the user wrote and what the model answered, not tool output) that contain every word of
@@ -234,7 +273,9 @@ public sealed class ConversationStore
     }
 
     /// <summary>Appends messages (creating the conversation on first use) and replaces its session state.</summary>
-    public void Append(string id, string title, IEnumerable<StoredMessage> messages, string? sessionState)
+    /// <param name="mode">"chat" or "code", recorded when the conversation is created.</param>
+    /// <param name="workspace">In Code mode, the project folder the conversation is about.</param>
+    public void Append(string id, string title, IEnumerable<StoredMessage> messages, string? sessionState, string? mode = null, string? workspace = null)
     {
         var now = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
         using var connection = Open();
@@ -243,10 +284,12 @@ public sealed class ConversationStore
         using (var command = connection.CreateCommand())
         {
             command.CommandText = """
-                INSERT INTO conversations (id, title, created_at, updated_at) VALUES ($id, $title, $now, $now)
+                INSERT INTO conversations (id, title, created_at, updated_at, mode, workspace) VALUES ($id, $title, $now, $now, $mode, $workspace)
                 ON CONFLICT (id) DO NOTHING;
                 UPDATE conversations SET updated_at = $now, session_state = $state WHERE id = $id;
                 """;
+            command.Parameters.AddWithValue("$mode", (object?)mode ?? DBNull.Value);
+            command.Parameters.AddWithValue("$workspace", (object?)workspace ?? DBNull.Value);
             command.Parameters.AddWithValue("$id", id);
             command.Parameters.AddWithValue("$title", title);
             command.Parameters.AddWithValue("$now", now);
@@ -283,6 +326,27 @@ public sealed class ConversationStore
         }
 
         transaction.Commit();
+    }
+
+    /// <summary>Saves the task list shown with a conversation (null or empty for none).</summary>
+    public void SaveTasks(string id, string? tasksJson)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE conversations SET tasks = $tasks WHERE id = $id";
+        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$tasks", string.IsNullOrEmpty(tasksJson) ? DBNull.Value : tasksJson);
+        command.ExecuteNonQuery();
+    }
+
+    /// <summary>The task list saved with a conversation, or null.</summary>
+    public string? LoadTasks(string id)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT tasks FROM conversations WHERE id = $id";
+        command.Parameters.AddWithValue("$id", id);
+        return command.ExecuteScalar() as string;
     }
 
     /// <summary>Changes a conversation's title. Doesn't touch its time, so it keeps its place in the list.</summary>

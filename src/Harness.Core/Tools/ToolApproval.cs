@@ -63,13 +63,56 @@ public sealed class ToolPermissionStore
     public bool ReadOnlyMode
     {
         get => _readOnlyMode;
-        set => _readOnlyMode = value;
+        set
+        {
+            _readOnlyMode = value;
+            if (value)
+                _autoApprove = false;
+        }
+    }
+
+    private volatile bool _autoApprove;
+
+    /// <summary>
+    /// "YOLO": what the user could have set to "always allow" runs without asking, commands that pipe, chain or redirect included.
+    /// Tools that change the app's own configuration (adding an MCP server, the look of the app) are still asked about every time.
+    /// Not remembered across launches, and exclusive with <see cref="ReadOnlyMode"/>.
+    /// </summary>
+    public bool AutoApprove
+    {
+        get => _autoApprove;
+        set
+        {
+            _autoApprove = value;
+            if (value)
+                _readOnlyMode = false;
+        }
+    }
+
+    private string? _scope;
+
+    /// <summary>
+    /// The project folder whose "always allow" choices apply on top of the global ones (Code mode), or null. A choice made while
+    /// a folder is set belongs to that folder only: allowing a command in one project doesn't allow it in the next.
+    /// </summary>
+    public string? Scope
+    {
+        get
+        {
+            lock (_lock)
+                return _scope;
+        }
+        set
+        {
+            lock (_lock)
+                _scope = string.IsNullOrWhiteSpace(value) ? null : value.TrimEnd('\\', '/');
+        }
     }
 
     public bool IsAlwaysAllowed(string serverName, string toolName)
     {
         lock (_lock)
-            return _alwaysAllowed.Contains(Key(serverName, toolName));
+            return _alwaysAllowed.Contains(Key(serverName, toolName)) || (_scope is not null && _alwaysAllowed.Contains(ScopedKey(_scope, serverName, toolName)));
     }
 
     public bool IsAllowedThisConversation(string serverName, string toolName)
@@ -95,16 +138,44 @@ public sealed class ToolPermissionStore
     {
         lock (_lock)
         {
-            if (_alwaysAllowed.Add(Key(serverName, toolName)))
+            if (_alwaysAllowed.Add(_scope is null ? Key(serverName, toolName) : ScopedKey(_scope, serverName, toolName)))
                 Save();
         }
     }
 
-    /// <summary>Everything that's always allowed, as (server, tool) — the tool may carry a scope, e.g. "run_command uv run".</summary>
+    /// <summary>Everything that's always allowed everywhere, as (server, tool) — the tool may carry a scope, e.g. "run_command uv run".</summary>
     public IReadOnlyList<(string ServerName, string ToolName)> List()
     {
         lock (_lock)
-            return _alwaysAllowed.Order().Select(k => k.Split('/', 2)).Where(p => p.Length == 2).Select(p => (p[0], p[1])).ToList();
+            return _alwaysAllowed.Where(k => !k.Contains('|')).Order().Select(k => k.Split('/', 2)).Where(p => p.Length == 2).Select(p => (p[0], p[1])).ToList();
+    }
+
+    /// <summary>Everything that's always allowed: the global choices (folder null) and those made for a project folder.</summary>
+    public IReadOnlyList<(string? Folder, string ServerName, string ToolName)> ListAll()
+    {
+        lock (_lock)
+        {
+            var all = new List<(string? Folder, string ServerName, string ToolName)>();
+            foreach (var key in _alwaysAllowed.Order())
+            {
+                var bar = key.IndexOf('|');
+                var folder = bar < 0 ? null : key[..bar];
+                var parts = key[(bar + 1)..].Split('/', 2);
+                if (parts.Length == 2)
+                    all.Add((folder, parts[0], parts[1]));
+            }
+            return all;
+        }
+    }
+
+    /// <summary>Asks again from now on (a choice made for a project folder, or null for a global one).</summary>
+    public void Remove(string? folder, string serverName, string toolName)
+    {
+        lock (_lock)
+        {
+            if (_alwaysAllowed.Remove(folder is null ? Key(serverName, toolName) : ScopedKey(folder, serverName, toolName)))
+                Save();
+        }
     }
 
     /// <summary>Asks again from now on.</summary>
@@ -124,6 +195,8 @@ public sealed class ToolPermissionStore
     }
 
     private static string Key(string serverName, string toolName) => $"{serverName}/{toolName}";
+
+    private static string ScopedKey(string folder, string serverName, string toolName) => $"{folder}|{serverName}/{toolName}";
 }
 
 /// <summary>
@@ -179,7 +252,8 @@ public sealed class ApprovalGatedFunction : DelegatingAIFunction
         var scope = _scope?.Invoke(arguments);
         var permission = _scope is null ? _originalName : scope is null ? null : $"{_originalName} {scope}";
         var canAlwaysAllow = _canAlwaysAllow && permission is not null;
-        if ((!_readOnly || _readsPrivateData) && !(canAlwaysAllow && (_permissions.IsAlwaysAllowed(_serverName, permission!) || _permissions.IsAllowedThisConversation(_serverName, permission!))))
+        var skipAsking = _permissions.AutoApprove && _canAlwaysAllow;
+        if ((!_readOnly || _readsPrivateData) && !skipAsking && !(canAlwaysAllow && (_permissions.IsAlwaysAllowed(_serverName, permission!) || _permissions.IsAllowedThisConversation(_serverName, permission!))))
         {
             var callId = FunctionInvokingChatClient.CurrentContext?.CallContent.CallId ?? Guid.NewGuid().ToString("N");
             var request = new ToolApprovalRequest(callId, _serverName, Name, new Dictionary<string, object?>(arguments), canAlwaysAllow, scope);
@@ -200,6 +274,30 @@ public sealed class ApprovalGatedFunction : DelegatingAIFunction
                 _permissions.AllowForConversation(_serverName, permission!);
         }
 
-        return await base.InvokeCoreAsync(arguments, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await base.InvokeCoreAsync(arguments, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ArgumentException ex) when (ex.Message.Contains("missing a value for the required parameter", StringComparison.Ordinal))
+        {
+            // The model left out an argument; say which, in words it can act on, rather than a .NET message.
+            return MissingArguments(arguments);
+        }
+    }
+
+    private string MissingArguments(AIFunctionArguments arguments)
+    {
+        var missing = new List<string>();
+        if (JsonSchema.TryGetProperty("required", out var required) && required.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var name in required.EnumerateArray().Select(n => n.GetString()).OfType<string>())
+            {
+                if (!arguments.ContainsKey(name) || arguments[name] is null)
+                    missing.Add(name);
+            }
+        }
+        return missing.Count > 0
+            ? $"Error: the call to {Name} is missing the required argument(s): {string.Join(", ", missing)}. Call it again with every required argument."
+            : $"Error: the call to {Name} is missing a required argument. Call it again with every required argument.";
     }
 }

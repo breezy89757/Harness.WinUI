@@ -25,6 +25,9 @@ public sealed class AttentionNotifier : IDisposable
     private readonly ToastNotifier? _toastNotifier;
     private const string PortableAppId = "Harness.WinUI";
 
+    // A ToastNotification's events stop arriving once the object is garbage collected, so a click on an older toast did nothing.
+    private readonly List<ToastNotification> _shown = [];
+
     /// <param name="activate">Brings the window to the front; called on the UI thread's dispatcher by the caller.</param>
     /// <param name="packaged">True when running as an MSIX package (Microsoft Store).</param>
     public AttentionNotifier(nint hwnd, bool packaged, Action activate)
@@ -83,6 +86,14 @@ public sealed class AttentionNotifier : IDisposable
                 var toast = new ToastNotification(content);
                 // Clicks while Harness.WinUI is running arrive here; afterwards the toast just closes.
                 toast.Activated += (_, _) => _activate();
+                toast.Dismissed += (_, _) => Forget(toast);
+                toast.Failed += (_, _) => Forget(toast);
+                lock (_shown)
+                {
+                    _shown.Add(toast);
+                    if (_shown.Count > 20)
+                        _shown.RemoveAt(0);
+                }
                 _toastNotifier.Show(toast);
                 return;
             }
@@ -97,6 +108,12 @@ public sealed class AttentionNotifier : IDisposable
         {
             Debug.WriteLine($"Couldn't show a notification: {ex.Message}");
         }
+    }
+
+    private void Forget(ToastNotification toast)
+    {
+        lock (_shown)
+            _shown.Remove(toast);
     }
 
     private void Flash()
@@ -143,4 +160,55 @@ public sealed class AttentionNotifier : IDisposable
 
     [DllImport("user32.dll")]
     private static extern nint GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(nint hwnd, out uint processId);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, [MarshalAs(UnmanagedType.Bool)] bool attach);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsIconic(nint hwnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ShowWindow(nint hwnd, int command);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool BringWindowToTop(nint hwnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(nint hwnd);
+
+    /// <summary>
+    /// Brings the window to the front even when Windows would only flash its taskbar button (a program that isn't in the
+    /// foreground may not take it): the thread is briefly attached to the foreground window's input.
+    /// </summary>
+    public static void ForceForeground(nint hwnd)
+    {
+        const int SW_RESTORE = 9;
+        var foreground = GetForegroundWindow();
+        var foregroundThread = foreground == 0 ? 0 : GetWindowThreadProcessId(foreground, out _);
+        var thisThread = GetCurrentThreadId();
+        var attached = foregroundThread != 0 && foregroundThread != thisThread && AttachThreadInput(thisThread, foregroundThread, true);
+        try
+        {
+            if (IsIconic(hwnd))
+                ShowWindow(hwnd, SW_RESTORE);
+            BringWindowToTop(hwnd);
+            SetForegroundWindow(hwnd);
+        }
+        finally
+        {
+            if (attached)
+                AttachThreadInput(thisThread, foregroundThread, false);
+        }
+    }
 }

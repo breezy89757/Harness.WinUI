@@ -26,6 +26,66 @@ public sealed partial class MainWindow
         ReadOnlyButton.IsChecked = on;
         ToolTipService.SetToolTip(ReadOnlyButton, on ? Strings.ReadOnlyTooltipOn : Strings.ReadOnlyTooltipOff);
         ShowHint(on ? Strings.ReadOnlyTurnedOn : Strings.ReadOnlyTurnedOff, 1500);
+        ShowYoloState(); // the two modes exclude each other
+    }
+
+    #endregion
+
+    #region YOLO mode
+
+    private void YoloButton_Click(object sender, RoutedEventArgs e) =>
+        UiGuard.Run(() => SetYoloModeAsync(YoloButton.IsChecked == true), "YOLO mode");
+
+    /// <summary>
+    /// While on, nothing the agent does is asked about (files, commands, even chained ones), except changes to the app's own
+    /// settings. Turning it on asks once to be sure; it isn't remembered across launches.
+    /// </summary>
+    private async Task SetYoloModeAsync(bool on)
+    {
+        if (on && !await ConfirmYoloAsync())
+        {
+            ShowYoloState();
+            return;
+        }
+
+        _permissions.AutoApprove = on;
+        if (on)
+            ReadOnlyButton.IsChecked = false;
+        ShowYoloState();
+        ShowHint(on ? Strings.YoloTurnedOn : Strings.YoloTurnedOff, 1800);
+    }
+
+    private void YoloBadge_Click(object sender, RoutedEventArgs e) => UiGuard.Run(() => SetYoloModeAsync(false), "YOLO mode");
+
+    private void ReadOnlyBadge_Click(object sender, RoutedEventArgs e) => SetReadOnlyMode(false);
+
+    private void ShowYoloState()
+    {
+        var on = _permissions.AutoApprove;
+        YoloButton.IsChecked = on;
+        YoloBadge.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        ReadOnlyBadge.Visibility = _permissions.ReadOnlyMode ? Visibility.Visible : Visibility.Collapsed;
+        ToolTipService.SetToolTip(YoloBadge, Strings.YoloBadgeTooltip);
+        ToolTipService.SetToolTip(ReadOnlyBadge, Strings.ReadOnlyBadgeTooltip);
+        // The window title says it too, so it shows in the taskbar and when switching windows.
+        Title = (string.IsNullOrWhiteSpace(_options.AgentName) ? "Harness.WinUI" : _options.AgentName) + (on ? " — YOLO" : string.Empty);
+        ToolTipService.SetToolTip(YoloButton, on ? Strings.YoloTooltipOn : Strings.YoloTooltipOff);
+        ReadOnlyButton.IsChecked = _permissions.ReadOnlyMode;
+        ToolTipService.SetToolTip(ReadOnlyButton, _permissions.ReadOnlyMode ? Strings.ReadOnlyTooltipOn : Strings.ReadOnlyTooltipOff);
+    }
+
+    private async Task<bool> ConfirmYoloAsync()
+    {
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Content.XamlRoot,
+            Title = Strings.YoloConfirmTitle,
+            Content = new TextBlock { Text = Strings.YoloConfirmBody, TextWrapping = TextWrapping.Wrap },
+            PrimaryButtonText = Strings.YoloConfirmTurnOn,
+            CloseButtonText = Strings.Cancel,
+            DefaultButton = ContentDialogButton.Close,
+        };
+        return await dialog.ShowAsync() == ContentDialogResult.Primary;
     }
 
     #endregion

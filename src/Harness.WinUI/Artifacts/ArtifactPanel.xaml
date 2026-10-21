@@ -61,6 +61,30 @@
                     <FontIcon FontSize="14" Glyph="&#xE774;" />
                 </Button>
                 <Button
+                    x:Name="ThemeButton"
+                    Padding="8"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Visibility="Collapsed"
+                    AutomationProperties.AutomationId="ArtifactThemeButton"
+                    AutomationProperties.Name="{x:Bind app:Strings.ThemeMenu}"
+                    ToolTipService.ToolTip="{x:Bind app:Strings.ThemeMenu}"
+                    Click="ThemeButton_Click">
+                    <FontIcon FontSize="14" Glyph="&#xE790;" />
+                </Button>
+                <Button
+                    x:Name="ExportPowerPointButton"
+                    Padding="8"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Visibility="Collapsed"
+                    AutomationProperties.AutomationId="ArtifactExportPptxButton"
+                    AutomationProperties.Name="{x:Bind app:Strings.ExportPowerPoint}"
+                    ToolTipService.ToolTip="{x:Bind app:Strings.ExportPowerPoint}"
+                    Click="ExportPowerPoint_Click">
+                    <FontIcon FontSize="14" Glyph="&#xEDE1;" />
+                </Button>
+                <Button
                     Padding="8"
                     Background="Transparent"
                     BorderThickness="0"

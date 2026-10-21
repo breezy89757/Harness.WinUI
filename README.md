@@ -37,6 +37,8 @@ Harness.WinUI reads and writes files, plugs into MCP tools, and previews what it
 - **See what the agent is doing**: reasoning, the arguments and result of every tool call, token usage, model name and response time are all shown.
 - **Live artifact panel**: web pages, SVG, Mermaid diagrams and Markdown documents preview in a side panel while they are being written, with version history, Save As, and Open in browser.
 - **Built-in file tools, confined to a sandbox**: list, read, search, write and exact replace. Reads text from `.docx`, `.xlsx`, `.pptx` and `.pdf`, and **creates real Word and Excel files**.
+- **Presentations**: ask for slides and each slide appears in the side panel as it is written; edit the text in the preview; draw and export them in your company's own template (make a theme from a `.pptx`); add charts (bar, line, pie … with real, editable PowerPoint charts); export a real, editable `.pptx` (placeholders, bullet lists, tables, speaker notes) from the panel.
+  The approach follows Claude's slide artifacts and design systems: the deck is structured data that is previewed live and exported, a company theme is made from a template (the brand's logos, lines, fonts and layouts as data), and the model writes the theme's design guide as Markdown that it reads when it writes decks.
 - **Run commands**: the agent can run PowerShell commands in the sandbox folder (`run_command`), e.g. run the Python script it just wrote, build or test code. Each command is shown in full and runs only after you approve it, or you can always allow commands that start the same way (e.g. `uv run`); commands that chain, pipe or redirect are always asked. Programs can't wait for typed input, and the whole process tree is stopped on timeout or when you press Stop.
 - **You approve anything with side effects**: writing files, running commands or changing settings shows a confirmation card: Allow once, Allow for this chat, Always allow, or Deny. Review and remove what's always allowed in Settings. **Read-only mode** (the lock button) refuses everything that changes files or runs commands.
 - **MCP**: stdio and Streamable HTTP servers. Manage them in the UI, or just ask the agent to add one in the chat.
@@ -52,6 +54,7 @@ Harness.WinUI reads and writes files, plugs into MCP tools, and previews what it
 - **Stop anytime, tune quality**: stop a reply mid-stream (or press Esc). Switch reasoning effort and image quality whenever you like.
 - **Observability**: turn on recording to see every turn's model calls, tool calls and approval waits on a timeline, the exact request and response sent to the provider, statistics per model, tool and skill, and ask your model to analyze them. Records stay on your PC; optional OTLP export to Aspire Dashboard, Langfuse and the like.
 - **Your own instructions**: a box in Settings adds your instructions to every conversation ("always reply in Traditional Chinese", what things are called where you work), and an `AGENTS.md` at the root of the sandbox folder adds instructions for work in that folder. The agent can't edit that file.
+- **Code mode**: switch from Chat to Code (above the conversation) to use it as a coding agent in a project folder you choose. It has its own instructions (read before answering, search instead of guessing, small changes, build or test to check them), keeps a task list you can see, and can send a read-only helper with a fresh context to explore the project, so reading many files doesn't fill the conversation. It can undo what a reply changed, run a server in the background, and write AGENTS.md for you (`/init`). Each folder has its own conversations and its own "always allow" choices. **YOLO mode** (toolbar, off at every start) stops all questions when you trust the folder; changing the app's own settings is still asked about.
 - **Make it yours**: Ctrl + plus / minus (or Ctrl + wheel) changes the text size; right-click the toolbar to choose which buttons show; Settings sets how wide the conversation gets. You can also just ask the agent ("make the conversation wider", "bigger text"): it changes only how the app looks, and asks you each time. Short tips on an empty conversation point these out, and can be turned off.
 - **English and Traditional Chinese UI**: the model replies in the language you write in.
 
@@ -194,6 +197,8 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 - **看得到 agent 在做什麼**：思考過程、每一次工具呼叫的參數和結果、token 用量、模型名稱、回應時間都會顯示出來。
 - **即時成品面板**：網頁、SVG、Mermaid 圖表、Markdown 文件會在側邊面板邊寫邊預覽，而且有版本紀錄，可以另存或用瀏覽器開啟。
 - **內建檔案工具，只能在沙盒內動作**：列出、讀取、搜尋、寫入、精確取代。可以讀 `.docx`、`.xlsx`、`.pptx`、`.pdf` 的文字，也能**直接產生真正的 Word / Excel 檔**。
+- **簡報**：要求做簡報，每一頁寫好就即時出現在側邊面板；可直接在預覽裡改文字，也能從公司的 `.pptx` 範本建立主題（標誌、紅線、頁碼、字型），預覽與匯出都用範本的母片，可加圖表（長條、折線、圓餅等，匯出成 PowerPoint 原生圖表，能編輯資料），並匯出**真正可編輯的 `.pptx`**（版面配置、項目符號、表格、講者備註）。
+  做法參考 Claude 的簡報成品與設計系統：簡報是結構化資料，可即時預覽與匯出；公司主題從範本建立（品牌的標誌、線條、字型與版面都變成資料）；設計規則由模型寫成 Markdown，之後產生簡報時會讀它。
 - **執行指令**：agent 可以在沙盒資料夾中執行 PowerShell 指令（`run_command`），例如執行它剛寫好的 Python 程式、建置或測試程式碼。每個指令都會完整顯示，經你核准後才執行，也可以永遠允許以相同方式開頭的指令（例如 `uv run`）；串接、管線或重新導向的指令一律每次詢問。程式無法等待鍵盤輸入，逾時或按下停止時，整個行程樹都會被結束。
 - **有副作用的動作都要你核准**：寫檔、執行指令、改設定前會跳出確認卡片，可選「允許一次」、「本次對話都允許」、「永遠允許」或「拒絕」。永遠允許的項目可以在設定中查看及移除。**唯讀模式**（鎖頭按鈕）開啟後，一律拒絕會修改檔案或執行指令的動作。
 - **MCP**：支援 stdio 和 Streamable HTTP 兩種 server。可以在介面上管理，也能直接在對話裡請 agent 幫你新增。
@@ -209,6 +214,7 @@ Main packages: Microsoft.Agents.AI, Microsoft.Extensions.AI, OpenAI .NET SDK, Mo
 - **隨時停止、可調品質**：回覆進行中可以按停止（或 Esc）。推理強度和生圖品質可以隨時切換。
 - **可觀測性**：開啟記錄後，可以在時間軸上看到每個回合的模型呼叫、工具呼叫與核准等待，送給供應商的原始請求與回應，各模型、工具、技能的統計，還能請模型分析這些紀錄。紀錄只存在本機；可選擇用 OTLP 匯出到 Aspire Dashboard、Langfuse 等。
 - **你自己的指示**：設定裡有一個文字框，可以替每個對話加上你的指示（例如「一律用繁體中文回覆」、你工作上的東西叫什麼）；沙盒資料夾最上層放一份 `AGENTS.md`，則會加上只對那個資料夾有效的指示。agent 本身無法修改這份檔案。
+- **程式模式**：在對話上方把「對話」切到「程式」，就是一個在你選的專案資料夾裡工作的 coding agent。它有自己的指示（先讀再答、用搜尋而不是猜、小幅修改、用建置或測試檢查），會維護一份看得到的任務清單，也能派一個唯讀的助手帶著全新的上下文去探索專案，所以讀很多檔案不會塞滿對話。它能還原一則回覆改過的檔案、在背景執行伺服器，也能替你寫 AGENTS.md（`/init`）。每個資料夾有自己的對話和自己的「永遠允許」。**YOLO 模式**（工具列，每次啟動都是關閉）在你信任那個資料夾時停止所有詢問；更改 App 自己的設定仍然會問。
 - **依你的習慣調整**：Ctrl + 加號 / 減號（或 Ctrl + 滾輪）調整字型大小；在工具列按右鍵可選擇要顯示哪些按鈕；設定裡可以選對話欄要多寬。你也可以直接對 agent 說（「把對話欄放寬一點」、「字大一點」）：它只會改外觀，而且每次都先問你。空白的新對話裡會有簡短的小提示告訴你這些，也可以關掉。
 - **繁體中文與英文介面**：介面可選繁中或英文。模型會用你輸入的語言回覆，中文一律用台灣用語的繁體中文。
 

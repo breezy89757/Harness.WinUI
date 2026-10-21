@@ -187,8 +187,9 @@ public partial class App : Application
         {
             var session = new ChatSession(
                 ChatClientFactory.Create(resolved), options, () => _tools.All, ChatClientFactory.SupportsReasoningSummaries(resolved),
-                _tools.ExtraInstructions);
+                _tools.ExtraInstructions, _tools.BaseInstructions, () => _tools.Mode == AppMode.Code);
             _tools.SetImageGeneration(ImageSettingsFor(resolved));
+            _tools.SetHelpers(() => ChatClientFactory.Create(resolved));
             return (session, options, null, false);
         }
         catch (ProviderConfigurationException ex)

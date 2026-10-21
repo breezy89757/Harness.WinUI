@@ -42,8 +42,99 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
     // The conversation being shown; assigned when its first exchange is saved.
     private string? _conversationId;
 
+    /// <summary>"chat" or "code": recorded with a new conversation, and which conversations the History list shows.</summary>
+    public string ConversationMode { get; set; } = "chat";
+
+    /// <summary>In Code mode, the project folder: recorded with a new conversation, and the only folder the History list shows.</summary>
+    public string? ConversationWorkspace { get; set; }
+
+    /// <summary>Starts a conversation from scratch (used when the mode or the project folder changes). Does nothing while a reply is being written.</summary>
+    public async Task StartFreshConversationAsync()
+    {
+        if (IsBusy)
+            return;
+        await NewChatAsync().ConfigureAwait(true);
+        await RefreshHistoryAsync().ConfigureAwait(true);
+    }
+
     /// <summary>The memories a conversation was given (by its id), for the label under its first reply; null when memory is off.</summary>
     public Func<string?, IReadOnlyList<string>>? MemoryUsedProvider { get; set; }
+
+    private Harness.Core.Agent.UsageReported? _helperUsage;
+    private readonly Lock _helperUsageLock = new();
+
+    /// <summary>A helper agent's model calls: they join the usage (and cost) of the reply that started it.</summary>
+    public void AddHelperUsage(Harness.Core.Agent.UsageReported usage)
+    {
+        lock (_helperUsageLock)
+            _helperUsage = _helperUsage?.Add(usage) ?? usage;
+    }
+
+    private Harness.Core.Agent.UsageReported? TakeHelperUsage()
+    {
+        lock (_helperUsageLock)
+        {
+            var taken = _helperUsage;
+            _helperUsage = null;
+            return taken;
+        }
+    }
+
+    private sealed class HelperRun(string task)
+    {
+        public string Task { get; } = task;
+        public List<string> Lines { get; } = [];
+        public int Steps { get; set; }
+        public TimeSpan Elapsed { get; set; }
+        public bool Finished { get; set; }
+        public string Stopped { get; set; } = string.Empty;
+    }
+
+    // One per spawn_agent call of the reply on screen (several can run at once); touched on the UI thread only.
+    private readonly Dictionary<string, HelperRun> _helperRuns = new(StringComparer.Ordinal);
+    private readonly SemaphoreSlim _helperDisplay = new(1, 1);
+
+    /// <summary>What a helper is doing, shown in its own step of the reply it works for.</summary>
+    public async Task ShowHelperProgressAsync(Harness.Core.Tools.HelperEvent e)
+    {
+        if (_activeAssistantId is not { } id)
+            return;
+
+        await _helperDisplay.WaitAsync().ConfigureAwait(true);
+        try
+        {
+            if (!_helperRuns.TryGetValue(e.CallId, out var run))
+                _helperRuns[e.CallId] = run = new HelperRun(e.Kind == Harness.Core.Tools.HelperEventKind.Started ? e.Text : string.Empty);
+
+            run.Steps = e.Steps;
+            run.Elapsed = e.Elapsed;
+            if (e.Kind == Harness.Core.Tools.HelperEventKind.Step)
+                run.Lines.Add(e.Text);
+            else if (e.Kind == Harness.Core.Tools.HelperEventKind.Finished)
+                (run.Finished, run.Stopped) = (true, e.Text);
+
+            await _messageSink.UpsertMessageStepAsync(
+                id, ChatMarkup.ToolStepId(e.CallId),
+                ChatMarkup.HelperStepHtml(run.Task, run.Lines, run.Steps, run.Elapsed, run.Finished, run.Stopped),
+                run.Finished ? StepState.Done : StepState.Running).ConfigureAwait(true);
+        }
+        finally
+        {
+            _helperDisplay.Release();
+        }
+    }
+
+    /// <summary>What the file tools changed per reply, so a reply that changed files can offer to undo them.</summary>
+    public Harness.Core.Files.FileCheckpoints? Checkpoints { get; set; }
+
+    /// <summary>The task list as JSON for saving with the conversation (null when there is none).</summary>
+    public Func<string?>? TasksProvider { get; set; }
+
+    /// <summary>Shows a saved task list (JSON) when a conversation is reopened.</summary>
+    public Action<string?>? TasksLoader { get; set; }
+
+    /// <summary>Turns a typed built-in command (such as /init) into what the model is asked; null for any other message.</summary>
+    public Func<string, string?>? BuiltInCommand { get; set; }
 
     private readonly HashSet<string> _memoryLabelShown = new(StringComparer.Ordinal);
 
@@ -180,8 +271,12 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
     public Task NotifyProviderErrorAsync(string message) => PostSystemMessageAsync(message);
 
     /// <summary>The badge counts every tool the agent can call; the tooltip breaks it down.</summary>
+    /// <summary>The folder the file tools work in (what an approval card compares a file with).</summary>
+    public string? SandboxRoot { get; private set; }
+
     public void UpdateToolStatus(IReadOnlyList<McpServerStatus> servers, int builtInToolCount, string? sandboxRoot)
     {
+        SandboxRoot = sandboxRoot;
         McpToolCount = builtInToolCount + servers.Where(s => s.State == McpServerState.Connected).Sum(s => s.ToolCount);
         McpStarting = servers.Any(s => s.State == McpServerState.Starting);
         McpHasErrors = servers.Any(s => s.State == McpServerState.Failed);
@@ -208,7 +303,7 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         _pendingApprovals[request.CallId] = pending;
         try
         {
-            await _messageSink.UpsertMessageStepAsync(messageId, ChatMarkup.ToolStepId(request.CallId), ChatMarkup.ApprovalStepHtml(request), StepState.Waiting);
+            await _messageSink.UpsertMessageStepAsync(messageId, ChatMarkup.ToolStepId(request.CallId), ChatMarkup.ApprovalStepHtml(request, SandboxRoot), StepState.Waiting);
             // Time spent waiting for the user isn't the agent's: freeze the live counter and the reply's timer.
             await _messageSink.SetMessageStatusAsync(messageId, Strings.WaitingForApproval, paused: true);
             PauseTurnTimer(true);
@@ -492,6 +587,7 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
 
         IsBusy = true;
         var id = NextMessageId();
+        Checkpoints?.BeginTurn(id);
         // Root span of this turn when recording is on: the model and tool calls below become its children.
         using var turnSpan = Telemetry.StartTurn(ChatMarkup.WithAttachmentNames(userMessage, attachments));
         var traceId = turnSpan?.TraceId.ToHexString();
@@ -584,7 +680,7 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
             // MCP App views may have told us what the user did in them (ui/update-model-context); the model
             // gets that with this message, the transcript shows only what the user typed.
             // A message that starts with /skill-name tells the model to use that skill; the transcript keeps what was typed.
-            var request = SkillsProvider is { } skills ? Harness.Core.Skills.SkillCatalog.ExpandInvocation(userMessage, skills()) : userMessage;
+            var request = BuiltInCommand?.Invoke(userMessage) ?? (SkillsProvider is { } skills ? Harness.Core.Skills.SkillCatalog.ExpandInvocation(userMessage, skills()) : userMessage);
             var forModel = AppContextProvider?.Invoke() is { } appContext ? appContext + "\n\n" + request : request;
             // The model only knows what it was told: say so when read-only mode changed since the last message.
             if (ReadOnlyModeNote() is { } modeNote)
@@ -646,15 +742,23 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
                         else
                         {
                             var result = done.Exception is null ? done.Result : null;
+                            // A helper's step keeps what it did, and what it cost in time, as the note.
+                            var note = done.Exception?.Message;
+                            string? helperLog = null;
+                            if (call.Name == Harness.Core.Tools.HelperAgentTool.Name && done.Exception is null && _helperRuns.TryGetValue(done.CallId, out var helper))
+                            {
+                                note = Strings.HelperSummary(helper.Steps, helper.Elapsed) + (helper.Stopped.Length > 0 ? " " + Strings.HelperWhy(helper.Stopped) : string.Empty);
+                                helperLog = ChatMarkup.HelperLogHtml(helper.Lines);
+                            }
                             steps[done.CallId] = steps[done.CallId] with
                             {
                                 State = done.Exception is null ? "done" : "error",
                                 Result = ChatMarkup.ResultJson(result),
-                                Note = done.Exception?.Message,
+                                Note = note,
                             };
                             await _messageSink.UpsertMessageStepAsync(
                                 id, ChatMarkup.ToolStepId(done.CallId),
-                                ChatMarkup.ToolStepHtml(call, note: done.Exception?.Message, result: result),
+                                ChatMarkup.ToolStepHtml(call, note: note, result: result, extraHtml: helperLog),
                                 done.Exception is null ? StepState.Done : StepState.Error).ConfigureAwait(true);
                             if (done.Exception is null)
                                 await _messageSink.PresentToolAppAsync(id, call, done.Result).ConfigureAwait(true);
@@ -754,7 +858,10 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
             }
             _activeAssistantId = null;
             _turnCancellation = null;
+            _helperRuns.Clear();
             await _messageSink.SetMessageStatusAsync(id, null).ConfigureAwait(true);
+            if (TakeHelperUsage() is { } helperUsage)
+                usage = usage?.Add(helperUsage) ?? helperUsage;
             var (cost, costTooltip) = await RecordUsageAsync(session.ConfiguredModelId, usage).ConfigureAwait(true);
             var (meta, tooltip) = ChatMarkup.FormatMeta(session.ConfiguredModelId, usage, firstTextAt, stopwatch.Elapsed, cost, costTooltip);
             if (stopped)
@@ -763,6 +870,9 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
                 tooltip = Strings.StoppedTooltip + (string.IsNullOrEmpty(tooltip) ? string.Empty : "\n\n" + tooltip);
             }
             await _messageSink.SetMessageMetaAsync(id, meta, tooltip, traceId).ConfigureAwait(true);
+            Checkpoints?.EndTurn();
+            if (Checkpoints?.ChangedFiles(id) is { Count: > 0 } changedFiles)
+                await _messageSink.SetMessageUndoAsync(id, Strings.UndoChip(changedFiles.Count), Strings.UndoChipTooltip).ConfigureAwait(true);
             if (MemoryUsedProvider?.Invoke(_conversationId) is { Count: > 0 } usedMemories && _conversationId is { } labelFor && _memoryLabelShown.Add(labelFor))
                 await _messageSink.SetMessageMemoryAsync(id, Strings.MemoryUsedChip(usedMemories.Count), Strings.MemoryUsedChipTooltip, usedMemories).ConfigureAwait(true);
             if (stopped || errorText is not null)
@@ -806,7 +916,13 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
             _conversationTitle ??= TitleFrom(user.Text);
             var (conversationId, title) = (_conversationId, _conversationTitle);
             var state = await session.SaveStateAsync().ConfigureAwait(true);
-            await Task.Run(() => _history.Append(conversationId, title, [user, reply], state)).ConfigureAwait(true);
+            var (mode, workspace) = (ConversationMode, ConversationMode == "code" ? ConversationWorkspace : null);
+            var tasks = TasksProvider?.Invoke();
+            await Task.Run(() =>
+            {
+                _history.Append(conversationId, title, [user, reply], state, mode, workspace);
+                _history.SaveTasks(conversationId, tasks);
+            }).ConfigureAwait(true);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
@@ -831,7 +947,8 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
         IReadOnlyList<ConversationSummary> conversations;
         try
         {
-            conversations = await Task.Run(() => _history.List(50, search)).ConfigureAwait(true);
+            var (mode, workspace) = (ConversationMode, ConversationMode == "code" ? ConversationWorkspace : null);
+            conversations = await Task.Run(() => _history.List(50, search, mode, workspace)).ConfigureAwait(true);
         }
         catch (Microsoft.Data.Sqlite.SqliteException ex)
         {
@@ -869,6 +986,7 @@ public sealed partial class ChatViewModel : ObservableObject, IToolApprover
             _conversationId = conversation.Id;
             _conversationTitle = conversation.Title;
             _resumedFromHistory = false;
+            TasksLoader?.Invoke(await Task.Run(() => _history.LoadTasks(conversation.Id)).ConfigureAwait(true));
             await RefreshConversationCostAsync().ConfigureAwait(true);
             if (_chatSession is not null)
             {

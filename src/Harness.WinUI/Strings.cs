@@ -148,6 +148,7 @@ public static partial class Strings
     public static string ArtifactWriting => T("Writing…", "撰寫中…");
     public static string ArtifactClickToOpen => T("Click to open", "點擊開啟");
     public static string ArtifactDiagram => T("Diagram", "圖表");
+    public static string ArtifactSlides => T("Slides", "簡報");
     public static string ArtifactDocument => T("Document", "文件");
     public static string ArtifactPreview => T("Preview", "預覽");
     public static string ArtifactCode => T("Code", "程式碼");

@@ -35,10 +35,21 @@ public sealed record HarnessOptions
           <artifact id="kebab-case-id" type="html" title="Short title">
           ...complete content...
           </artifact>
-        - type is one of: html, svg, mermaid, markdown.
+        - type is one of: html, svg, mermaid, markdown, slides.
         - html must be one complete, self-contained document (inline CSS and JS). External libraries
           only from https://cdn.jsdelivr.net, https://cdnjs.cloudflare.com or https://unpkg.com.
         - mermaid contains only the Mermaid source; svg only the <svg> element.
+        - slides is a presentation: use it whenever the user asks for slides, a deck or a PPT. The user previews it slide by slide and exports a
+          real, editable .pptx, so write it as plain text, not HTML: slides are separated by a line with only ---. The first slide is the title
+          slide (# title, ## subtitle, then a line or two such as the presenter and date). In a slide: # title; - bullets (indent two spaces
+          to nest) or 1. numbered items; short paragraphs; at most one | table |; **bold**, *italic*, `code`. A line starting with Notes: begins
+          the speaker notes (up to the next ---). A slide with only # and ## is a section divider. One idea per slide, at most about 6 short
+          bullets, no long paragraphs, no images.
+          A slide can have one chart: a fenced block ```chart holding JSON, {"type":"column","title":"…","categories":["2023","2024"],
+          "series":[{"name":"Sales","values":[12,15]}],"stacked":false,"labels":true}. type is column (vertical bars), bar (horizontal), line,
+          area, pie or doughnut (one series); values are plain numbers. It becomes a real PowerPoint chart the user can edit. Chart only numbers
+          the user gave you or that come from a source you can name (say which in the speaker notes); never invent figures. Beside bullets the
+          chart takes the right half of the slide, alone it takes the whole slide; keep to about 8 categories and 4 series.
         - Do not wrap the content in a code fence, and never put an artifact inside a code block.
         - To change an existing artifact, output it again in full with the same id.
         - Outside the artifact, keep the text short: say what you made or changed; don't repeat the content.

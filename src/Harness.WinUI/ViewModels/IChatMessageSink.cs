@@ -38,6 +38,9 @@ public interface IChatMessageSink
     /// <summary>Shows "used N memories" under the reply with this id; a click opens the memory window on <paramref name="memoryIds"/>.</summary>
     Task SetMessageMemoryAsync(string id, string text, string? tooltip, IReadOnlyList<string> memoryIds);
 
+    /// <summary>Puts "undo this reply's file changes" under a reply (the chat page asks the window to undo them when it is clicked).</summary>
+    Task SetMessageUndoAsync(string id, string text, string? tooltip);
+
     /// <summary>
     /// Offers "Retry" under the reply with this id (and nowhere else); a null <paramref name="id"/> removes it.
     /// </summary>

@@ -43,7 +43,7 @@ public sealed partial class SettingsDialog : ContentDialog
     private readonly string _initialSandbox;
     private readonly bool _initialShowTips;
     private readonly ToolPermissionStore _permissions;
-    private readonly List<(string ServerName, string ToolName)> _removedPermissions = [];
+    private readonly List<(string? Folder, string ServerName, string ToolName)> _removedPermissions = [];
 
     /// <summary>The connection that was showing when the user saved: the one to use now.</summary>
     public ResolvedProvider? Saved { get; private set; }
@@ -210,7 +210,7 @@ public sealed partial class SettingsDialog : ContentDialog
     private void ShowAlwaysAllowed()
     {
         AlwaysAllowedPanel.Children.Clear();
-        var entries = _permissions.List().Except(_removedPermissions).ToList();
+        var entries = _permissions.ListAll().Except(_removedPermissions).ToList();
         if (entries.Count == 0)
         {
             AlwaysAllowedPanel.Children.Add(new TextBlock { Text = Strings.AlwaysAllowedNone, Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"] });
@@ -219,7 +219,7 @@ public sealed partial class SettingsDialog : ContentDialog
 
         foreach (var entry in entries)
         {
-            var label = Describe(entry.ServerName, entry.ToolName);
+            var label = Describe(entry.ServerName, entry.ToolName) + (entry.Folder is null ? "" : " — " + Strings.InFolder(entry.Folder));
             var row = new Grid { ColumnSpacing = 8 };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -227,7 +227,7 @@ public sealed partial class SettingsDialog : ContentDialog
             var remove = new Button { Content = Strings.Remove };
             Grid.SetColumn(remove, 1);
             AutomationProperties.SetName(remove, $"{Strings.Remove}: {label}");
-            AutomationProperties.SetAutomationId(remove, $"SettingsAlwaysAllowedRemove_{entry.ServerName}/{entry.ToolName}");
+            AutomationProperties.SetAutomationId(remove, $"SettingsAlwaysAllowedRemove_{entry.Folder}_{entry.ServerName}/{entry.ToolName}");
             remove.Click += (_, _) =>
             {
                 _removedPermissions.Add(entry);
@@ -369,8 +369,8 @@ public sealed partial class SettingsDialog : ContentDialog
             }).Save();
             if (sandboxChanged)
                 NewSandboxFolder = sandbox;
-            foreach (var (serverName, toolName) in _removedPermissions)
-                _permissions.Remove(serverName, toolName);
+            foreach (var (folder, serverName, toolName) in _removedPermissions)
+                _permissions.Remove(folder, serverName, toolName);
         }
         catch (Exception ex)
         {

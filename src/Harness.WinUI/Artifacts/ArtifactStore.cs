@@ -29,18 +29,26 @@ public sealed class ArtifactStore
 
     private readonly Dictionary<string, StoredArtifact> _artifacts = new(StringComparer.Ordinal);
 
+    /// <summary>The company themes the person made from their templates.</summary>
+    public BrandThemeStore Themes { get; } = new();
+
+    /// <summary>The theme decks are drawn in (the built-in one, or one of <see cref="Themes"/>).</summary>
+    public BrandTheme Theme { get; set; } = BrandTheme.BuiltIn;
+
     public StoredArtifact? Get(string id) => _artifacts.GetValueOrDefault(id);
 
-    public StoredArtifact Save(ArtifactSegment artifact)
+    /// <param name="edited">The person changed it in the preview: the same version, with the new content.</param>
+    public StoredArtifact Save(ArtifactSegment artifact, bool edited = false)
     {
         Directory.CreateDirectory(Folder);
-        var version = (_artifacts.GetValueOrDefault(artifact.Id)?.Version ?? 0) + 1;
+        var version = (_artifacts.GetValueOrDefault(artifact.Id)?.Version ?? 0) + (edited ? 0 : 1);
 
         var sourceFile = artifact.Id + artifact.Type switch
         {
             ArtifactType.Svg => ".svg",
             ArtifactType.Mermaid => ".mmd",
             ArtifactType.Markdown => ".md",
+            ArtifactType.Slides => ".slides.md",
             _ => ".html",
         };
         File.WriteAllText(Path.Combine(Folder, sourceFile), artifact.Content);
@@ -57,12 +65,15 @@ public sealed class ArtifactStore
         return stored;
     }
 
-    private static string BuildPreview(ArtifactSegment artifact, string sourceFile)
+    private string BuildPreview(ArtifactSegment artifact, string sourceFile)
     {
+        if (artifact.Type == ArtifactType.Slides)
+            Themes.PublishAssets(Theme, Folder); // the logos the slides carry, next to the preview page
         var title = WebUtility.HtmlEncode(artifact.Title);
         var assets = "https://" + ChatShell.VirtualHostName;
         return artifact.Type switch
         {
+            ArtifactType.Slides => SlidesPreview.Page(artifact.Title, SlideDeck.Parse(artifact.Content, isComplete: true).ToJson(Theme), follow: false, edit: true),
             // <img> rather than inline SVG: scripts inside an SVG never run this way.
             ArtifactType.Svg => $$"""
                 <!DOCTYPE html><html><head><meta charset="utf-8"><title>{{title}}</title>

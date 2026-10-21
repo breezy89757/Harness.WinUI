@@ -26,7 +26,7 @@ public sealed partial class MainWindow : IMcpAppHost
     private void ConfigureMcpApps(CoreWebView2 core)
     {
         _theme = ThemeName();
-        ViewModel.AppContextProvider = TakeAppModelContext;
+        ViewModel.AppContextProvider = () => string.Join("\n\n", new[] { TakeAppModelContext(), ArtifactPanel.TakeEditNotice() }.Where(part => part is not null)) is { Length: > 0 } context ? context : null;
         if (Content is FrameworkElement root)
         {
             root.ActualThemeChanged += async (_, _) =>
@@ -158,6 +158,8 @@ public sealed partial class MainWindow : IMcpAppHost
         // Read-only mode covers tools a view calls too, not only the agent's own.
         if (_permissions.ReadOnlyMode)
             return Task.FromResult(false);
+        if (_permissions.AutoApprove)
+            return Task.FromResult(true);
 
         var decided = new TaskCompletionSource<bool>();
         _attention.Notify(Strings.NotifyApprovalTitle, Strings.NotifyApprovalBody(toolName));

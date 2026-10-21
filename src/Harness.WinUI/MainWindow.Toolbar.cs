@@ -34,6 +34,8 @@ public sealed partial class MainWindow
                 _ => ToolsButton_Click(MoreButton, new RoutedEventArgs()), Always),
             new("readOnly", ReadOnlyButton, "", () => WithDetail(Strings.ReadOnlyMode, _permissions.ReadOnlyMode ? Strings.ReadOnlyOnDetail : null),
                 _ => SetReadOnlyMode(!_permissions.ReadOnlyMode), Always),
+            new("yolo", YoloButton, "", () => WithDetail(Strings.YoloMode, _permissions.AutoApprove ? Strings.ReadOnlyOnDetail : null),
+                at => _ = SetYoloModeAsync(!_permissions.AutoApprove), Always),
             new("quality", QualityButton, "", () => Strings.ResponseQuality,
                 at => QualityFlyout.ShowAt(at), Always),
             new("usage", UsageButton, "", () => WithDetail(Strings.UsageTooltip, ViewModel.ConversationCostText),

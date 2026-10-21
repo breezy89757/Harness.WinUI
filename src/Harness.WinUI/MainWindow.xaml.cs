@@ -62,6 +62,11 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         _tools.SetHistorySearch(AppPreferences.Load().SearchHistory);
         _tools.SetMemory(AppPreferences.Load().MemoryEnabled);
         ViewModel.MemoryUsedProvider = _tools.MemoryUsedBy;
+        ViewModel.Checkpoints = _tools.Checkpoints;
+        _tools.HelperUsage += usage => ViewModel.AddHelperUsage(usage);
+        ConfigureHelpers();
+        // A helper reads the way the main agent was set to think, but at low effort: it only searches and reads.
+        _tools.HelperEffort = () => AppPreferences.ParseEffort(ViewModel.ReasoningEffort) is null ? null : Microsoft.Extensions.AI.ReasoningEffort.Low;
         MemoryButton.PointerEntered += (_, _) => RefreshMemoryTooltip();
         _tools.Mcp.Changed += (_, _) => DispatcherQueue.TryEnqueue(RefreshToolStatus);
         _tools.Changed += (_, _) => DispatcherQueue.TryEnqueue(RefreshToolStatus);
@@ -88,6 +93,8 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         ConfigureAttachments();
         ConfigureToolbar();
         ConfigureAppearance();
+        ConfigureMode();
+        ConfigureTasks();
         Diagnostics.StartUiWatchdog(DispatcherQueue);
         ResizeWindow(960, 720);
         InitializeAsync();
@@ -100,6 +107,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         if (AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
             presenter.Restore();
         Activate();
+        AttentionNotifier.ForceForeground(WindowHandle);
     }
 
     /// <summary>A reply as one line of plain text for a notification (no Markdown symbols or artifact markup).</summary>
@@ -326,7 +334,8 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         else
             _tools.SetImageGeneration(App.ImageSettingsFor(updated));
 
-        if (dialog.NewSandboxFolder is { } sandbox)
+        // The sandbox set here is Chat mode's; Code mode works in its project folder.
+        if (dialog.NewSandboxFolder is { } sandbox && _mode == AppMode.Chat)
             _tools.SetSandbox(sandbox);
         _tools.SetHistorySearch(AppPreferences.Load().SearchHistory);
         ApplyMemorySetting();
@@ -397,8 +406,9 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         {
             ViewModel.UpdateSession(new ChatSession(
                 ChatClientFactory.Create(provider), _options, () => _tools.All, ChatClientFactory.SupportsReasoningSummaries(provider),
-                _tools.ExtraInstructions));
+                _tools.ExtraInstructions, _tools.BaseInstructions, () => _tools.Mode == AppMode.Code));
             _tools.SetImageGeneration(App.ImageSettingsFor(provider));
+            _tools.SetHelpers(() => ChatClientFactory.Create(provider));
         }
         catch (Exception ex)
         {
@@ -467,6 +477,9 @@ public sealed partial class MainWindow : Window, IChatMessageSink
                     break;
                 case "openMemory":
                     OpenMemory(message.GetProperty("ids").EnumerateArray().Select(e => e.GetString() ?? string.Empty).Where(s => s.Length > 0).ToList());
+                    break;
+                case "undoTurn":
+                    _ = UndoTurnAsync(message.GetProperty("id").GetString() ?? string.Empty);
                     break;
                 case "openConversation":
                     _ = OpenConversationLinkAsync(message.GetProperty("href").GetString());
@@ -623,6 +636,9 @@ public sealed partial class MainWindow : Window, IChatMessageSink
     public Task SetMessageMetaAsync(string id, string text, string? tooltip, string? traceId = null) =>
         ExecuteShellScriptAsync($"setMessageMeta({ToJs(id)}, {ToJs(text)}, {ToJs(tooltip)}, {ToJs(traceId)});");
 
+    public Task SetMessageUndoAsync(string id, string text, string? tooltip) =>
+        ExecuteShellScriptAsync($"setMessageUndo({ToJs(id)}, {ToJs(text)}, {ToJs(tooltip)});");
+
     public Task SetMessageMemoryAsync(string id, string text, string? tooltip, IReadOnlyList<string> memoryIds) =>
         ExecuteShellScriptAsync($"setMessageMemory({ToJs(id)}, {ToJs(text)}, {ToJs(tooltip)}, {JsonSerializer.Serialize(memoryIds)});");
 
@@ -640,6 +656,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         RunOnUIThreadAsync(async () =>
         {
             CloseArtifactPanel();
+            _tools.Tasks.Clear(); // the list belongs to the conversation that was on screen
             await TeardownAppViewsAsync();
             await ExecuteShellScriptAsync("clearMessages();");
             InputTextBox.Focus(FocusState.Programmatic);

@@ -159,6 +159,15 @@ public sealed partial class McpHost : IAsyncDisposable
             return _entries.TryGetValue(name, out var e) ? e.Status : null;
     }
 
+    private Func<string, bool>? _serverFilter;
+
+    /// <summary>Limits which servers' tools are offered to the model (Code mode can use fewer servers); null offers all of them.</summary>
+    public void SetServerFilter(Func<string, bool>? filter)
+    {
+        _serverFilter = filter;
+        RebuildTools();
+    }
+
     private void RebuildTools()
     {
         var tools = new List<AITool>();
@@ -172,6 +181,9 @@ public sealed partial class McpHost : IAsyncDisposable
 
             foreach (var (server, tool) in all)
             {
+                if (_serverFilter is not null && !_serverFilter(server))
+                    continue;
+
                 // MCP Apps: tools only an app view may call are never offered to the model.
                 var ui = McpApps.GetToolUi(tool.ProtocolTool);
                 if (ui is { VisibleToModel: false })

@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.System;
+using Harness.Core.Agent;
 using Harness.Core.Config;
 using Harness.Core.Skills;
 using Harness.WinUI.ViewModels;
@@ -47,6 +48,15 @@ public sealed partial class MainWindow
             .OrderBy(m => m.Rank).ThenBy(m => m.Skill.Name, StringComparer.Ordinal)
             .Select(m => new SkillSuggestion(m.Skill.Name, m.Skill.Description.ReplaceLineEndings(" ")))
             .ToList();
+        // Code mode's own command, unless a skill of that name already exists.
+        if (_mode == AppMode.Code)
+        {
+            foreach (var (name, description) in new[] { (CodingPrompt.InitCommand, Strings.InitDescription), (CodingPrompt.ExploreCommand, Strings.ExploreDescription) })
+            {
+                if (name.StartsWith(query, StringComparison.OrdinalIgnoreCase) && !matches.Any(m => m.Label == name))
+                    matches.Insert(0, new SkillSuggestion(name, description));
+            }
+        }
         if (matches.Count == 0)
         {
             HideSkillSuggestions();

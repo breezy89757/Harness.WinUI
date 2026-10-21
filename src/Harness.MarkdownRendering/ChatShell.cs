@@ -169,6 +169,8 @@ public static class ChatShell
         .tool-args, .tool-result { margin: 6px 0 0; padding: 8px; font-size: 0.9em; max-height: 220px; overflow: auto;
                                    white-space: pre-wrap; word-break: break-word; }
         .tool-open { margin-left: 6px; white-space: nowrap; }
+        .helper-log { margin-top: 4px; font-family: Consolas, monospace; font-size: 0.85em; color: var(--muted); }
+        .helper-log > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .tool-image { display: block; margin-top: 8px; max-width: min(100%, 420px); max-height: 420px;
                       border-radius: 10px; border: 1px solid var(--border-color); cursor: zoom-in; }
         .approval { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
@@ -197,6 +199,10 @@ public static class ChatShell
         .meta.traced { cursor: pointer; }
         .memory-chip { font-size: 0.75em; color: var(--muted); margin: 4px 0 0 6px; padding: 0 9px; border: 1px solid var(--line); border-radius: 99px; background: transparent; cursor: pointer; font-family: inherit; }
         .memory-chip:hover { color: var(--accent); border-color: var(--accent); }
+        .undo-chip { font-size: 0.75em; color: var(--muted); margin: 4px 0 0 6px; padding: 0 9px; border: 1px solid var(--line); border-radius: 99px; background: transparent; cursor: pointer; font-family: inherit; }
+        .undo-chip:hover:not(:disabled) { color: var(--warn); border-color: var(--warn); }
+        .undo-chip:disabled { cursor: default; opacity: 0.7; }
+        .diff-add { color: var(--ok); } .diff-del { color: var(--err); }
         .meta.traced:hover { color: var(--accent); text-decoration: underline; }
 
         @media (prefers-reduced-motion: reduce) {
@@ -495,6 +501,30 @@ public static class ChatShell
                 chip.onclick = () => post({ type: 'openMemory', ids });
                 foot.insertBefore(chip, foot.querySelector('.meta').nextSibling);
             });
+        }
+
+        // "Undo this reply's changes" under a reply that changed files; the host asks, then restores them.
+        function setMessageUndo(id, text, title) {
+            const t = turn(id);
+            if (!t) return;
+            withStickyScroll(() => {
+                const foot = t.querySelector('.foot');
+                foot.querySelector('.undo-chip')?.remove();
+                const chip = document.createElement('button');
+                chip.className = 'undo-chip';
+                chip.textContent = text;
+                chip.title = title || '';
+                chip.onclick = () => post({ type: 'undoTurn', id });
+                foot.appendChild(chip);
+            });
+        }
+
+        function setMessageUndone(id, text) {
+            const chip = turn(id)?.querySelector('.undo-chip');
+            if (!chip) return;
+            chip.textContent = text;
+            chip.disabled = true;
+            chip.onclick = null;
         }
 
         // Copy buttons. The page only collects the text; the host puts it on the clipboard.

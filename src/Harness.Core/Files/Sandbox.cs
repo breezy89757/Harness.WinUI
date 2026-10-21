@@ -17,6 +17,15 @@ public sealed class Sandbox
 
     public string Root { get; }
 
+    private volatile bool _allowInstructionsWrite;
+
+    /// <summary>True only while the user has asked for AGENTS.md to be written (the /init command), so that one message may change it.</summary>
+    public bool AllowInstructionsWrite
+    {
+        get => _allowInstructionsWrite;
+        set => _allowInstructionsWrite = value;
+    }
+
     public string Resolve(string? path)
     {
         var trimmed = path?.Trim() ?? string.Empty;
@@ -54,7 +63,7 @@ public sealed class Sandbox
     public string ResolveForWrite(string? path)
     {
         var full = Resolve(path);
-        if (string.Equals(full, Path.Combine(Root, Harness.Core.Agent.CustomInstructions.FileName), StringComparison.OrdinalIgnoreCase))
+        if (!_allowInstructionsWrite && string.Equals(full, Path.Combine(Root, Harness.Core.Agent.CustomInstructions.FileName), StringComparison.OrdinalIgnoreCase))
             throw new UnauthorizedAccessException($"{Harness.Core.Agent.CustomInstructions.FileName} holds the user's own instructions to you, so you can't change it. Ask the user to edit it themselves.");
         return full;
     }

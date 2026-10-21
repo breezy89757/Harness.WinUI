@@ -21,6 +21,18 @@ public sealed record AppPreferences
     /// </summary>
     public string? SandboxFolder { get; init; }
 
+    /// <summary>"chat" or "code": what the window was last used for (see <see cref="Agent.AppMode"/>).</summary>
+    public string Mode { get; init; } = "chat";
+
+    /// <summary>The project folder Code mode works in (the sandbox while Code mode is on); null until one is chosen.</summary>
+    public string? CodeWorkspace { get; init; }
+
+    /// <summary>The MCP servers whose tools Code mode offers; null for all of them (see the folder menu in Code mode).</summary>
+    public List<string>? CodeMcpServers { get; init; }
+
+    /// <summary>Project folders used in Code mode, most recent first.</summary>
+    public List<string>? RecentWorkspaces { get; init; }
+
     /// <summary>"auto" (the model's default), "low", "medium" or "high".</summary>
     public string ReasoningEffort { get; init; } = "auto";
 
@@ -84,6 +96,9 @@ public sealed record AppPreferences
     /// <summary>Days recorded traces are kept.</summary>
     public int TraceRetentionDays { get; init; } = 30;
 
+    /// <summary>The company theme (an id of the themes folder) new presentations are drawn and exported in; null for the built-in one.</summary>
+    public string? SlideTheme { get; init; }
+
     /// <summary>Send telemetry over OTLP to <see cref="OtlpEndpoint"/> (off by default; headers are in the secret store).</summary>
     public bool OtlpEnabled { get; init; }
 
@@ -132,15 +147,27 @@ public sealed record AppPreferences
 
     private static string FilePath => AppPaths.Combine("preferences.json");
 
+    // The file is asked for on every model call and at many other places: it is read again only when it has changed.
+    private sealed record CachedFile(string Path, DateTime WrittenUtc, long Length, AppPreferences Value);
+
+    private static volatile CachedFile? s_cached;
+
     public static AppPreferences Load()
     {
         try
         {
-            var preferences = File.Exists(FilePath)
-                ? JsonSerializer.Deserialize<AppPreferences>(File.ReadAllText(FilePath)) ?? new AppPreferences()
-                : new AppPreferences();
+            var path = FilePath;
+            var info = new FileInfo(path);
+            if (!info.Exists)
+                return new AppPreferences();
+            if (s_cached is { } cached && cached.Path == path && cached.WrittenUtc == info.LastWriteTimeUtc && cached.Length == info.Length)
+                return cached.Value;
+
+            var preferences = JsonSerializer.Deserialize<AppPreferences>(File.ReadAllText(path)) ?? new AppPreferences();
             // A sandbox saved inside the pre-rename data folder moved along with it.
-            return preferences with { SandboxFolder = AppPaths.MapLegacyPath(preferences.SandboxFolder) };
+            var loaded = preferences with { SandboxFolder = AppPaths.MapLegacyPath(preferences.SandboxFolder) };
+            s_cached = new CachedFile(path, info.LastWriteTimeUtc, info.Length, loaded);
+            return loaded;
         }
         catch (JsonException)
         {
@@ -152,5 +179,6 @@ public sealed record AppPreferences
     {
         Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
         File.WriteAllText(FilePath, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
+        s_cached = null;
     }
 }

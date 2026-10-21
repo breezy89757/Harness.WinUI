@@ -56,6 +56,7 @@ internal static class ChatMarkup
             ArtifactType.Svg => ("SVG", "SVG"),
             ArtifactType.Mermaid => ("MMD", Strings.ArtifactDiagram),
             ArtifactType.Markdown => ("MD", Strings.ArtifactDocument),
+            ArtifactType.Slides => ("PPT", Strings.ArtifactSlides),
             _ => ("</>", "HTML"),
         };
         var status = artifact.IsComplete ? Strings.ArtifactClickToOpen : Strings.ArtifactWriting;
@@ -91,7 +92,7 @@ internal static class ChatMarkup
 
     private static readonly JsonSerializerOptions s_prettyJson = new(s_compactJson) { WriteIndented = true };
 
-    public static string ToolStepHtml(ToolCallStarted call, string? note = null, object? result = null)
+    public static string ToolStepHtml(ToolCallStarted call, string? note = null, object? result = null, string? extraHtml = null)
     {
         var args = call.Arguments is { Count: > 0 } ? JsonSerializer.Serialize(Redact(call.Arguments), s_compactJson) : string.Empty;
         if (args.Length > 120)
@@ -102,6 +103,8 @@ internal static class ChatMarkup
             html.Append($" <span>{WebUtility.HtmlEncode(args)}</span>");
         if (note is not null)
             html.Append($" — {WebUtility.HtmlEncode(note)}");
+        else if (call.Name == "read_file" && result is not null && ReadCoverage(DescribeResult(result)) is { } coverage)
+            html.Append($" — {WebUtility.HtmlEncode(coverage)}");
 
         if (result is not null && call.Name == ImageGenerationTool.Name && GeneratedImageUrl(result) is { } imageUrl)
             html.Append($"<a href='{imageUrl}'><img class='tool-image' src='{imageUrl}' alt='{WebUtility.HtmlEncode(Strings.GeneratedImage)}'></a>");
@@ -112,16 +115,126 @@ internal static class ChatMarkup
             html.Append($"<details><summary>{WebUtility.HtmlEncode(Strings.Result)}</summary><pre class='tool-result'>{WebUtility.HtmlEncode(Truncate(text, 4000))}</pre></details>");
         }
 
+        return html.Append(extraHtml).Append("</div>").ToString();
+    }
+
+    private const int HelperLinesShown = 8;
+
+    /// <summary>The steps a helper has taken, newest last, with the older ones counted.</summary>
+    public static string HelperLogHtml(IReadOnlyList<string> lines)
+    {
+        if (lines.Count == 0)
+            return string.Empty;
+
+        var html = new StringBuilder("<div class='helper-log'>");
+        if (lines.Count > HelperLinesShown)
+            html.Append($"<div>{WebUtility.HtmlEncode(Strings.HelperEarlier(lines.Count - HelperLinesShown))}</div>");
+        foreach (var line in lines.Skip(lines.Count - HelperLinesShown))
+            html.Append($"<div>{WebUtility.HtmlEncode(line)}</div>");
         return html.Append("</div>").ToString();
     }
 
+    /// <summary>A helper agent's step while it works (or right after it finished): its question and what it is doing.</summary>
+    public static string HelperStepHtml(string task, IReadOnlyList<string> lines, int steps, TimeSpan elapsed, bool finished, string stopped)
+    {
+        var state = finished ? Strings.HelperSummary(steps, elapsed) + (stopped.Length > 0 ? " " + Strings.HelperWhy(stopped) : "") : Strings.HelperRunning(steps, elapsed);
+        return $"<div><code>{WebUtility.HtmlEncode(HelperAgentTool.Name)}</code> — {WebUtility.HtmlEncode(state)}" +
+               $"<details><summary>{WebUtility.HtmlEncode(Strings.HelperQuestion)}</summary><pre class='tool-result'>{WebUtility.HtmlEncode(Truncate(task, 2000))}</pre></details>" +
+               HelperLogHtml(lines) + "</div>";
+    }
+
+    /// <summary>
+    /// What an edit_file or write_file is about to change, as a coloured diff (removed lines red, added lines green), so the
+    /// person approving sees the change and not a JSON string. Null for any other tool.
+    /// </summary>
+    private static string? FileChangeDiffHtml(ToolApprovalRequest request, string? sandboxRoot)
+    {
+        if (request.ServerName != Harness.Core.Files.FileTools.ServerName ||
+            !request.Arguments.TryGetValue("path", out var pathValue) || pathValue?.ToString() is not { Length: > 0 } path)
+        {
+            return null;
+        }
+
+        string? diff = null;
+        if (request.ToolName == "edit_file" &&
+            request.Arguments.TryGetValue("old_text", out var oldValue) && request.Arguments.TryGetValue("new_text", out var newValue))
+        {
+            diff = Harness.Core.Files.TextDiff.Unified(oldValue?.ToString() ?? string.Empty, newValue?.ToString() ?? string.Empty, context: 3, maxOutputLines: 80);
+        }
+        else if (request.ToolName == "write_file" && request.Arguments.TryGetValue("content", out var contentValue))
+        {
+            var content = contentValue?.ToString() ?? string.Empty;
+            var existing = ExistingText(sandboxRoot, path);
+            if (existing is null)
+            {
+                var lines = content.ReplaceLineEndings("\n").TrimEnd('\n').Split('\n');
+                diff = Strings.NewFile(lines.Length) + "\n" + string.Join('\n', lines.Take(24).Select(l => "+ " + l));
+            }
+            else
+            {
+                diff = Harness.Core.Files.TextDiff.Unified(existing, content, context: 3, maxOutputLines: 80);
+            }
+        }
+        if (diff is null)
+            return null;
+
+        var html = new StringBuilder($"<b>{WebUtility.HtmlEncode(path)}</b>\n");
+        foreach (var line in Truncate(diff, 6000).Split('\n'))
+        {
+            var css = line.StartsWith("+ ", StringComparison.Ordinal) ? "diff-add" : line.StartsWith("- ", StringComparison.Ordinal) ? "diff-del" : null;
+            html.Append(css is null ? WebUtility.HtmlEncode(line) : $"<span class='{css}'>{WebUtility.HtmlEncode(line)}</span>").Append('\n');
+        }
+        return html.ToString().TrimEnd();
+    }
+
+    /// <summary>The text of a file inside the sandbox, or null if there is no such text file (or it is outside the sandbox).</summary>
+    private static string? ExistingText(string? sandboxRoot, string path)
+    {
+        try
+        {
+            if (sandboxRoot is null)
+                return null;
+            var full = Path.GetFullPath(Path.Combine(sandboxRoot, path));
+            var root = Path.GetFullPath(sandboxRoot).TrimEnd('\\') + "\\";
+            return full.StartsWith(root, StringComparison.OrdinalIgnoreCase) && File.Exists(full) && new FileInfo(full).Length < 2_000_000
+                ? File.ReadAllText(full)
+                : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return null;
+        }
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex s_readLines =
+        new(@"^[^\n]*— lines (\d+)-(\d+) of (\d+)", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    private static readonly System.Text.RegularExpressions.Regex s_readWhole =
+        new(@"^[^\n]*— (\d+) lines \(the whole file\)", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// How much of a file a read_file call covered, as the step shows it ("lines 1-240 of 993"), so it is plain when the
+    /// agent only looked at the start of a file.
+    /// </summary>
+    private static string? ReadCoverage(string? result)
+    {
+        if (result is null)
+            return null;
+        if (s_readLines.Match(result) is { Success: true } part)
+            return Strings.ReadLines(part.Groups[1].Value, part.Groups[2].Value, part.Groups[3].Value);
+        if (s_readWhole.Match(result) is { Success: true } whole)
+            return Strings.ReadWholeFile(whole.Groups[1].Value);
+        return null;
+    }
+
     /// <summary>Full view of what's about to run, so the user can judge it (secrets masked).</summary>
-    public static string ApprovalStepHtml(ToolApprovalRequest request)
+    public static string ApprovalStepHtml(ToolApprovalRequest request, string? sandboxRoot = null)
     {
         // A command reads best as itself, not as an escaped JSON string.
         var args = request.ToolName == CommandTool.Name && request.Arguments.TryGetValue("command", out var command) && command?.ToString() is { } text
             ? text + (request.Arguments.TryGetValue("timeout_seconds", out var timeout) && timeout is not null ? $"\n\n({Strings.CommandTimeout(timeout.ToString())})" : string.Empty)
             : request.Arguments.Count > 0 ? JsonSerializer.Serialize(Redact(request.Arguments), s_prettyJson) : "{}";
+        var argsHtml = FileChangeDiffHtml(request, sandboxRoot) ?? WebUtility.HtmlEncode(Truncate(args, 4000));
         var where = request.ToolName == CommandTool.Name ? $"<div class='tool-where'>{WebUtility.HtmlEncode(Strings.CommandWhere)}</div>" : string.Empty;
         var alwaysLabel = request.AlwaysAllowScope is { } scope ? Strings.AlwaysAllowStartingWith(scope) : Strings.AlwaysAllow;
         var alwaysButton = request.CanAlwaysAllow ? $"<button data-decision='always'>{WebUtility.HtmlEncode(alwaysLabel)}</button>" : string.Empty;
@@ -129,7 +242,7 @@ internal static class ChatMarkup
         var sessionButton = request.CanAlwaysAllow ? $"<button data-decision='session'>{WebUtility.HtmlEncode(sessionLabel)}</button>" : string.Empty;
         return $"""
             <div><code>{WebUtility.HtmlEncode(request.ToolName)}</code><span class='tool-server'>({WebUtility.HtmlEncode(request.ServerName)})</span>
-            {where}<pre class='tool-args'>{WebUtility.HtmlEncode(Truncate(args, 4000))}</pre>
+            {where}<pre class='tool-args'>{argsHtml}</pre>
             <div class='approval' data-call='{WebUtility.HtmlEncode(request.CallId)}'>
               <span>{WebUtility.HtmlEncode(Strings.AllowThisAction)}</span>
               <button class='primary' data-decision='allow'>{WebUtility.HtmlEncode(Strings.AllowOnce)}</button>

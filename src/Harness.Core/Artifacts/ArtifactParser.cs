@@ -10,6 +10,9 @@ public enum ArtifactType
     Svg,
     Mermaid,
     Markdown,
+
+    /// <summary>A presentation written as text (see <see cref="SlideDeck"/>): previewed slide by slide, exported as a real .pptx.</summary>
+    Slides,
 }
 
 public abstract record ReplySegment;
@@ -98,6 +101,7 @@ public static partial class ArtifactParser
     {
         "svg" or "image/svg+xml" => ArtifactType.Svg,
         "mermaid" => ArtifactType.Mermaid,
+        "slides" or "presentation" or "deck" or "slide-deck" or "pptx" => ArtifactType.Slides,
         "markdown" or "md" or "text/markdown" or "document" => ArtifactType.Markdown,
         _ => ArtifactType.Html,
     };

@@ -40,7 +40,8 @@ public static partial class CommandTool
 
     private static readonly Lazy<string> s_shell = new(FindPowerShell);
 
-    public static AIFunction Create(Sandbox sandbox, IToolApprover approver, ToolPermissionStore permissions) =>
+    /// <param name="hasBackground">start_process is offered too: say so in the description.</param>
+    public static AIFunction Create(Sandbox sandbox, IToolApprover approver, ToolPermissionStore permissions, bool hasBackground = false) =>
         new ApprovalGatedFunction(
             AIFunctionFactory.Create(
                 (
@@ -49,7 +50,7 @@ public static partial class CommandTool
                     [Description("Seconds before the command is stopped (default 120, at most 600).")] int? timeout_seconds = null) =>
                     RunAsync(sandbox.Root, command, TimeSpan.FromSeconds(Math.Clamp(timeout_seconds ?? DefaultTimeoutSeconds, 1, MaxTimeoutSeconds)), cancellationToken),
                 Name,
-                Description),
+                hasBackground ? Description.Replace("Don't start servers or anything that keeps running.", "For a server or anything that keeps running use start_process, not this.") : Description),
             ServerName, Name, readOnly: false, approver, permissions,
             scope: arguments => arguments.TryGetValue("command", out var command) ? AlwaysAllowPrefix(command?.ToString()) : null);
 
@@ -93,11 +94,9 @@ public static partial class CommandTool
     [GeneratedRegex(@"^[A-Za-z][A-Za-z0-9-]*$")]
     private static partial Regex SubcommandWord();
 
-    private static async Task<string> RunAsync(string folder, string command, TimeSpan timeout, CancellationToken cancellationToken)
+    /// <summary>How a command is run: PowerShell with UTF-8 both ways and no progress bars, then the exit code, as a terminal would show it.</summary>
+    internal static ProcessStartInfo BuildStartInfo(string folder, string command)
     {
-        if (string.IsNullOrWhiteSpace(command))
-            return "No command given.";
-
         // UTF-8 both ways, no progress bars; then the exit code of the last program run (or 1 if the last
         // PowerShell command failed), as a terminal would show it.
         var script = $$"""
@@ -127,6 +126,16 @@ public static partial class CommandTool
         start.Environment["PYTHONUTF8"] = "1";
         start.Environment["PYTHONIOENCODING"] = "utf-8";
         start.Environment["NO_COLOR"] = "1";
+
+        return start;
+    }
+
+    private static async Task<string> RunAsync(string folder, string command, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(command))
+            return "No command given.";
+
+        var start = BuildStartInfo(folder, command);
 
         var output = new OutputBuffer();
         using var process = new Process { StartInfo = start };
@@ -161,6 +170,8 @@ public static partial class CommandTool
 
         return $"Exit code: {process.ExitCode} ({timer.Elapsed.TotalSeconds:0.0} s)\n{output}";
     }
+
+    internal static void StopTree(Process process) => Stop(process);
 
     private static void Stop(Process process)
     {

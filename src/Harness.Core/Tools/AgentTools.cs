@@ -2,6 +2,7 @@
 
 using System.Runtime.Versioning;
 using Microsoft.Extensions.AI;
+using Harness.Core.Agent;
 using Harness.Core.Config;
 using Harness.Core.Files;
 using Harness.Core.Memory;
@@ -24,8 +25,20 @@ public sealed class AgentTools : IAsyncDisposable
 
     public McpHost Mcp { get; } = new();
 
+    // Tools that only read. Their calls in one reply run at the same time; every other tool (and every MCP tool) runs alone, after the
+    // calls before it (see ToolGate).
+    private static readonly HashSet<string> s_overlapping = new(
+        ["read_file", "list_directory", "find_files", "search_text", WebFetchTool.Name, HelperAgentTool.Name, BackgroundTools.OutputName],
+        StringComparer.Ordinal);
+
+    private readonly ToolGate _gate = new();
+
     /// <summary>Snapshot read by the chat session at the start of every turn.</summary>
-    public IReadOnlyList<AITool> All => [.. Volatile.Read(ref _builtIn), .. Mcp.Tools];
+    public IReadOnlyList<AITool> All =>
+    [
+        .. Volatile.Read(ref _builtIn).Select(t => _gate.Wrap(t, shared: t is AIFunction f && s_overlapping.Contains(f.Name))),
+        .. Mcp.Tools.Select(t => _gate.Wrap(t, shared: false)),
+    ];
 
     /// <summary>File, MCP-management and image tools (everything that isn't from an MCP server).</summary>
     public int BuiltInToolCount => Volatile.Read(ref _builtIn).Count;
@@ -45,8 +58,65 @@ public sealed class AgentTools : IAsyncDisposable
     {
         var own = Harness.Core.Agent.CustomInstructions.Compose(AppPreferences.Load().CustomInstructions, SandboxRoot);
         var memories = _memory ? MemoryFor(firstUserMessage) : null;
-        return own is null ? memories : memories is null ? own : own + "\n\n" + memories;
+        var coding = _mode == AppMode.Chat && SandboxRoot is not null && Harness.Core.Agent.CodingInstructions.LooksLikeProject(SandboxRoot)
+            ? Harness.Core.Agent.CodingInstructions.Text
+            : null;
+        var deck = _mode == AppMode.Chat ? DeckRulesText() : null;
+        var all = string.Join("\n\n", new[] { coding, deck, own, memories }.Where(p => p is not null));
+        return all.Length == 0 ? null : all;
     }
+
+    private readonly Harness.Core.Artifacts.BrandThemeStore _themes = new();
+    private (string Id, DateTime Stamp, DateOnly Day, string? Text)? _deckRules;
+
+    /// <summary>What the model is told about the company presentation theme in use (null when there is none); read again only when the theme's files change.</summary>
+    private string? DeckRulesText()
+    {
+        var id = AppPreferences.Load().SlideTheme;
+        if (string.IsNullOrEmpty(id))
+            return null;
+
+        var stamp = new[] { Path.Combine(_themes.FolderOf(id), Harness.Core.Artifacts.BrandThemeStore.ThemeFile), _themes.RulesPathOf(id) }
+            .Select(f => File.Exists(f) ? File.GetLastWriteTimeUtc(f) : DateTime.MinValue).Max();
+        var day = DateOnly.FromDateTime(DateTime.Now);
+        if (_deckRules is { } cached && cached.Id == id && cached.Stamp == stamp && cached.Day == day)
+            return cached.Text;
+
+        var theme = _themes.Resolve(id);
+        var text = Harness.Core.Artifacts.DeckRules.Compose(theme, _themes.ReadRules(id), day);
+        _deckRules = (id, stamp, day, text);
+        return text;
+    }
+
+    #region Mode
+
+    private AppMode _mode = AppMode.Chat;
+
+    /// <summary>Chat (everything, as ever) or Code (a coding agent in a project folder: its own instructions, no Office or image tools).</summary>
+    public AppMode Mode => _mode;
+
+    public void SetMode(AppMode mode)
+    {
+        if (_mode == mode)
+            return;
+        _mode = mode;
+        Harness.Core.Agent.CodingInstructions.Forget();
+        ApplyMcpFilter();
+        Rebuild();
+    }
+
+    /// <summary>In Code mode only the MCP servers the user picked are offered (all of them when none were picked); Chat mode offers all.</summary>
+    public void ApplyMcpFilter()
+    {
+        var chosen = _mode == AppMode.Code ? AppPreferences.Load().CodeMcpServers : null;
+        Mcp.SetServerFilter(chosen is null ? null : name => chosen.Contains(name, StringComparer.Ordinal));
+    }
+
+    /// <summary>The instructions that replace the built-in ones: Code mode's own; null in Chat mode.</summary>
+    public string? BaseInstructions() =>
+        _mode == AppMode.Code ? CodingPrompt.Build(tasks: true, helpers: _helpers is not null, background: true) : null;
+
+    #endregion
 
     #region Memory
 
@@ -147,6 +217,50 @@ public sealed class AgentTools : IAsyncDisposable
         Rebuild();
     }
 
+    /// <summary>Programs the agent started and left running (Code mode); stopped when the app closes.</summary>
+    public BackgroundProcesses Background { get; } = new();
+
+    private bool _allowInstructionsWrite;
+
+    /// <summary>While true, the agent may write AGENTS.md (the user asked for it with /init); false otherwise, so a page or file can't talk it into rewriting its own instructions.</summary>
+    public bool AllowInstructionsWrite
+    {
+        get => _allowInstructionsWrite;
+        set
+        {
+            _allowInstructionsWrite = value;
+            if (_sandbox is not null)
+                _sandbox.AllowInstructionsWrite = value;
+        }
+    }
+
+    /// <summary>What the file tools changed, per message, so it can be undone.</summary>
+    public FileCheckpoints Checkpoints { get; } = new();
+
+    /// <summary>Code mode's task list for the conversation on screen (set by update_tasks, shown above the message box).</summary>
+    public TaskList Tasks { get; } = new();
+
+    private Func<IChatClient>? _helpers;
+
+    /// <summary>A helper agent finished: what its model calls used (so the conversation's cost includes them).</summary>
+    public event Action<UsageReported>? HelperUsage;
+
+    /// <summary>A helper agent started, made a tool call or finished, for the step that shows it.</summary>
+    public event Action<HelperEvent>? HelperProgress;
+
+    /// <summary>The helpers that are running (stop one with <see cref="HelperRegistry.Stop"/>).</summary>
+    public HelperRegistry Helpers { get; } = new();
+
+    /// <summary>The reasoning effort a helper's model calls use: low when the user picked an effort for the main agent (a read-only search doesn't need more), otherwise the model's default.</summary>
+    public Func<ReasoningEffort?>? HelperEffort { get; set; }
+
+    /// <summary>Lets Code mode start read-only helper agents (spawn_agent); <paramref name="client"/> makes a chat client for the current provider.</summary>
+    public void SetHelpers(Func<IChatClient>? client)
+    {
+        _helpers = client;
+        Rebuild();
+    }
+
     private Func<string, string, Task<string>>? _applyAppearance;
     private IReadOnlyList<string> _toolbarButtons = [];
 
@@ -186,8 +300,10 @@ public sealed class AgentTools : IAsyncDisposable
         else
         {
             Directory.CreateDirectory(folder);
-            _sandbox = new Sandbox(folder);
+            _sandbox = new Sandbox(folder) { AllowInstructionsWrite = _allowInstructionsWrite };
         }
+
+        Harness.Core.Agent.CodingInstructions.Forget();
 
         // The sandbox may hold project skills (.agents/skills).
         RefreshSkills();
@@ -258,12 +374,15 @@ public sealed class AgentTools : IAsyncDisposable
         if (_approver is null || _permissions is null)
             return;
 
+        var code = _mode == AppMode.Code;
         var tools = new List<AITool>();
         tools.AddRange(SkillCatalog.CreateTools(() => Skills.Where(s => IsSkillEnabled(s.Name)).ToList()));
         if (_sandbox is not null)
         {
-            tools.AddRange(FileTools.Create(_sandbox, _approver, _permissions));
-            tools.Add(CommandTool.Create(_sandbox, _approver, _permissions));
+            tools.AddRange(FileTools.Create(_sandbox, _approver, _permissions, includeOffice: !code, checkpoints: Checkpoints));
+            tools.Add(CommandTool.Create(_sandbox, _approver, _permissions, hasBackground: code));
+            if (code)
+                tools.AddRange(BackgroundTools.Create(_sandbox, Background, _approver, _permissions));
         }
         tools.AddRange(McpServerManager.CreateAgentTools(Mcp, _approver, _permissions));
         tools.Add(WebFetchTool.Create(_approver));
@@ -282,10 +401,14 @@ public sealed class AgentTools : IAsyncDisposable
         {
             tools.AddRange(MemoryTools.Create(Memory, _approver, _permissions, () => SandboxRoot, CurrentConversation));
         }
-        if (_image is not null)
+        if (_image is not null && !code)
             tools.Add(ImageGenerationTool.Create(_image, () => ImageQuality));
         if (_applyAppearance is { } applyAppearance)
             tools.Add(AppearanceTool.Create(_approver, _permissions, _toolbarButtons, applyAppearance));
+        if (code)
+            tools.Add(TaskTools.Create(Tasks));
+        if (code && _helpers is { } helperClient && _sandbox is not null)
+            tools.Add(HelperAgentTool.Create(helperClient, () => _sandbox, _approver, _permissions, u => HelperUsage?.Invoke(u), e => HelperProgress?.Invoke(e), () => HelperEffort?.Invoke(), Helpers));
 
         Volatile.Write(ref _builtIn, tools);
         Changed?.Invoke(this, EventArgs.Empty);
@@ -300,6 +423,7 @@ public sealed class AgentTools : IAsyncDisposable
             _skillWatchers.Clear();
         }
         _skillRefreshTimer?.Dispose();
+        Background.Dispose(); // programs the agent left running stop with the app
         return Mcp.DisposeAsync();
     }
 }

@@ -23,20 +23,106 @@
         <!-- Chat -->
         <Grid x:Name="ChatGrid" Grid.Column="0">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
+            <!-- Chat or Code (Code mode is a coding agent in a project folder), the folder, and the modes that change what the agent may do. -->
+            <Border
+                x:Name="ModeBar"
+                Grid.Row="0"
+                BorderThickness="0,0,0,1"
+                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+                <Grid Padding="16,6,16,6" MinHeight="46" ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <controls:SelectorBar
+                        x:Name="ModeSelector"
+                        VerticalAlignment="Center"
+                        AutomationProperties.AutomationId="ModeSelector"
+                        AutomationProperties.Name="{x:Bind local:Strings.ModeSelectorName}"
+                        SelectionChanged="ModeSelector_SelectionChanged">
+                        <controls:SelectorBarItem x:Name="ChatModeItem" Tag="chat" Text="{x:Bind local:Strings.ModeChat}">
+                            <controls:SelectorBarItem.Icon>
+                                <FontIcon Glyph="&#xE8BD;" />
+                            </controls:SelectorBarItem.Icon>
+                        </controls:SelectorBarItem>
+                        <controls:SelectorBarItem x:Name="CodeModeItem" Tag="code" Text="{x:Bind local:Strings.ModeCode}">
+                            <controls:SelectorBarItem.Icon>
+                                <FontIcon Glyph="&#xE943;" />
+                            </controls:SelectorBarItem.Icon>
+                        </controls:SelectorBarItem>
+                    </controls:SelectorBar>
+
+                    <!-- The project folder Code mode works in: pick another, or one used before. -->
+                    <Button
+                        x:Name="WorkspaceButton"
+                        Grid.Column="1"
+                        Visibility="Collapsed"
+                        VerticalAlignment="Center"
+                        Padding="12,5"
+                        CornerRadius="{StaticResource ControlCornerRadius}"
+                        AutomationProperties.AutomationId="WorkspaceButton"
+                        AutomationProperties.Name="{x:Bind local:Strings.WorkspaceButtonName}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon FontSize="14" Glyph="&#xE8B7;" />
+                            <TextBlock x:Name="WorkspaceText" MaxWidth="320" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                            <FontIcon FontSize="10" Glyph="&#xE70D;" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <Button.Flyout>
+                            <MenuFlyout x:Name="WorkspaceFlyout" Placement="BottomEdgeAlignedLeft" Opening="WorkspaceFlyout_Opening" />
+                        </Button.Flyout>
+                    </Button>
+
+                    <!-- Shown only while a mode that changes what the agent may do is on; a click turns it off. -->
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Button
+                            x:Name="ReadOnlyBadge"
+                            Visibility="Collapsed"
+                            Padding="10,3"
+                            CornerRadius="12"
+                            AutomationProperties.AutomationId="ReadOnlyBadge"
+                            Click="ReadOnlyBadge_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon FontSize="12" Glyph="&#xE72E;" />
+                                <TextBlock Text="{x:Bind local:Strings.ReadOnlyBadge}" Style="{StaticResource CaptionTextBlockStyle}" />
+                            </StackPanel>
+                        </Button>
+                        <Button
+                            x:Name="YoloBadge"
+                            Visibility="Collapsed"
+                            Padding="10,3"
+                            CornerRadius="12"
+                            Background="{ThemeResource SystemFillColorCriticalBrush}"
+                            Foreground="White"
+                            BorderThickness="0"
+                            AutomationProperties.AutomationId="YoloBadge"
+                            Click="YoloBadge_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon FontSize="12" Glyph="&#xE7BA;" Foreground="White" />
+                                <TextBlock Text="YOLO" Foreground="White" Style="{StaticResource CaptionTextBlockStyle}" FontWeight="Bold" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <controls:WebView2
                 x:Name="ChatWebView"
-                Grid.Row="0"
+                Grid.Row="1"
                 AutomationProperties.Name="{x:Bind local:Strings.ChatTranscript}" />
 
             <!-- Text size feedback (Ctrl + / - / 0, Ctrl + wheel): fades in, then out. -->
             <Border
                 x:Name="ZoomIndicator"
-                Grid.Row="0"
+                Grid.Row="1"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Bottom"
                 Margin="0,0,0,20"
@@ -53,7 +139,7 @@
             <!-- Skills to pick from while the message starts with "/". Focus stays in the message box; arrow keys and Enter/Tab drive it. -->
             <Border
                 x:Name="SkillSuggestions"
-                Grid.Row="0"
+                Grid.Row="1"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Bottom"
                 Margin="24,0,24,8"
@@ -92,9 +178,52 @@
             </Border>
 
             <!-- Pasted / dropped attachments, sent with the next message. -->
+            <!-- Code mode: the agent's task list, kept by update_tasks. -->
+            <StackPanel Grid.Row="2">
+            <!-- Code mode: the helper agents that are working (spawn_agent), one card each. -->
+            <Border
+                x:Name="HelperPanel"
+                Padding="24,8,24,8"
+                Visibility="Collapsed"
+                Background="{ThemeResource LayerFillColorDefaultBrush}"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+                <StackPanel Spacing="6">
+                    <TextBlock x:Name="HelperHeaderText" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <StackPanel x:Name="HelperCardsPanel" Spacing="6" />
+                </StackPanel>
+            </Border>
+            <Border
+                x:Name="TaskPanel"
+                Padding="24,8,24,8"
+                Visibility="Collapsed"
+                Background="{ThemeResource LayerFillColorDefaultBrush}"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+                <StackPanel Spacing="4">
+                    <Button
+                        x:Name="TaskHeaderButton"
+                        Padding="0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        HorizontalAlignment="Left"
+                        AutomationProperties.AutomationId="TaskHeaderButton"
+                        Click="TaskHeaderButton_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon x:Name="TaskChevron" FontSize="10" Glyph="&#xE70D;" />
+                            <TextBlock x:Name="TaskHeaderText" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        </StackPanel>
+                    </Button>
+                    <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="TaskItemsPanel" Spacing="2" />
+                    </ScrollViewer>
+                </StackPanel>
+            </Border>
+            </StackPanel>
+
             <Border
                 x:Name="AttachmentStrip"
-                Grid.Row="1"
+                Grid.Row="3"
                 Padding="24,10,24,0"
                 Visibility="Collapsed"
                 AllowDrop="True"
@@ -159,7 +288,7 @@
 
             <Grid
                 x:Name="ComposerGrid"
-                Grid.Row="2"
+                Grid.Row="4"
                 AllowDrop="True"
                 DragOver="Composer_DragOver"
                 Drop="Composer_Drop"
@@ -339,6 +468,25 @@
                         ToolTipService.ToolTip="{x:Bind local:Strings.ReadOnlyTooltipOff}"
                         Click="ReadOnlyButton_Click">
                         <FontIcon FontSize="16" Glyph="&#xE72E;" />
+                    </ToggleButton>
+
+                    <ToggleButton
+                        x:Name="YoloButton"
+                        AutomationProperties.AutomationId="YoloButton"
+                        AutomationProperties.Name="{x:Bind local:Strings.YoloMode}"
+                        VerticalAlignment="Bottom"
+                        Padding="10,8"
+                        ToolTipService.ToolTip="{x:Bind local:Strings.YoloTooltipOff}"
+                        Click="YoloButton_Click">
+                        <ToggleButton.Resources>
+                            <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="#C42B1C" />
+                            <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPointerOver" Color="#D13438" />
+                            <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPressed" Color="#A4262C" />
+                            <SolidColorBrush x:Key="ToggleButtonForegroundChecked" Color="White" />
+                            <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPointerOver" Color="White" />
+                            <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPressed" Color="White" />
+                        </ToggleButton.Resources>
+                        <FontIcon FontSize="16" Glyph="&#xE7BA;" />
                     </ToggleButton>
 
                     <Button

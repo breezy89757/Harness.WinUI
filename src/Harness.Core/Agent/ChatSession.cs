@@ -21,17 +21,20 @@ public sealed class ChatSession
     private AgentSession? _session;
 
     /// <param name="reasoningSummaries">Ask the model to stream reasoning summaries (Responses API only).</param>
+    /// <param name="baseInstructions">Instructions that replace the built-in ones while they return text (Code mode); null, or null text, keeps them.</param>
     /// <param name="extraInstructions">The user's own instructions and memories (see <see cref="CustomInstructions"/>), asked for on every model call; given the first thing the user said in the conversation.</param>
     public ChatSession(
         IChatClient chatClient, HarnessOptions options, Func<IReadOnlyList<AITool>>? toolsProvider = null, bool reasoningSummaries = false,
-        Func<string?, string?>? extraInstructions = null)
+        Func<string?, string?>? extraInstructions = null, Func<string?>? baseInstructions = null, Func<bool>? trimOldToolResults = null)
     {
         ArgumentNullException.ThrowIfNull(chatClient);
         ArgumentNullException.ThrowIfNull(options);
 
         ConfiguredModelId = chatClient.GetService<ChatClientMetadata>()?.DefaultModelId;
-        if (extraInstructions is not null)
-            chatClient = new ExtraInstructionsChatClient(chatClient, extraInstructions);
+        if (trimOldToolResults is not null)
+            chatClient = new ContextTrimmingChatClient(chatClient, trimOldToolResults);
+        if (extraInstructions is not null || baseInstructions is not null)
+            chatClient = new ExtraInstructionsChatClient(chatClient, extraInstructions ?? (_ => null), baseInstructions);
         _toolsProvider = toolsProvider;
         _reasoningSummaries = reasoningSummaries;
 
@@ -41,6 +44,8 @@ public sealed class ChatSession
             {
                 Name = options.AgentName,
                 ChatOptions = new ChatOptions { Instructions = options.Instructions },
+                // The calls of one reply may overlap; AgentTools only lets calls that read do so (see ToolGate), the rest wait their turn.
+                AllowConcurrentInvocation = true,
             });
     }
 
@@ -110,10 +115,18 @@ public sealed class ChatSession
             {
                 Tools = tools.Count > 0 ? [.. tools] : null,
                 Reasoning = reasoningOptions,
-                // Ask for the pages the search used, not only the ones cited.
 #pragma warning disable OPENAI001
-                RawRepresentationFactory = webSearch
-                    ? _ => new OpenAI.Responses.CreateResponseOptions { IncludedProperties = { OpenAI.Responses.IncludedResponseProperty.WebSearchCallActionSources } }
+                // The Responses API keeps the conversation on the server, so nothing here can shorten it. Without this, a conversation that
+                // outgrows the model's window fails; with it, the server leaves out the oldest items instead.
+                RawRepresentationFactory = _reasoningSummaries
+                    ? _ =>
+                    {
+                        var raw = new OpenAI.Responses.CreateResponseOptions { TruncationMode = OpenAI.Responses.ResponseTruncationMode.Auto };
+                        // Ask for the pages the search used, not only the ones cited.
+                        if (webSearch)
+                            raw.IncludedProperties.Add(OpenAI.Responses.IncludedResponseProperty.WebSearchCallActionSources);
+                        return raw;
+                    }
                     : null,
 #pragma warning restore OPENAI001
             })
