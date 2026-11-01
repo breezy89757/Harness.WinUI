@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Harness.Browser.Tests" />
+    <InternalsVisibleTo Include="Harness.DevConsole" />
   </ItemGroup>
 
   <ItemGroup>

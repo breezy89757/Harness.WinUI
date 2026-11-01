@@ -60,6 +60,8 @@ public sealed partial class CSharpScriptGenerator(IChatClient client)
             element_value   -> await Expect(<locator>).ToHaveValueAsync("<Text>");
         - done   -> a comment only.
 
+        Every Expect(...) assertion takes new() { Timeout = 15000 } as its last argument (a page can need several seconds to show a result; the default is 5 s).
+
         Secrets: a text that contains {{secret:NAME}} must be built from the environment variable BROWSER_SECRET_NAME, read with
         Environment.GetEnvironmentVariable("BROWSER_SECRET_NAME") ?? throw new InvalidOperationException("Set BROWSER_SECRET_NAME"). Never write a secret's value.
 
@@ -136,6 +138,9 @@ public sealed partial class CSharpScriptGenerator(IChatClient client)
           <ItemGroup>
             <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
             <PackageReference Include="Microsoft.Playwright.MSTest" Version="1.64.1" />
+            <!-- Playwright.MSTest pulls in MSTest 2.2.7, whose adapter finds no tests under the current test platform: name a current one. -->
+            <PackageReference Include="MSTest.TestAdapter" Version="3.9.3" />
+            <PackageReference Include="MSTest.TestFramework" Version="3.9.3" />
           </ItemGroup>
 
         </Project>
@@ -180,14 +185,38 @@ public sealed partial class CSharpScriptGenerator(IChatClient client)
         }
 
         var clock = Stopwatch.StartNew();
-        var (exit, output) = await RunDotnetAsync(script.ProjectFolder, "test --settings playwright.runsettings -nologo", env, TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
-        var passed = exit == 0;
-        var reason = passed ? "" : string.Join(' ', output.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).SkipWhile(l => !l.Contains("Error Message", StringComparison.OrdinalIgnoreCase) && !l.Contains("錯誤訊息", StringComparison.Ordinal)).Take(4));
+        // exit code 0 is not enough: a run that found no test also ends with 0. The result file says how many tests really ran.
+        var results = Path.Combine(script.ProjectFolder, "TestResults");
+        if (Directory.Exists(results))
+            Directory.Delete(results, recursive: true);
+        var (exit, output) = await RunDotnetAsync(script.ProjectFolder, "test --settings playwright.runsettings -nologo --logger \"trx;LogFileName=result.trx\" --results-directory TestResults", env, TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
+        var counts = ReadCounters(Path.Combine(results, "result.trx"));
+        var passed = exit == 0 && counts is { Executed: > 0, Failed: 0, Passed: > 0 };
+        var reason = passed ? "" : counts is { Executed: 0 } or null && exit == 0
+            ? "No test was run (the test adapter found none)."
+            : string.Join(' ', output.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).SkipWhile(l => !l.Contains("Error Message", StringComparison.OrdinalIgnoreCase) && !l.Contains("錯誤訊息", StringComparison.Ordinal)).Take(4));
         if (!passed && reason.Length == 0)
             reason = string.Join(' ', output.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).TakeLast(4));
         var step = new StepOutcome(1, "dotnet test", Path.GetFileName(script.FilePath), passed ? "pass" : "fail", BrowserSecrets.Mask(reason, env.ToDictionary(e => e.Key["BROWSER_SECRET_".Length..], e => e.Value)), clock.ElapsedMilliseconds);
         return new RunResult(recording.Name, "replay-cs", passed ? "pass" : "fail", passed ? "The generated test passed." : "The generated test failed: " + step.Reason, [step], 0, 0, clock.ElapsedMilliseconds, "", started);
     }
+
+    /// <summary>The counters of a .trx result file (tests executed, passed, failed); null when the file is missing or unreadable.</summary>
+    internal static (int Executed, int Passed, int Failed)? ReadCounters(string trxPath)
+    {
+        try
+        {
+            var match = TrxCounters().Match(File.ReadAllText(trxPath));
+            return match.Success ? (int.Parse(match.Groups["executed"].Value), int.Parse(match.Groups["passed"].Value), int.Parse(match.Groups["failed"].Value)) : null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+    }
+
+    [GeneratedRegex(@"<Counters\b[^>]*?\bexecuted=""(?<executed>\d+)""[^>]*?\bpassed=""(?<passed>\d+)""[^>]*?\bfailed=""(?<failed>\d+)""", RegexOptions.Singleline)]
+    private static partial Regex TrxCounters();
 
     private static async Task<(int Exit, string Output)> RunDotnetAsync(string folder, string arguments, IReadOnlyDictionary<string, string> env, TimeSpan timeout, CancellationToken cancellationToken)
     {

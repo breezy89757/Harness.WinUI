@@ -22,6 +22,7 @@ using Harness.Core.Tools;
 //   --desktop  offer operate_desktop (the desktop agent) and print its progress
 //   --browser <start_url> <task...>  offer operate_browser and ask the agent to do the task on that site (--headless hides the browser window,
 //                         --allow-hosts a.com,b.org limits where it may go instead of using the saved setting)
+//   --experiment [--out <folder>] [--runs 5] [--cases simple,medium,hard] [--no-python]  run the browser agent experiment and write results.json
 //   --image-model <name>  enable generate_image with this model (default: the saved setting)
 //   --sandbox <folder>    enable the built-in file tools on this folder
 //   --effort <level>      reasoning effort: low / medium / high (default: the model's)
@@ -34,6 +35,12 @@ var browserUrl = TakeOption("--browser");
 var allowHosts = TakeOption("--allow-hosts");
 var replayPath = TakeOption("--replay");
 var generatePath = TakeOption("--generate-cs");
+var experiment = argList.Remove("--experiment");
+var experimentOut = TakeOption("--out");
+var experimentRuns = TakeOption("--runs");
+var experimentCases = TakeOption("--cases");
+var noPython = argList.Remove("--no-python");
+var experimentFrom = TakeOption("--from");
 var mcpPath = TakeOption("--mcp");
 var imageModelArg = TakeOption("--image-model");
 var sandboxArg = TakeOption("--sandbox");
@@ -91,6 +98,15 @@ Console.WriteLine($"Provider source : {resolved.Source}");
 Console.WriteLine($"Model (config)  : {resolved.Model}");
 Console.WriteLine($"API             : {resolved.Api} -> {resolved.Api.Resolve(new Uri(resolved.Endpoint))}");
 Console.WriteLine();
+
+// The browser agent experiment: --experiment [--out <folder>] [--runs 5] [--cases simple,medium,hard] [--no-python]
+if (experiment)
+{
+    var folder = experimentOut ?? Path.Combine(Path.GetTempPath(), "browser-experiment", DateTime.Now.ToString("yyyyMMdd-HHmmss"));
+    var only = (experimentCases ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet();
+    await Harness.DevConsole.Experiment.RunAsync(resolved, folder, int.TryParse(experimentRuns, out var n) ? n : 5, only, !noPython, 5, experimentFrom);
+    return;
+}
 
 // Make a C# test from a recording with the model, build it, and run it: --generate-cs <recording.json>
 if (generatePath is not null)
