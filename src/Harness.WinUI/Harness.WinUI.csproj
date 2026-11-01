@@ -33,6 +33,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Harness.Core\Harness.Core.csproj" />
+    <ProjectReference Include="..\Harness.Desktop\Harness.Desktop.csproj" />
     <ProjectReference Include="..\Harness.MarkdownRendering\Harness.MarkdownRendering.csproj" />
   </ItemGroup>
 

@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+### Added
+- Operate other programs (experimental, Settings, off by default): the agent gets `operate_desktop(window_title, task)`, which hands one task
+  in one program window to a desktop agent that works from start to finish in its own context, apart from the conversation. Each turn it
+  is shown the window as a screenshot with numbered boxes plus the same numbers as a list (what Windows UI Automation and Windows' own OCR
+  found), picks one element and an action, and the action is carried out through the control's own pattern (Invoke, Value …) or, where
+  there is none, a click inside the window; after every action it checks that the screen changed and stops if it repeats itself. Every use
+  asks for approval (the window and the task are named; it can't be "always allowed" and YOLO doesn't skip it), the app's own window is
+  never a target, closing or system key combinations are refused, and holding Esc stops it. The desktop's icons ("桌面") and the taskbar
+  ("工作列") can be targets too, where it can only open things (nothing is typed, renamed or deleted; a desktop icon is selected and
+  opened with Enter, so a window lying over the desktop doesn't matter); a mouse click is refused when another window covers the spot. For the
+  desktop it can also show the desktop (like Win+D, as one explicit action, not the Windows key), and the person's windows are put back afterwards.
+  When it is unsure, finds nothing, or gets nowhere (the same action three times, 15 steps), it stops and asks the person through the conversation instead of trying again and again; the main agent is told to put the question to the user and not to repeat the task on its own. Only a short report goes back to the
+  conversation; the screenshots and element lists stay in the desktop agent. What is on that window is sent to your model
+- `list_windows` (offered with the desktop agent): the titles and programs of the windows that are open and visible, so a task that crosses
+  windows (open a program from the desktop, then use the window that appeared) can name the second window. Window titles can be private
+  (a video, a document), so every use asks for approval, it can't be "always allowed" and YOLO doesn't skip it; titles are cleaned, cut
+  short and handed over as information, not instructions
+- Tests for the desktop agent: `dotnet test tests/Harness.Desktop.Tests`
+- `Harness.DevConsole --desktop` offers the tool from the command line
+
 ## [1.2.0] - 2026-10-22
 
 ### Added

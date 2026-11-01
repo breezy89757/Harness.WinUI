@@ -66,6 +66,9 @@ public sealed record AppPreferences
     /// <summary>Let the agent search past conversations (search_history; each search is asked about). Off by default.</summary>
     public bool SearchHistory { get; init; }
 
+    /// <summary>Let the agent operate another program's window through a desktop agent (operate_desktop; every use is asked about). Off by default.</summary>
+    public bool DesktopControl { get; init; }
+
     /// <summary>Long-term memory: the agent can save and search notes, and the relevant ones are put in front of it at the start of a conversation. Off by default.</summary>
     public bool MemoryEnabled { get; init; }
 

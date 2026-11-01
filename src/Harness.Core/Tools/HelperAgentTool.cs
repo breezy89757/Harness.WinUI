@@ -33,11 +33,11 @@ public sealed class HelperRegistry
 
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, Entry> _running = new(StringComparer.Ordinal);
 
-    internal void Add(string callId, CancellationTokenSource source) => _running[callId] = new Entry(source);
+    public void Add(string callId, CancellationTokenSource source) => _running[callId] = new Entry(source);
 
-    internal void Remove(string callId) => _running.TryRemove(callId, out _);
+    public void Remove(string callId) => _running.TryRemove(callId, out _);
 
-    internal bool WasStoppedByUser(string callId) => _running.TryGetValue(callId, out var entry) && entry.ByUser;
+    public bool WasStoppedByUser(string callId) => _running.TryGetValue(callId, out var entry) && entry.ByUser;
 
     /// <summary>Stops the helper of this spawn_agent call; it reports what it found so far. False when it isn't running.</summary>
     public bool Stop(string callId)

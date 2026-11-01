@@ -19,12 +19,14 @@ using Harness.Core.Tools;
 // Usage: Harness.DevConsole [--mcp <mcp.json>] [--yes] [message...]
 //   --mcp  MCP config to load (default: %LOCALAPPDATA%\Harness.WinUI\mcp.json if present)
 //   --yes  approve every tool call without prompting
+//   --desktop  offer operate_desktop (the desktop agent) and print its progress
 //   --image-model <name>  enable generate_image with this model (default: the saved setting)
 //   --sandbox <folder>    enable the built-in file tools on this folder
 //   --effort <level>      reasoning effort: low / medium / high (default: the model's)
 //   --stop-after <secs>   cancel the reply after this many seconds (tests stop + session rollback)
 var argList = args.ToList();
 var autoApprove = argList.Remove("--yes");
+var desktop = argList.Remove("--desktop");
 var mcpPath = TakeOption("--mcp");
 var imageModelArg = TakeOption("--image-model");
 var sandboxArg = TakeOption("--sandbox");
@@ -73,6 +75,12 @@ try
     if ((imageModelArg ?? resolved.ImageModel) is { } imageModel)
         tools.SetImageGeneration(new ImageGenerationSettings(resolved.Endpoint, resolved.ApiKey, imageModel));
     tools.SetSandbox(sandboxArg);
+    if (desktop)
+    {
+        tools.SetHelpers(() => ChatClientFactory.Create(resolved));
+        tools.HelperProgress += e => Console.WriteLine($"  [desktop] {e.Kind}: {e.Text}");
+        tools.SetExtraTools(context => [Harness.Desktop.DesktopTool.Create(context), Harness.Desktop.DesktopTool.CreateListWindows(context)]);
+    }
 
     var servers = McpConfig.Load(mcpPath);
     if (servers.Count > 0)

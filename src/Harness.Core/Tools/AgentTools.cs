@@ -10,6 +10,11 @@ using Harness.Core.Skills;
 
 namespace Harness.Core.Tools;
 
+/// <summary>What a tool built outside Harness.Core needs: a chat client for the current provider, the approval layer, and the places a long-running agent reports to (usage, the step that shows it, the stop button).</summary>
+public sealed record ExtraToolContext(
+    Func<IChatClient> Client, IToolApprover Approver, ToolPermissionStore Permissions,
+    Action<UsageReported> Usage, Action<HelperEvent> Progress, HelperRegistry Registry);
+
 /// <summary>
 /// Everything the agent can call: built-in tools (sandboxed file access, commands, MCP management, web,
 /// image generation) plus tools from MCP servers.
@@ -261,6 +266,22 @@ public sealed class AgentTools : IAsyncDisposable
         Rebuild();
     }
 
+    private Func<ExtraToolContext, IReadOnlyList<AITool>>? _extraTools;
+
+    /// <summary>
+    /// Tools that live in another project (the desktop agent needs Windows-only libraries): <paramref name="factory"/> builds them
+    /// from what the built-in tools use, and runs again whenever the tool set is rebuilt. Null removes them.
+    /// </summary>
+    public void SetExtraTools(Func<ExtraToolContext, IReadOnlyList<AITool>>? factory)
+    {
+        _extraTools = factory;
+        Rebuild();
+    }
+
+    private void ReportHelperUsage(UsageReported usage) => HelperUsage?.Invoke(usage);
+
+    private void ReportHelperProgress(HelperEvent e) => HelperProgress?.Invoke(e);
+
     private Func<string, string, Task<string>>? _applyAppearance;
     private IReadOnlyList<string> _toolbarButtons = [];
 
@@ -409,6 +430,9 @@ public sealed class AgentTools : IAsyncDisposable
             tools.Add(TaskTools.Create(Tasks));
         if (code && _helpers is { } helperClient && _sandbox is not null)
             tools.Add(HelperAgentTool.Create(helperClient, () => _sandbox, _approver, _permissions, u => HelperUsage?.Invoke(u), e => HelperProgress?.Invoke(e), () => HelperEffort?.Invoke(), Helpers));
+
+        if (_extraTools is { } extra && _helpers is { } extraClient)
+            tools.AddRange(extra(new ExtraToolContext(extraClient, _approver, _permissions, ReportHelperUsage, ReportHelperProgress, Helpers)));
 
         Volatile.Write(ref _builtIn, tools);
         Changed?.Invoke(this, EventArgs.Empty);

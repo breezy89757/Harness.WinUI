@@ -86,6 +86,7 @@ public sealed partial class SettingsDialog : ContentDialog
         SandboxTextBox.Text = _initialSandbox;
         CustomInstructionsTextBox.Text = preferences.CustomInstructions ?? string.Empty;
         SearchHistoryToggle.IsOn = preferences.SearchHistory;
+        DesktopToggle.IsOn = preferences.DesktopControl;
         SelectByTag(WidthComboBox, Appearance.NormalizeWidth(preferences.ConversationWidth));
         _initialShowTips = preferences.ShowTips;
         TipsToggle.IsOn = _initialShowTips;
@@ -357,6 +358,7 @@ public sealed partial class SettingsDialog : ContentDialog
                 ModelPrices = _prices.Count == 0 ? null : _prices,
                 CustomInstructions = string.IsNullOrWhiteSpace(CustomInstructionsTextBox.Text) ? null : CustomInstructionsTextBox.Text.Trim(),
                 SearchHistory = SearchHistoryToggle.IsOn,
+                DesktopControl = DesktopToggle.IsOn,
                 ConversationWidth = Appearance.NormalizeWidth(SelectedTag(WidthComboBox)),
                 ShowTips = TipsToggle.IsOn,
                 // Turning tips back on brings back the ones that were closed.

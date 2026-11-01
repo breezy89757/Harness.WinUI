@@ -60,6 +60,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         _tools.Configure(ViewModel, _permissions);
         _tools.CurrentConversationId = () => ViewModel.CurrentConversationId;
         _tools.SetHistorySearch(AppPreferences.Load().SearchHistory);
+        ApplyDesktopSetting();
         _tools.SetMemory(AppPreferences.Load().MemoryEnabled);
         ViewModel.MemoryUsedProvider = _tools.MemoryUsedBy;
         ViewModel.Checkpoints = _tools.Checkpoints;
@@ -338,6 +339,7 @@ public sealed partial class MainWindow : Window, IChatMessageSink
         if (dialog.NewSandboxFolder is { } sandbox && _mode == AppMode.Chat)
             _tools.SetSandbox(sandbox);
         _tools.SetHistorySearch(AppPreferences.Load().SearchHistory);
+        ApplyDesktopSetting();
         ApplyMemorySetting();
         await ApplyWidthAsync();
         await RefreshTipsAsync();

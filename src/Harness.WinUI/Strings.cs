@@ -229,6 +229,12 @@ public static partial class Strings
     public static string SearchHistoryHelp => T(
         "Lets the agent look through your saved conversations to answer questions like \"when did I work on this, and in which conversation?\". Its answers link to the conversation. Every search asks for your approval first, and what it finds is sent to your model.",
         "讓 agent 能翻你存下來的對話，回答「我什麼時候在哪個對話做過這件事？」這類問題，答案會附上可以點開的連結。每次搜尋都會先問你，找到的內容會送給你的模型。");
+    public static string DesktopHeader => T("Operate other programs (experimental)", "操作其他程式（實驗中）");
+    public static string DesktopOn => T("The agent can operate a program window", "agent 可以操作程式視窗");
+    public static string DesktopOff => T("Off", "關閉");
+    public static string DesktopHelp => T(
+        "Lets the agent hand a task to a desktop agent that looks at one program's window, then clicks and types in it as you. Every use asks for your approval first (it names the window and the task), and the app's own window is never a target. Hold Esc to stop it. What is on that window (a screenshot and its text) is sent to your model, so don't use it on windows that show things you don't want sent.",
+        "讓 agent 把一件事交給「桌面 agent」：它會看某一個程式的視窗，再像你一樣在裡面點擊與輸入。每次使用都會先問你（會寫出視窗和任務），本程式自己的視窗不會成為目標。按住 Esc 可以隨時停止。該視窗上的畫面（截圖與文字）會送給你的模型，所以不要用在顯示著你不想送出內容的視窗上。");
     public static string ConversationNotFound => T("That conversation isn't in your history any more.", "歷史紀錄裡已經找不到那個對話了。");
     public static string SandboxHeader => T("Sandbox folder", "沙盒資料夾");
     public static string SandboxHelp => T(

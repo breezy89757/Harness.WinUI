@@ -221,6 +221,20 @@
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}" />
 
+                        <!-- Desktop agent -->
+                        <TextBlock Margin="0,8,0,0" Text="{x:Bind local:Strings.DesktopHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <ToggleSwitch
+                            x:Name="DesktopToggle"
+                            OnContent="{x:Bind local:Strings.DesktopOn}"
+                            OffContent="{x:Bind local:Strings.DesktopOff}"
+                            AutomationProperties.AutomationId="SettingsDesktopControl"
+                            AutomationProperties.Name="{x:Bind local:Strings.DesktopHeader}" />
+                        <TextBlock
+                            Text="{x:Bind local:Strings.DesktopHelp}"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}" />
+
                         <!-- Sandbox folder -->
                         <TextBlock Margin="0,8,0,0" Text="{x:Bind local:Strings.SandboxHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
                         <Grid ColumnSpacing="8">
