@@ -32,6 +32,8 @@ var desktop = argList.Remove("--desktop");
 var headless = argList.Remove("--headless");
 var browserUrl = TakeOption("--browser");
 var allowHosts = TakeOption("--allow-hosts");
+var replayPath = TakeOption("--replay");
+var generatePath = TakeOption("--generate-cs");
 var mcpPath = TakeOption("--mcp");
 var imageModelArg = TakeOption("--image-model");
 var sandboxArg = TakeOption("--sandbox");
@@ -49,6 +51,22 @@ string? TakeOption(string option)
 }
 
 AppPaths.MigrateLegacyDataRoot();
+
+// Replay a recording with no model: --replay <recording.json> [--headless]
+if (replayPath is not null)
+{
+    var recording = Harness.Browser.RecordingStore.Load(replayPath);
+    if (recording is null)
+    {
+        Console.Error.WriteLine($"Cannot read a recording from {replayPath}");
+        Environment.ExitCode = 2;
+        return;
+    }
+    var replay = await Harness.Browser.RecordingReplayer.ReplayAsync(recording, allowHosts is null ? null : new Harness.Browser.BrowserOptions(Harness.Browser.BrowserOptions.ParseHosts(allowHosts), null), headless);
+    Console.WriteLine(replay.ToMarkdown());
+    Environment.ExitCode = replay.Status == "pass" ? 0 : 1;
+    return;
+}
 
 var config = new ConfigurationBuilder()
     .SetBasePath(AppContext.BaseDirectory)
@@ -72,6 +90,30 @@ Console.WriteLine($"Provider source : {resolved.Source}");
 Console.WriteLine($"Model (config)  : {resolved.Model}");
 Console.WriteLine($"API             : {resolved.Api} -> {resolved.Api.Resolve(new Uri(resolved.Endpoint))}");
 Console.WriteLine();
+
+// Make a C# test from a recording with the model, build it, and run it: --generate-cs <recording.json>
+if (generatePath is not null)
+{
+    var recording = Harness.Browser.RecordingStore.Load(generatePath);
+    if (recording is null)
+    {
+        Console.Error.WriteLine($"Cannot read a recording from {generatePath}");
+        Environment.ExitCode = 2;
+        return;
+    }
+    var script = await new Harness.Browser.CSharpScriptGenerator(ChatClientFactory.Create(resolved)).GenerateAsync(recording);
+    Console.WriteLine($"Generated {script.FilePath}\nBuilt first try: {script.CompiledFirstTry}; builds now: {script.Compiled} (fixes: {script.FixAttempts}); tokens {script.InputTokens}/{script.OutputTokens}");
+    if (!script.Compiled)
+    {
+        Console.WriteLine(script.Errors);
+        Environment.ExitCode = 1;
+        return;
+    }
+    var run = await Harness.Browser.CSharpScriptGenerator.RunTestAsync(script, recording);
+    Console.WriteLine(run.ToMarkdown());
+    Environment.ExitCode = run.Status == "pass" ? 0 : 1;
+    return;
+}
 
 await using var tools = new AgentTools();
 try

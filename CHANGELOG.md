@@ -30,6 +30,14 @@
   When a login, a code or a captcha needs a person it pauses, the person does it in the browser window and presses Allow on the card to go on.
   A click, a check box or Enter is never repeated on a page that did not change without asking, and a slow page gets a few seconds before "nothing
   changed" is concluded. The desktop agent and the browser agent can be offered together
+- Browser recordings: a run that finished and passed leaves a recording in the data folder (`browser-recordings`): every step that worked with the
+  locator that was used and why it was chosen (role + name, label, placeholder, test id, text, CSS last), the checks that were proven on the live
+  page, the addresses before and after; a secret appears only as `{{secret:NAME}}`. A recording is replayed with no model by `RecordingReplayer`
+  (`Harness.DevConsole --replay <file>`): every step through its recorded locator and every check run; a locator that finds nothing or a step that
+  times out fails that step, stops the run and says which step and which locator. `CSharpScriptGenerator` has a model turn a recording into an MSTest
+  class (Microsoft.Playwright.MSTest) using the recorded locators and `Expect` only, secrets from `BROWSER_SECRET_NAME` environment variables, builds
+  it at once and, when it does not build, sends the compiler's errors back to the model (at most twice); the test then runs without a model
+  (`Harness.DevConsole --generate-cs <file>`)
 - Tests for the browser agent: `dotnet test tests/Harness.Browser.Tests`; `Harness.DevConsole --browser <url> <task>` runs it from the command line
 - Tests for the desktop agent: `dotnet test tests/Harness.Desktop.Tests`
 - `Harness.DevConsole --desktop` offers the tool from the command line

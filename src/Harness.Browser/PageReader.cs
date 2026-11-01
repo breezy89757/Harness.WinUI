@@ -162,7 +162,7 @@ internal static class PageReader
         {
             aria = await page.Locator("body").AriaSnapshotAsync(new() { Timeout = 3000 }).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is PlaywrightException or TimeoutException)
+        catch (Exception ex) when (Failures.Is(ex))
         {
             // some pages give no snapshot: the numbered elements are still there
         }
@@ -176,7 +176,7 @@ internal static class PageReader
                 await page.EvaluateAsync(MarkJs, secrets.Values.Where(v => v.Length >= 3).ToArray()).ConfigureAwait(false);
                 png = await page.ScreenshotAsync(new() { Type = ScreenshotType.Png }).ConfigureAwait(false);
             }
-            catch (Exception ex) when (ex is PlaywrightException or TimeoutException)
+            catch (Exception ex) when (Failures.Is(ex))
             {
                 png = null;
             }
@@ -186,7 +186,7 @@ internal static class PageReader
                 {
                     await page.EvaluateAsync(UnmarkJs).ConfigureAwait(false);
                 }
-                catch (Exception ex) when (ex is PlaywrightException)
+                catch (Exception ex) when (Failures.Is(ex))
                 {
                     // the page went away while we were drawing: nothing to clean up
                 }

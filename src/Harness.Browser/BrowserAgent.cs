@@ -111,7 +111,7 @@ internal sealed class BrowserAgent(
         {
             session = await BrowserSession.StartAsync(options, headless).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is PlaywrightException or IOException)
+        catch (Exception ex) when (Failures.Is(ex) || ex is IOException)
         {
             return Result(false, false, false, $"Cannot start the browser ({(BrowserSession.Channel.Length > 0 ? BrowserSession.Channel : "chromium")}): {FirstLine(ex.Message)}", 0);
         }
@@ -123,7 +123,7 @@ internal sealed class BrowserAgent(
             {
                 await page.GotoAsync(startUrl, new() { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 20000 }).ConfigureAwait(false);
             }
-            catch (PlaywrightException ex)
+            catch (Exception ex) when (Failures.Is(ex))
             {
                 return session.BlockedUrl is { } blocked
                     ? Result(false, false, true, $"The page went to {blocked}, which is not in the list of allowed hosts. Should it be allowed?", 0)
@@ -134,6 +134,7 @@ internal sealed class BrowserAgent(
             var repeats = new Dictionary<string, int>();
             var actions = 0;
             var asserted = false;
+            var verified = new HashSet<string>(StringComparer.Ordinal);
             var expectedPrompted = false;
             var shots = options.ScreenshotFolder is { } folder ? Path.Combine(folder, $"{DateTime.Now:yyyyMMdd-HHmmss}-{Naming.Slug(task)}") : null;
 
@@ -193,7 +194,18 @@ internal sealed class BrowserAgent(
                 }
 
                 var target = move.Id is { } id ? obs.Elements.FirstOrDefault(e => e.Ref == id) : null;
-                var guardKey = $"{move.Kind}|{target?.Signature}|{move.Text}|{move.Url}|{move.Keys}|{obs.Fingerprint}";
+
+                // A check that already passed on this very page is not run again: say so, and let the model move on (done, or another fact to check).
+                var assertKey = move.Kind == "assert" && move.Assert is { } spec
+                    ? $"{spec.Type}|{spec.Text}|{(spec.Id is { } sid ? obs.Elements.FirstOrDefault(e => e.Ref == sid)?.Signature : "")}|{obs.Fingerprint}"
+                    : null;
+                if (assertKey is not null && verified.Contains(assertKey))
+                {
+                    history.Add($"- {Describe(move, target)} → 這項驗證剛才已經通過了，不需要重複。請驗證別的事實，或所有該驗證的都完成了就回 done");
+                    continue;
+                }
+
+                var guardKey = $"{move.Kind}|{target?.Signature}|{move.Text}|{move.Url}|{move.Keys}|{move.Assert?.Type}:{move.Assert?.Text}|{obs.Fingerprint}";
                 repeats[guardKey] = repeats.GetValueOrDefault(guardKey) + 1;
                 if (repeats[guardKey] >= Guard.Limit(move))
                 {
@@ -211,19 +223,25 @@ internal sealed class BrowserAgent(
                 {
                     var step = await PerformAsync(page, session, move, target, obs, secrets, expected, recorded.Count + 1, urlBefore).ConfigureAwait(false);
                     if (move.Kind == "assert")
+                    {
                         asserted = true;
+                        if (assertKey is not null)
+                            verified.Add(assertKey);
+                    }
                     var changed = move.Kind is "assert" or "wait" or "scroll" ? true : await SettleAsync(page, obs.Fingerprint, secrets, cancellationToken).ConfigureAwait(false);
                     if (step is not null)
                         recorded.Add(step with { UrlAfter = page.Url, ScreenAfter = await DescribeScreenAsync(page, secrets).ConfigureAwait(false) });
                     steps.Add(new StepOutcome(steps.Count + 1, move.Kind, Describe(move, target), "pass", changed ? "page changed" : "no visible change", clock.ElapsedMilliseconds));
-                    history.Add($"- {Describe(move, target)} → 完成；" + (changed ? "畫面有變化" : "沒有造成任何畫面變化") + (page.Url != urlBefore ? $"；網址變成 {page.Url}" : ""));
+                    history.Add(move.Kind == "assert"
+                        ? $"- {Describe(move, target)} → 驗證通過（已記錄）"
+                        : $"- {Describe(move, target)} → 完成；" + (changed ? "畫面有變化" : "沒有造成任何畫面變化") + (page.Url != urlBefore ? $"；網址變成 {page.Url}" : ""));
                 }
                 catch (ActionException ex)
                 {
                     steps.Add(new StepOutcome(steps.Count + 1, move.Kind, Describe(move, target), "fail", ex.Message, clock.ElapsedMilliseconds));
                     history.Add($"- {Describe(move, target)} → 失敗：{ex.Message}");
                 }
-                catch (PlaywrightException ex)
+                catch (Exception ex) when (Failures.Is(ex))
                 {
                     var message = BrowserSecrets.Mask(FirstLine(ex.Message), secrets);
                     steps.Add(new StepOutcome(steps.Count + 1, move.Kind, Describe(move, target), "fail", message, clock.ElapsedMilliseconds));
@@ -337,7 +355,7 @@ internal sealed class BrowserAgent(
             await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded, new() { Timeout = 5000 }).ConfigureAwait(false);
             await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new() { Timeout = 2000 }).ConfigureAwait(false);
         }
-        catch (PlaywrightException)
+        catch (Exception failure) when (Failures.Is(failure))
         {
             // a page that never goes idle (polling, streaming) is read as it is
         }
@@ -349,7 +367,7 @@ internal sealed class BrowserAgent(
                 if (now.Fingerprint != before)
                     return true;
             }
-            catch (PlaywrightException)
+            catch (Exception failure) when (Failures.Is(failure))
             {
                 return true; // the page was replaced under us: that is a change
             }
@@ -366,7 +384,7 @@ internal sealed class BrowserAgent(
             {
                 return await PageReader.ObserveAsync(page, secrets, screenshot: true).ConfigureAwait(false);
             }
-            catch (PlaywrightException)
+            catch (Exception failure) when (Failures.Is(failure))
             {
                 await Task.Delay(500, cancellationToken).ConfigureAwait(false); // a navigation was in progress
             }
@@ -434,7 +452,7 @@ internal sealed class BrowserAgent(
         {
             return Screen(await PageReader.ObserveAsync(page, secrets, screenshot: false).ConfigureAwait(false));
         }
-        catch (PlaywrightException)
+        catch (Exception failure) when (Failures.Is(failure))
         {
             return "(the page was changing)";
         }

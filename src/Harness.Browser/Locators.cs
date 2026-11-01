@@ -80,22 +80,29 @@ internal static partial class Locators
             {
                 count = await locator.CountAsync().ConfigureAwait(false);
             }
-            catch (PlaywrightException)
+            catch (Exception failure) when (Failures.Is(failure))
             {
                 continue;
             }
-            if (count == 1 && await locator.GetAttributeAsync("data-hqa-ref", new() { Timeout = 1500 }).ConfigureAwait(false) == refText)
-                return (candidate with { Reason = candidate.Reason + " is unique on the page" }, locator);
-            if (count is > 1 and <= 12 && among is null)
+            try
             {
-                for (var i = 0; i < count; i++)
+                if (count == 1 && await locator.GetAttributeAsync("data-hqa-ref", new() { Timeout = 1500 }).ConfigureAwait(false) == refText)
+                    return (candidate with { Reason = candidate.Reason + " is unique on the page" }, locator);
+                if (count is > 1 and <= 12 && among is null)
                 {
-                    if (await locator.Nth(i).GetAttributeAsync("data-hqa-ref", new() { Timeout = 1500 }).ConfigureAwait(false) == refText)
+                    for (var i = 0; i < count; i++)
                     {
-                        among = candidate with { Nth = i, Reason = $"{candidate.Reason} matches {count} elements; this is number {i + 1}" };
-                        break;
+                        if (await locator.Nth(i).GetAttributeAsync("data-hqa-ref", new() { Timeout = 1500 }).ConfigureAwait(false) == refText)
+                        {
+                            among = candidate with { Nth = i, Reason = $"{candidate.Reason} matches {count} elements; this is number {i + 1}" };
+                            break;
+                        }
                     }
                 }
+            }
+            catch (Exception failure) when (Failures.Is(failure))
+            {
+                // an element that disappears while it is being looked at: try the next way of finding it
             }
         }
         if (among is not null)

@@ -67,12 +67,18 @@ internal sealed class BrowserSession : IAsyncDisposable
             if (_browser is not null)
                 await _browser.CloseAsync().ConfigureAwait(false);
         }
-        catch (PlaywrightException)
+        catch (Exception failure) when (Failures.Is(failure))
         {
             // already closed by the person
         }
         _playwright?.Dispose();
     }
+}
+
+/// <summary>What counts as a failure of the browser or the page: Playwright reports a timeout (an element that never appears) as a TimeoutException, not a PlaywrightException.</summary>
+internal static class Failures
+{
+    public static bool Is(Exception ex) => ex is PlaywrightException or TimeoutException;
 }
 
 /// <summary>The checks the model can ask for. The same code runs while exploring (to prove a check before it is recorded) and in every replay.</summary>
@@ -108,7 +114,7 @@ internal static class Asserts
             }
             return (true, "");
         }
-        catch (PlaywrightException ex)
+        catch (Exception ex) when (Failures.Is(ex))
         {
             return (false, string.Join(' ', ex.Message.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Take(4)));
         }
