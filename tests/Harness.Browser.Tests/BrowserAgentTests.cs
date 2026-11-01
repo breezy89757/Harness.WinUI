@@ -276,6 +276,37 @@ public class RecordingTests
     }
 }
 
+public class RunResultMappingTests
+{
+    private static BrowserOutcome Outcome(bool finished, bool passed, bool needsUser) =>
+        new(finished, passed, needsUser, "the report", 2, new UsageReported(120, 30, 150, null, null), null,
+            [new StepOutcome(1, "click", "click button \"Add\"", "pass", "page changed", 80)]);
+
+    [Theory]
+    [InlineData(true, true, false, "pass")]
+    [InlineData(true, false, false, "fail")]
+    [InlineData(false, false, true, "paused")]
+    [InlineData(false, false, false, "error")]
+    public void Every_way_a_run_can_end_has_a_status(bool finished, bool passed, bool needsUser, string expected)
+    {
+        var result = BrowserTool.ToRunResult(Outcome(finished, passed, needsUser), "add a todo", "gpt-x", DateTimeOffset.Now, TimeSpan.FromSeconds(12.5));
+        Assert.Equal(expected, result.Status);
+        Assert.Equal("explore", result.Mode);
+        Assert.Equal("add-a-todo", result.Name);
+        Assert.Equal((120L, 30L, 12500L), (result.InputTokens, result.OutputTokens, result.DurationMs));
+        Assert.Single(result.Steps);
+        Assert.Equal("the report", result.Summary);
+    }
+
+    [Fact]
+    public void The_main_agent_is_pointed_at_the_run_summary_and_the_recording()
+    {
+        var text = BrowserTool.Describe(Outcome(true, true, false), "", 2, new UsageReported(1, 1, 2, null, null), @"C:\data\rec.json", @"C:\data\run.md");
+        Assert.Contains(@"A recording of the steps that worked was saved: C:\data\rec.json", text);
+        Assert.Contains(@"Run summary: C:\data\run.md", text);
+    }
+}
+
 public class ReportTests
 {
     private static BrowserOutcome Outcome(bool finished, bool passed, bool needsUser, string report) =>

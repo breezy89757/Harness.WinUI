@@ -231,7 +231,8 @@ internal sealed class BrowserAgent(
                     var changed = move.Kind is "assert" or "wait" or "scroll" ? true : await SettleAsync(page, obs.Fingerprint, secrets, cancellationToken).ConfigureAwait(false);
                     if (step is not null)
                         recorded.Add(step with { UrlAfter = page.Url, ScreenAfter = await DescribeScreenAsync(page, secrets).ConfigureAwait(false) });
-                    steps.Add(new StepOutcome(steps.Count + 1, move.Kind, Describe(move, target), "pass", changed ? "page changed" : "no visible change", clock.ElapsedMilliseconds));
+                    var note = move.Kind == "assert" ? "check passed" : move.Kind is "wait" or "scroll" ? "" : changed ? "page changed" : "no visible change";
+                    steps.Add(new StepOutcome(steps.Count + 1, move.Kind, Describe(move, target), "pass", note, clock.ElapsedMilliseconds));
                     history.Add(move.Kind == "assert"
                         ? $"- {Describe(move, target)} → 驗證通過（已記錄）"
                         : $"- {Describe(move, target)} → 完成；" + (changed ? "畫面有變化" : "沒有造成任何畫面變化") + (page.Url != urlBefore ? $"；網址變成 {page.Url}" : ""));

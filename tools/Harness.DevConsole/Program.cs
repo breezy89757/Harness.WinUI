@@ -64,6 +64,7 @@ if (replayPath is not null)
     }
     var replay = await Harness.Browser.RecordingReplayer.ReplayAsync(recording, allowHosts is null ? null : new Harness.Browser.BrowserOptions(Harness.Browser.BrowserOptions.ParseHosts(allowHosts), null), headless);
     Console.WriteLine(replay.ToMarkdown());
+    Console.WriteLine($"Saved: {Harness.Browser.RecordingStore.SaveRun(replay)}");
     Environment.ExitCode = replay.Status == "pass" ? 0 : 1;
     return;
 }
@@ -111,6 +112,7 @@ if (generatePath is not null)
     }
     var run = await Harness.Browser.CSharpScriptGenerator.RunTestAsync(script, recording);
     Console.WriteLine(run.ToMarkdown());
+    Console.WriteLine($"Saved: {Harness.Browser.RecordingStore.SaveRun(run)}");
     Environment.ExitCode = run.Status == "pass" ? 0 : 1;
     return;
 }
