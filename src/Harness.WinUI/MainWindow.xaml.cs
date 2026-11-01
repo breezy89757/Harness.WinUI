@@ -586,6 +586,11 @@ public sealed partial class MainWindow : Window, IChatMessageSink
             return;
 
         ArtifactPanel.Visibility = Visibility.Visible;
+        OpenSideColumn();
+    }
+
+    private void OpenSideColumn()
+    {
         ArtifactSplitter.Visibility = Visibility.Visible;
         ChatColumn.Width = new GridLength(1, GridUnitType.Star);
         ArtifactColumn.Width = new GridLength(1.2, GridUnitType.Star);
@@ -598,11 +603,16 @@ public sealed partial class MainWindow : Window, IChatMessageSink
     private void CloseArtifactPanel()
     {
         ArtifactPanel.Visibility = Visibility.Collapsed;
+        CloseSideColumn();
+        ArtifactPanel.Unload();
+    }
+
+    private void CloseSideColumn()
+    {
         ArtifactSplitter.Visibility = Visibility.Collapsed;
         ArtifactColumn.MinWidth = 0;
         ArtifactColumn.Width = new GridLength(0);
         ChatColumn.Width = new GridLength(1, GridUnitType.Star);
-        ArtifactPanel.Unload();
     }
 
     /// <summary>At the default 960px width, chat + panel would both be cramped; grow the window if there's room.</summary>
@@ -659,6 +669,8 @@ public sealed partial class MainWindow : Window, IChatMessageSink
     public Task ClearConversationAsync() =>
         RunOnUIThreadAsync(async () =>
         {
+            if (!_browserRunning)
+                HideBrowserPane();
             CloseArtifactPanel();
             _tools.Tasks.Clear(); // the list belongs to the conversation that was on screen
             await TeardownAppViewsAsync();

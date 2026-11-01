@@ -23,7 +23,8 @@ public static class BrowserTool
 
     /// <param name="options">Read at every use (the person may change the settings meanwhile); null reads the saved preferences.</param>
     /// <param name="headless">No visible browser window; for tests and the command line. The default is a visible window, so a person can take over.</param>
-    public static AITool Create(ExtraToolContext context, Func<BrowserOptions>? options = null, bool headless = false)
+    /// <param name="surface">Where the app shows the browser (a pane beside the chat); null opens a separate browser window.</param>
+    public static AITool Create(ExtraToolContext context, Func<BrowserOptions>? options = null, bool headless = false, IBrowserSurface? surface = null)
     {
         var inner = AIFunctionFactory.Create(
             async (
@@ -37,7 +38,7 @@ public static class BrowserTool
                 if (string.IsNullOrWhiteSpace(task))
                     return "Error: task is required.";
                 var callId = FunctionInvokingChatClient.CurrentContext?.CallContent.CallId ?? Guid.NewGuid().ToString("N");
-                return await Task.Run(() => RunAsync(context, (options ?? BrowserOptions.FromPreferences)(), headless, uri.ToString(), task.Trim(), expected?.Trim(), callId, cancellationToken), CancellationToken.None).ConfigureAwait(false);
+                return await Task.Run(() => RunAsync(context, (options ?? BrowserOptions.FromPreferences)(), headless, surface, uri.ToString(), task.Trim(), expected?.Trim(), callId, cancellationToken), CancellationToken.None).ConfigureAwait(false);
             },
             Name,
             "Do a task on a website in a real browser that a separate agent drives, from start to finish, with its own context. " +
@@ -51,7 +52,7 @@ public static class BrowserTool
     }
 
     private static async Task<string> RunAsync(
-        ExtraToolContext context, BrowserOptions options, bool headless, string startUrl, string task, string? expected, string callId, CancellationToken cancellationToken)
+        ExtraToolContext context, BrowserOptions options, bool headless, IBrowserSurface? surface, string startUrl, string task, string? expected, string callId, CancellationToken cancellationToken)
     {
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         limit.CancelAfter(s_timeout);
@@ -73,7 +74,7 @@ public static class BrowserTool
             var agent = new BrowserAgent(
                 chat, options, model, headless,
                 onStep: text => context.Progress(new HelperEvent(callId, HelperEventKind.Step, text, ++steps, clock.Elapsed)),
-                waitForUser: (what, token) => AskPersonToTakeOverAsync(context, callId, what, token));
+                waitForUser: (what, token) => AskPersonToTakeOverAsync(context, callId, what, token), surface: surface);
             outcome = await agent.RunAsync(startUrl, task, expected, limit.Token).ConfigureAwait(false);
             usage = outcome.Usage;
             // What worked is kept so it can be replayed without a model; only a run that finished and passed leaves one.

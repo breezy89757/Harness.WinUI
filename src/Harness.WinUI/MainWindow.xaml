@@ -9,6 +9,7 @@
     xmlns:controls="using:Microsoft.UI.Xaml.Controls"
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     xmlns:artifacts="using:Harness.WinUI.Artifacts"
+    xmlns:panes="using:Harness.WinUI.Panes"
     xmlns:vm="using:Harness.WinUI.ViewModels"
     xmlns:agent="using:Harness.Core.Agent"
     mc:Ignorable="d">
@@ -641,5 +642,12 @@
             Visibility="Collapsed"
             OpenRequested="ArtifactPanel_OpenRequested"
             CloseRequested="ArtifactPanel_CloseRequested" />
+
+        <!-- The browser the browser agent drives, in the same place while a run lasts -->
+        <panes:BrowserPane
+            x:Name="BrowserPane"
+            Grid.Column="2"
+            Visibility="Collapsed"
+            CloseRequested="BrowserPane_CloseRequested" />
     </Grid>
 </Window>

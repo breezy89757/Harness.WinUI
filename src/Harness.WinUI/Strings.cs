@@ -236,6 +236,8 @@ public static partial class Strings
         "Lets the agent hand a task to a desktop agent that looks at one program's window, then clicks and types in it as you. Every use asks for your approval first (it names the window and the task), and the app's own window is never a target. Hold Esc to stop it. What is on that window (a screenshot and its text) is sent to your model, so don't use it on windows that show things you don't want sent.",
         "讓 agent 把一件事交給「桌面 agent」：它會看某一個程式的視窗，再像你一樣在裡面點擊與輸入。每次使用都會先問你（會寫出視窗和任務），本程式自己的視窗不會成為目標。按住 Esc 可以隨時停止。該視窗上的畫面（截圖與文字）會送給你的模型，所以不要用在顯示著你不想送出內容的視窗上。");
     public static string BrowserHeader => T("Run web tasks in a browser (experimental)", "在瀏覽器裡執行網頁任務（實驗中）");
+    public static string BrowserPaneTitle => T("Browser (the agent is working here; you can use it too)", "瀏覽器（agent 操作中，你也可以自己操作）");
+    public static string BrowserPaneClose => T("Close the browser", "關閉瀏覽器");
     public static string BrowserOn => T("The agent can drive a browser", "agent 可以操作瀏覽器");
     public static string BrowserOff => T("Off", "關閉");
     public static string BrowserHelp => T(

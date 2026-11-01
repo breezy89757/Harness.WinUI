@@ -54,7 +54,7 @@ internal static partial class Naming
 [SupportedOSPlatform("windows")]
 internal sealed class BrowserAgent(
     IChatClient client, BrowserOptions options, string modelName, bool headless, Action<string>? onStep = null,
-    Func<string, CancellationToken, Task<bool>>? waitForUser = null, int maxTurns = 20)
+    Func<string, CancellationToken, Task<bool>>? waitForUser = null, int maxTurns = 20, IBrowserSurface? surface = null)
 {
     internal const string SystemPrompt = """
         你在一個真實的瀏覽器分頁裡完成交代的網頁任務，像一位測試員。
@@ -109,7 +109,7 @@ internal sealed class BrowserAgent(
         BrowserSession session;
         try
         {
-            session = await BrowserSession.StartAsync(options, headless).ConfigureAwait(false);
+            session = await BrowserSession.StartAsync(options, headless, surface, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (Failures.Is(ex) || ex is IOException)
         {

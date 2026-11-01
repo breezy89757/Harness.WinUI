@@ -38,6 +38,9 @@
   class (Microsoft.Playwright.MSTest) using the recorded locators and `Expect` only, secrets from `BROWSER_SECRET_NAME` environment variables, builds
   it at once and, when it does not build, sends the compiler's errors back to the model (at most twice); the test then runs without a model
   (`Harness.DevConsole --generate-cs <file>`)
+- The browser agent's browser is shown in a pane beside the chat (like an artifact), and stays there after the run so the person can look at it or use it, until
+  they close it or the next run replaces it. Each run gets a fresh browser profile, deleted when the pane closes. If the pane cannot be opened, a separate browser
+  window is used as before
 - Tests for the browser agent: `dotnet test tests/Harness.Browser.Tests`; `Harness.DevConsole --browser <url> <task>` runs it from the command line
 - Tests for the desktop agent: `dotnet test tests/Harness.Desktop.Tests`
 - `Harness.DevConsole --desktop` offers the tool from the command line

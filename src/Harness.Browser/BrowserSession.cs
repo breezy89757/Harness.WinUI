@@ -14,6 +14,7 @@ internal sealed class BrowserSession : IAsyncDisposable
 {
     private IPlaywright? _playwright;
     private IBrowser? _browser;
+    private IBrowserSurface? _surface;
 
     public IPage Page { get; private set; } = null!;
 
@@ -22,18 +23,53 @@ internal sealed class BrowserSession : IAsyncDisposable
 
     public static string Channel => Environment.GetEnvironmentVariable("HARNESS_BROWSER_CHANNEL") is { } c ? c.Trim() : "msedge";
 
-    public static async Task<BrowserSession> StartAsync(BrowserOptions options, bool headless)
+    /// <param name="surface">Where the host shows the browser (a pane in the app); null, or a surface that cannot be opened, launches a separate browser window instead.</param>
+    public static async Task<BrowserSession> StartAsync(BrowserOptions options, bool headless, IBrowserSurface? surface = null, CancellationToken cancellationToken = default)
     {
         var session = new BrowserSession();
         try
         {
             session._playwright = await Playwright.CreateAsync().ConfigureAwait(false);
-            var launch = new BrowserTypeLaunchOptions { Headless = headless };
-            if (Channel.Length > 0)
-                launch.Channel = Channel;
-            session._browser = await session._playwright.Chromium.LaunchAsync(launch).ConfigureAwait(false);
-            var context = await session._browser.NewContextAsync(new() { ViewportSize = new() { Width = 1280, Height = 800 }, Locale = "zh-TW" }).ConfigureAwait(false);
-            session.Page = await context.NewPageAsync().ConfigureAwait(false);
+            IBrowserContext? context = null;
+            if (surface is not null && !headless)
+            {
+                try
+                {
+                    var endpoint = await surface.OpenAsync(cancellationToken).ConfigureAwait(false);
+                    session._surface = surface;
+                    session._browser = await session._playwright.Chromium.ConnectOverCDPAsync(endpoint).ConfigureAwait(false);
+                    context = session._browser.Contexts.FirstOrDefault();
+                    session.Page = context?.Pages.FirstOrDefault()!;
+                    if (context is null || session.Page is null)
+                        throw new PlaywrightException("The browser in the pane has no page to drive.");
+                }
+                catch (Exception ex) when (Failures.Is(ex) || ex is IOException || ex is InvalidOperationException)
+                {
+                    // the pane could not be used: go on with a separate browser window, as without a pane
+                    try
+                    {
+                        if (session._browser is not null)
+                            await session._browser.CloseAsync().ConfigureAwait(false);
+                    }
+                    catch (Exception failure) when (Failures.Is(failure))
+                    {
+                        // nothing was attached
+                    }
+                    session._browser = null;
+                    await session.ReleaseSurfaceAsync().ConfigureAwait(false);
+                    context = null;
+                }
+            }
+
+            if (context is null)
+            {
+                var launch = new BrowserTypeLaunchOptions { Headless = headless };
+                if (Channel.Length > 0)
+                    launch.Channel = Channel;
+                session._browser = await session._playwright.Chromium.LaunchAsync(launch).ConfigureAwait(false);
+                context = await session._browser.NewContextAsync(new() { ViewportSize = new() { Width = 1280, Height = 800 }, Locale = "zh-TW" }).ConfigureAwait(false);
+                session.Page = await context.NewPageAsync().ConfigureAwait(false);
+            }
             session.Page.SetDefaultTimeout(8000);
             session.Page.Dialog += (_, dialog) => _ = dialog.AcceptAsync();
             if (options.HasLimit)
@@ -72,6 +108,23 @@ internal sealed class BrowserSession : IAsyncDisposable
             // already closed by the person
         }
         _playwright?.Dispose();
+        await ReleaseSurfaceAsync().ConfigureAwait(false);
+    }
+
+    private async Task ReleaseSurfaceAsync()
+    {
+        var surface = _surface;
+        _surface = null;
+        if (surface is null)
+            return;
+        try
+        {
+            await surface.CloseAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException)
+        {
+            // the pane is already gone
+        }
     }
 }
 
