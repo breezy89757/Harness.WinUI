@@ -9,5 +9,5 @@ namespace Harness.WinUI;
 public sealed partial class MainWindow
 {
     private void ApplyDesktopSetting() =>
-        _tools.SetExtraTools(AppPreferences.Load().DesktopControl ? context => [DesktopTool.Create(context), DesktopTool.CreateListWindows(context)] : null);
+        _tools.SetExtraTools("desktop", AppPreferences.Load().DesktopControl ? context => [DesktopTool.Create(context), DesktopTool.CreateListWindows(context)] : null);
 }

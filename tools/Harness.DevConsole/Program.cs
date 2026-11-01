@@ -79,7 +79,7 @@ try
     {
         tools.SetHelpers(() => ChatClientFactory.Create(resolved));
         tools.HelperProgress += e => Console.WriteLine($"  [desktop] {e.Kind}: {e.Text}");
-        tools.SetExtraTools(context => [Harness.Desktop.DesktopTool.Create(context), Harness.Desktop.DesktopTool.CreateListWindows(context)]);
+        tools.SetExtraTools("desktop", context => [Harness.Desktop.DesktopTool.Create(context), Harness.Desktop.DesktopTool.CreateListWindows(context)]);
     }
 
     var servers = McpConfig.Load(mcpPath);

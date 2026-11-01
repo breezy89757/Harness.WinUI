@@ -266,15 +266,19 @@ public sealed class AgentTools : IAsyncDisposable
         Rebuild();
     }
 
-    private Func<ExtraToolContext, IReadOnlyList<AITool>>? _extraTools;
+    private readonly Dictionary<string, Func<ExtraToolContext, IReadOnlyList<AITool>>> _extraTools = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// Tools that live in another project (the desktop agent needs Windows-only libraries): <paramref name="factory"/> builds them
-    /// from what the built-in tools use, and runs again whenever the tool set is rebuilt. Null removes them.
+    /// Tools that live in another project (the desktop agent needs Windows-only libraries, the browser agent needs Playwright):
+    /// <paramref name="factory"/> builds them from what the built-in tools use, and runs again whenever the tool set is rebuilt.
+    /// Each group has its own <paramref name="key"/>, so several can be offered at once; null removes the group.
     /// </summary>
-    public void SetExtraTools(Func<ExtraToolContext, IReadOnlyList<AITool>>? factory)
+    public void SetExtraTools(string key, Func<ExtraToolContext, IReadOnlyList<AITool>>? factory)
     {
-        _extraTools = factory;
+        if (factory is null)
+            _extraTools.Remove(key);
+        else
+            _extraTools[key] = factory;
         Rebuild();
     }
 
@@ -431,8 +435,12 @@ public sealed class AgentTools : IAsyncDisposable
         if (code && _helpers is { } helperClient && _sandbox is not null)
             tools.Add(HelperAgentTool.Create(helperClient, () => _sandbox, _approver, _permissions, u => HelperUsage?.Invoke(u), e => HelperProgress?.Invoke(e), () => HelperEffort?.Invoke(), Helpers));
 
-        if (_extraTools is { } extra && _helpers is { } extraClient)
-            tools.AddRange(extra(new ExtraToolContext(extraClient, _approver, _permissions, ReportHelperUsage, ReportHelperProgress, Helpers)));
+        if (_extraTools.Count > 0 && _helpers is { } extraClient)
+        {
+            var context = new ExtraToolContext(extraClient, _approver, _permissions, ReportHelperUsage, ReportHelperProgress, Helpers);
+            foreach (var factory in _extraTools.Values)
+                tools.AddRange(factory(context));
+        }
 
         Volatile.Write(ref _builtIn, tools);
         Changed?.Invoke(this, EventArgs.Empty);
