@@ -56,7 +56,8 @@ internal static class PageReader
         () => {
           document.querySelectorAll('[data-hqa-ref]').forEach(e => e.removeAttribute('data-hqa-ref'));
           const SEL = 'a[href],button,input:not([type=hidden]),select,textarea,summary,[role=button],[role=link],[role=checkbox],[role=radio],[role=tab],[role=menuitem],[role=switch],[role=option],[role=textbox],[role=combobox],[role=searchbox],[contenteditable=""],[contenteditable=true],[onclick]';
-          const visible = e => { const r = e.getBoundingClientRect(); if (r.width < 2 || r.height < 2) return false; const s = getComputedStyle(e); return s.visibility !== 'hidden' && s.display !== 'none' && s.opacity !== '0'; };
+          // A control made transparent by CSS (a styled check box that is drawn over it) can still be clicked, so opacity does not count as hidden.
+          const visible = e => { const r = e.getBoundingClientRect(); if (r.width < 2 || r.height < 2) return false; const s = getComputedStyle(e); return s.visibility !== 'hidden' && s.display !== 'none'; };
           const clean = s => (s || '').trim().replace(/\s+/g, ' ');
           const textOf = e => clean(e.innerText || e.textContent);
           const labelOf = e => {

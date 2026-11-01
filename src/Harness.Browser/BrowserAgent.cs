@@ -175,6 +175,8 @@ internal sealed class BrowserAgent(
                         continue;
                     }
                     steps.Add(new StepOutcome(steps.Count + 1, "done", passed ? "done (pass)" : "done (fail)", passed ? "pass" : "fail", move.Reason, 0));
+                    if (passed && recorded.Count > 0)
+                        recorded.Add(new RecordedStep(recorded.Count + 1, "done", null, null, null, null, null, move.Reason, page.Url, page.Url, Screen(obs), Screen(obs), "done: " + Brief(move.Reason, 80)));
                     return Result(true, passed, false, move.Reason, actions);
                 }
 
@@ -210,11 +212,9 @@ internal sealed class BrowserAgent(
                     var step = await PerformAsync(page, session, move, target, obs, secrets, expected, recorded.Count + 1, urlBefore).ConfigureAwait(false);
                     if (move.Kind == "assert")
                         asserted = true;
-                    if (step is not null)
-                        recorded.Add(step with { UrlAfter = page.Url });
                     var changed = move.Kind is "assert" or "wait" or "scroll" ? true : await SettleAsync(page, obs.Fingerprint, secrets, cancellationToken).ConfigureAwait(false);
                     if (step is not null)
-                        recorded[^1] = recorded[^1] with { UrlAfter = page.Url };
+                        recorded.Add(step with { UrlAfter = page.Url, ScreenAfter = await DescribeScreenAsync(page, secrets).ConfigureAwait(false) });
                     steps.Add(new StepOutcome(steps.Count + 1, move.Kind, Describe(move, target), "pass", changed ? "page changed" : "no visible change", clock.ElapsedMilliseconds));
                     history.Add($"- {Describe(move, target)} → 完成；" + (changed ? "畫面有變化" : "沒有造成任何畫面變化") + (page.Url != urlBefore ? $"；網址變成 {page.Url}" : ""));
                 }
@@ -247,7 +247,8 @@ internal sealed class BrowserAgent(
             throw new ActionException($"{move.Kind} needs text");
 
         RecordedStep Step(LocatorInfo? locator, string? text = null, string? url = null, string? keys = null, AssertSpec? assert = null) =>
-            new(index, move.Kind, locator, text, url, keys, assert, assert is not null ? expected : null, urlBefore, urlBefore, Describe(move, target));
+            new(index, move.Kind, locator, text, url, keys, assert, assert is not null ? (move.Reason.Length > 0 ? move.Reason : expected) : null,
+                urlBefore, urlBefore, Screen(obs), "", Describe(move, target));
 
         switch (move.Kind)
         {
@@ -422,6 +423,21 @@ internal sealed class BrowserAgent(
         if (move.Assert is { } a)
             sb.Append(' ').Append(a.Type).Append(" \"").Append(Brief(a.Text, 40)).Append('"');
         return sb.ToString();
+    }
+
+    /// <summary>A short description of how the page looks: its title and how many things can be acted on.</summary>
+    internal static string Screen(PageObservation obs) => $"{(obs.Title.Length > 0 ? obs.Title : obs.Url)} ({obs.Elements.Count} elements)";
+
+    private static async Task<string> DescribeScreenAsync(IPage page, IReadOnlyDictionary<string, string> secrets)
+    {
+        try
+        {
+            return Screen(await PageReader.ObserveAsync(page, secrets, screenshot: false).ConfigureAwait(false));
+        }
+        catch (PlaywrightException)
+        {
+            return "(the page was changing)";
+        }
     }
 
     private static string FirstLine(string text) => text.Split('\n', 2)[0].Trim();

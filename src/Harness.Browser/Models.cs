@@ -55,9 +55,11 @@ public sealed record AssertSpec(string Type, int? Id, string Text)
 public sealed record LocatorInfo(string Strategy, string? Role, string Value, int? Nth, string Reason);
 
 /// <summary>One step of a recording: something that worked while exploring, with what a replay needs to do it again.</summary>
+/// <param name="ExpectedResult">For a check (assert) or the final done: what the model said should be true, in its own words.</param>
+/// <param name="ScreenBefore">A short description of the page before the step (title and how many things could be acted on), and after it in <paramref name="ScreenAfter"/>.</param>
 public sealed record RecordedStep(
     int Index, string Kind, LocatorInfo? Locator, string? Text, string? Url, string? Keys, AssertSpec? Assert,
-    string? ExpectedResult, string UrlBefore, string UrlAfter, string Description);
+    string? ExpectedResult, string UrlBefore, string UrlAfter, string ScreenBefore, string ScreenAfter, string Description);
 
 /// <summary>A test case as it was explored: what a replay (JSON or generated C#) is made from. Secrets appear only as <c>{{secret:NAME}}</c>.</summary>
 public sealed record Recording(

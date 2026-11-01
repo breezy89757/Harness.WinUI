@@ -222,8 +222,8 @@ public class RecordingTests
     public void A_recording_survives_json_and_keeps_secrets_as_placeholders()
     {
         var recording = new Recording("login", "https://example.com/", "log in", "the dashboard shows", new DateTimeOffset(2026, 11, 1, 12, 0, 0, TimeSpan.Zero), "m", [
-            new RecordedStep(1, "fill", new LocatorInfo("label", null, "Password", null, "label text is unique on the page"), "{{secret:TEST_PASSWORD}}", null, null, null, null, "https://example.com/", "https://example.com/", "fill textbox"),
-            new RecordedStep(2, "assert", null, null, null, null, new AssertSpec("text_visible", null, "Dashboard"), "the dashboard shows", "https://example.com/", "https://example.com/home", "assert"),
+            new RecordedStep(1, "fill", new LocatorInfo("label", null, "Password", null, "label text is unique on the page"), "{{secret:TEST_PASSWORD}}", null, null, null, null, "https://example.com/", "https://example.com/", "Login (3 elements)", "Login (3 elements)", "fill textbox"),
+            new RecordedStep(2, "assert", null, null, null, null, new AssertSpec("text_visible", null, "Dashboard"), "the dashboard shows", "https://example.com/", "https://example.com/home", "Login (3 elements)", "Home (9 elements)", "assert"),
         ]);
         var json = recording.ToJson();
         Assert.Contains("{{secret:TEST_PASSWORD}}", json);
@@ -236,6 +236,35 @@ public class RecordingTests
 
     [Fact]
     public void Unreadable_json_is_not_a_recording() => Assert.Null(Recording.FromJson("{ nope"));
+
+    [Fact]
+    public void Recordings_and_runs_are_saved_under_a_name_that_says_what_and_when_and_can_be_loaded_again()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "harness-browser-tests-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var when = new DateTimeOffset(2026, 11, 1, 12, 30, 5, TimeSpan.Zero);
+            var recording = new Recording("add-a-todo", "https://example.com/", "add a todo", null, when, "m",
+                [new RecordedStep(1, "click", new LocatorInfo("role", "button", "Add", null, "role + accessible name is unique on the page"), null, null, null, null, null, "https://example.com/", "https://example.com/", "A (2 elements)", "B (3 elements)", "click button \"Add\"")]);
+            var path = RecordingStore.Save(recording, folder);
+            Assert.Equal("add-a-todo-20261101-123005.json", Path.GetFileName(path));
+            Assert.Equal(path, Assert.Single(RecordingStore.List(folder)));
+            var back = RecordingStore.Load(path)!;
+            Assert.Equal("click", back.Steps[0].Kind);
+            Assert.Equal("role + accessible name is unique on the page", back.Steps[0].Locator!.Reason);
+            Assert.Null(RecordingStore.Load(Path.Combine(folder, "nothing.json")));
+
+            var run = new RunResult("add-a-todo", "explore", "pass", "ok", [], 1, 2, 3, "m", when);
+            var report = RecordingStore.SaveRun(run, folder);
+            Assert.EndsWith("add-a-todo-explore-20261101-123005.md", report);
+            Assert.True(File.Exists(Path.ChangeExtension(report, ".json")));
+        }
+        finally
+        {
+            if (Directory.Exists(folder))
+                Directory.Delete(folder, true);
+        }
+    }
 
     [Fact]
     public void A_run_result_has_a_markdown_summary_with_one_row_per_step()
