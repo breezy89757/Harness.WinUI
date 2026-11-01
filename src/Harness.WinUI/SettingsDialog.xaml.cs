@@ -87,6 +87,10 @@ public sealed partial class SettingsDialog : ContentDialog
         CustomInstructionsTextBox.Text = preferences.CustomInstructions ?? string.Empty;
         SearchHistoryToggle.IsOn = preferences.SearchHistory;
         DesktopToggle.IsOn = preferences.DesktopControl;
+        BrowserToggle.IsOn = preferences.BrowserControl;
+        BrowserHostsTextBox.Text = preferences.BrowserAllowedHosts ?? string.Empty;
+        BrowserShotsTextBox.Text = preferences.BrowserScreenshotFolder ?? string.Empty;
+        BrowserSecretsTextBox.Text = string.Join('\r', Harness.Browser.BrowserSecrets.Names().Select(n => n + "=" + SecretMask));
         SelectByTag(WidthComboBox, Appearance.NormalizeWidth(preferences.ConversationWidth));
         _initialShowTips = preferences.ShowTips;
         TipsToggle.IsOn = _initialShowTips;
@@ -279,6 +283,36 @@ public sealed partial class SettingsDialog : ContentDialog
             SandboxTextBox.Text = folder.Path;
     }
 
+    private const string SecretMask = "••••••";
+
+    /// <summary>Saves the browser secrets box: a line NAME=value sets it, NAME=•••••• keeps the stored value, and a name that is no longer there is removed.</summary>
+    private void SaveBrowserSecrets()
+    {
+        var before = Harness.Browser.BrowserSecrets.Names().ToHashSet(StringComparer.Ordinal);
+        var kept = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var line in BrowserSecretsTextBox.Text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var equals = line.IndexOf('=');
+            if (equals <= 0)
+                continue;
+            var name = line[..equals].Trim();
+            var value = line[(equals + 1)..].Trim();
+            if (name.Length == 0 || !name.All(c => char.IsAsciiLetterOrDigit(c) || c is '_' or '-' or '.'))
+                continue;
+            if (value == SecretMask)
+            {
+                kept.Add(name);
+            }
+            else if (value.Length > 0)
+            {
+                Harness.Browser.BrowserSecrets.Set(name, value);
+                kept.Add(name);
+            }
+        }
+        foreach (var name in before.Where(n => !kept.Contains(n)))
+            Harness.Browser.BrowserSecrets.Remove(name);
+    }
+
     private void SettingsDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
         CommitFields();
@@ -359,6 +393,9 @@ public sealed partial class SettingsDialog : ContentDialog
                 CustomInstructions = string.IsNullOrWhiteSpace(CustomInstructionsTextBox.Text) ? null : CustomInstructionsTextBox.Text.Trim(),
                 SearchHistory = SearchHistoryToggle.IsOn,
                 DesktopControl = DesktopToggle.IsOn,
+                BrowserControl = BrowserToggle.IsOn,
+                BrowserAllowedHosts = string.IsNullOrWhiteSpace(BrowserHostsTextBox.Text) ? null : BrowserHostsTextBox.Text.Trim(),
+                BrowserScreenshotFolder = string.IsNullOrWhiteSpace(BrowserShotsTextBox.Text) ? null : BrowserShotsTextBox.Text.Trim(),
                 ConversationWidth = Appearance.NormalizeWidth(SelectedTag(WidthComboBox)),
                 ShowTips = TipsToggle.IsOn,
                 // Turning tips back on brings back the ones that were closed.
@@ -369,6 +406,7 @@ public sealed partial class SettingsDialog : ContentDialog
                 MemoryArchiveDays = double.IsNaN(MemoryArchiveBox.Value) ? 90 : (int)Math.Clamp(MemoryArchiveBox.Value, 0, 3650),
                 MemoryRemindAfter = int.TryParse(SelectedTag(MemoryRemindCombo), CultureInfo.InvariantCulture, out var remind) ? remind : 0,
             }).Save();
+            SaveBrowserSecrets();
             if (sandboxChanged)
                 NewSandboxFolder = sandbox;
             foreach (var (folder, serverName, toolName) in _removedPermissions)

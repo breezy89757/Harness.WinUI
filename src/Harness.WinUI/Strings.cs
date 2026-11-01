@@ -235,6 +235,19 @@ public static partial class Strings
     public static string DesktopHelp => T(
         "Lets the agent hand a task to a desktop agent that looks at one program's window, then clicks and types in it as you. Every use asks for your approval first (it names the window and the task), and the app's own window is never a target. Hold Esc to stop it. What is on that window (a screenshot and its text) is sent to your model, so don't use it on windows that show things you don't want sent.",
         "讓 agent 把一件事交給「桌面 agent」：它會看某一個程式的視窗，再像你一樣在裡面點擊與輸入。每次使用都會先問你（會寫出視窗和任務），本程式自己的視窗不會成為目標。按住 Esc 可以隨時停止。該視窗上的畫面（截圖與文字）會送給你的模型，所以不要用在顯示著你不想送出內容的視窗上。");
+    public static string BrowserHeader => T("Run web tasks in a browser (experimental)", "在瀏覽器裡執行網頁任務（實驗中）");
+    public static string BrowserOn => T("The agent can drive a browser", "agent 可以操作瀏覽器");
+    public static string BrowserOff => T("Off", "關閉");
+    public static string BrowserHelp => T(
+        "Lets the agent hand a web task to a browser agent that opens the site in a real browser window, clicks and types, checks the result, and keeps what worked as a recording that can be replayed without a model. Every use asks for your approval first (it names the address and the task). If a login or a code is needed, it pauses and you do that in the browser window. What is on the page (a screenshot and its text) is sent to your model.",
+        "讓 agent 把網頁任務交給「瀏覽器 agent」：它會在真實的瀏覽器視窗裡開啟網站、點擊與輸入、驗證結果，並把做成功的步驟存成錄製檔，之後不用模型就能重跑。每次使用都會先問你（會寫出網址與任務）。需要登入或驗證碼時它會暫停，由你在瀏覽器視窗裡自己完成。頁面上的畫面（截圖與文字）會送給你的模型。");
+    public static string BrowserHostsHeader => T("Allowed sites (leave empty for no limit)", "允許的網站（留空表示不限制）");
+    public static string BrowserSecretsHeader => T("Secrets for logins (one NAME=value per line)", "登入用的秘密值（每行一個 名稱=值）");
+    public static string BrowserSecretsHelp => T(
+        "Values are stored encrypted for your Windows account and never shown again (a saved value appears as ••••••; type a new value to change it, delete the line to remove it). A task refers to one as {{secret:NAME}}; the model only ever sees that placeholder.",
+        "值會用你的 Windows 帳號加密保存，之後不會再顯示（已存的值會顯示成 ••••••；輸入新值就是更改，刪掉那一行就是移除）。任務裡用 {{secret:名稱}} 來指定，模型只看得到這個佔位字串。");
+    public static string BrowserShotsHeader => T("Keep a screenshot of every step in this folder (for debugging)", "把每一步的截圖存到這個資料夾（除錯用）");
+    public static string BrowserShotsPlaceholder => T("Empty = keep none (the default)", "留空＝不保存（預設）");
     public static string ConversationNotFound => T("That conversation isn't in your history any more.", "歷史紀錄裡已經找不到那個對話了。");
     public static string SandboxHeader => T("Sandbox folder", "沙盒資料夾");
     public static string SandboxHelp => T(

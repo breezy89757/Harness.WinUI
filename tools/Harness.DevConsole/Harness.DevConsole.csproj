@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Harness.Core\Harness.Core.csproj" />
     <ProjectReference Include="..\..\src\Harness.Desktop\Harness.Desktop.csproj" />
+    <ProjectReference Include="..\..\src\Harness.Browser\Harness.Browser.csproj" />
   </ItemGroup>
 
   <ItemGroup>

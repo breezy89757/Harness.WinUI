@@ -69,6 +69,15 @@ public sealed record AppPreferences
     /// <summary>Let the agent operate another program's window through a desktop agent (operate_desktop; every use is asked about). Off by default.</summary>
     public bool DesktopControl { get; init; }
 
+    /// <summary>Let the agent run a task in a browser it drives itself (operate_browser; every use is asked about). Off by default.</summary>
+    public bool BrowserControl { get; init; }
+
+    /// <summary>Hosts the browser agent may go to, separated by commas or line breaks (a host also covers its subdomains); empty means no limit.</summary>
+    public string? BrowserAllowedHosts { get; init; }
+
+    /// <summary>A folder where the browser agent keeps a screenshot of every step (a debugging aid); empty (the default) keeps none.</summary>
+    public string? BrowserScreenshotFolder { get; init; }
+
     /// <summary>Long-term memory: the agent can save and search notes, and the relevant ones are put in front of it at the start of a conversation. Off by default.</summary>
     public bool MemoryEnabled { get; init; }
 

@@ -20,6 +20,8 @@ using Harness.Core.Tools;
 //   --mcp  MCP config to load (default: %LOCALAPPDATA%\Harness.WinUI\mcp.json if present)
 //   --yes  approve every tool call without prompting
 //   --desktop  offer operate_desktop (the desktop agent) and print its progress
+//   --browser <start_url> <task...>  offer operate_browser and ask the agent to do the task on that site (--headless hides the browser window,
+//                         --allow-hosts a.com,b.org limits where it may go instead of using the saved setting)
 //   --image-model <name>  enable generate_image with this model (default: the saved setting)
 //   --sandbox <folder>    enable the built-in file tools on this folder
 //   --effort <level>      reasoning effort: low / medium / high (default: the model's)
@@ -27,6 +29,9 @@ using Harness.Core.Tools;
 var argList = args.ToList();
 var autoApprove = argList.Remove("--yes");
 var desktop = argList.Remove("--desktop");
+var headless = argList.Remove("--headless");
+var browserUrl = TakeOption("--browser");
+var allowHosts = TakeOption("--allow-hosts");
 var mcpPath = TakeOption("--mcp");
 var imageModelArg = TakeOption("--image-model");
 var sandboxArg = TakeOption("--sandbox");
@@ -81,6 +86,13 @@ try
         tools.HelperProgress += e => Console.WriteLine($"  [desktop] {e.Kind}: {e.Text}");
         tools.SetExtraTools("desktop", context => [Harness.Desktop.DesktopTool.Create(context), Harness.Desktop.DesktopTool.CreateListWindows(context)]);
     }
+    if (browserUrl is not null)
+    {
+        tools.SetHelpers(() => ChatClientFactory.Create(resolved));
+        tools.HelperProgress += e => Console.WriteLine($"  [browser] {e.Kind}: {e.Text}");
+        Func<Harness.Browser.BrowserOptions>? browserOptions = allowHosts is null ? null : () => new Harness.Browser.BrowserOptions(Harness.Browser.BrowserOptions.ParseHosts(allowHosts), null);
+        tools.SetExtraTools("browser", context => [Harness.Browser.BrowserTool.Create(context, browserOptions, headless)]);
+    }
 
     var servers = McpConfig.Load(mcpPath);
     if (servers.Count > 0)
@@ -97,6 +109,8 @@ try
         ChatClientFactory.Create(resolved), options, () => tools.All, ChatClientFactory.SupportsReasoningSummaries(resolved));
 
     var testMessage = argList.Count > 0 ? string.Join(' ', argList) : "安安,用三句話介紹你自己";
+    if (browserUrl is not null)
+        testMessage = $"請用 operate_browser 在 {browserUrl} 完成這個任務：{testMessage}";
     Console.WriteLine($"> {testMessage}");
     Console.WriteLine();
 

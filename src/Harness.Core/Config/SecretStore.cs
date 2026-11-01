@@ -47,6 +47,43 @@ public static partial class SecretStore
         }
     }
 
+    /// <summary>The stored names that start with <paramref name="prefix"/>, sorted (the values stay encrypted).</summary>
+    public static IReadOnlyList<string> Names(string prefix)
+    {
+        lock (s_lock)
+            return [.. ReadAll().Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).Order(StringComparer.Ordinal)];
+    }
+
+    /// <summary>The value stored under <paramref name="name"/>, or false when there is none (or it cannot be decrypted for this user).</summary>
+    public static bool TryGet(string name, out string value)
+    {
+        Dictionary<string, string> all;
+        lock (s_lock)
+            all = ReadAll();
+        value = "";
+        if (!all.TryGetValue(name, out var protectedValue))
+            return false;
+        try
+        {
+            value = Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(protectedValue), s_entropy, DataProtectionScope.CurrentUser));
+            return true;
+        }
+        catch (Exception ex) when (ex is CryptographicException or FormatException)
+        {
+            return false;
+        }
+    }
+
+    public static void Remove(string name)
+    {
+        lock (s_lock)
+        {
+            var all = ReadAll();
+            if (all.Remove(name))
+                WriteAll(all);
+        }
+    }
+
     /// <summary>Replaces every <c>${secret:name}</c> in <paramref name="value"/>; throws if a referenced secret is missing.</summary>
     public static string Resolve(string value)
     {

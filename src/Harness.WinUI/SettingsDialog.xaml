@@ -235,6 +235,44 @@
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}" />
 
+                        <!-- Browser agent -->
+                        <TextBlock Margin="0,8,0,0" Text="{x:Bind local:Strings.BrowserHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
+                        <ToggleSwitch
+                            x:Name="BrowserToggle"
+                            OnContent="{x:Bind local:Strings.BrowserOn}"
+                            OffContent="{x:Bind local:Strings.BrowserOff}"
+                            AutomationProperties.AutomationId="SettingsBrowserControl"
+                            AutomationProperties.Name="{x:Bind local:Strings.BrowserHeader}" />
+                        <TextBlock
+                            Text="{x:Bind local:Strings.BrowserHelp}"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}" />
+                        <TextBox
+                            x:Name="BrowserHostsTextBox"
+                            Header="{x:Bind local:Strings.BrowserHostsHeader}"
+                            PlaceholderText="example.com, test.example.org"
+                            AutomationProperties.AutomationId="SettingsBrowserHosts" />
+                        <TextBox
+                            x:Name="BrowserSecretsTextBox"
+                            Header="{x:Bind local:Strings.BrowserSecretsHeader}"
+                            PlaceholderText="TEST_PASSWORD=..."
+                            AcceptsReturn="True"
+                            TextWrapping="NoWrap"
+                            MinHeight="72"
+                            MaxHeight="160"
+                            AutomationProperties.AutomationId="SettingsBrowserSecrets" />
+                        <TextBlock
+                            Text="{x:Bind local:Strings.BrowserSecretsHelp}"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}" />
+                        <TextBox
+                            x:Name="BrowserShotsTextBox"
+                            Header="{x:Bind local:Strings.BrowserShotsHeader}"
+                            PlaceholderText="{x:Bind local:Strings.BrowserShotsPlaceholder}"
+                            AutomationProperties.AutomationId="SettingsBrowserScreenshots" />
+
                         <!-- Sandbox folder -->
                         <TextBlock Margin="0,8,0,0" Text="{x:Bind local:Strings.SandboxHeader}" Style="{StaticResource SubtitleTextBlockStyle}" />
                         <Grid ColumnSpacing="8">

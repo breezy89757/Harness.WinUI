@@ -19,6 +19,18 @@
   windows (open a program from the desktop, then use the window that appeared) can name the second window. Window titles can be private
   (a video, a document), so every use asks for approval, it can't be "always allowed" and YOLO doesn't skip it; titles are cleaned, cut
   short and handed over as information, not instructions
+- Run web tasks in a browser (experimental, Settings, off by default): the agent gets `operate_browser(start_url, task, expected?)`, which hands one web
+  task to a browser agent that drives a real browser (Playwright, using the Edge or Chrome already on the PC) from start to finish in its own context,
+  apart from the conversation. Each turn it is shown the page's address and title, its structure (ARIA snapshot), a numbered list of what can be acted
+  on and a screenshot with the numbers drawn on it, and answers with one JSON move (goto, click, fill, select, check, press, scroll, wait, assert,
+  done, blocked, ask_user); the program turns the number into a locator, so the model never writes a selector. Every use asks for approval (it can't
+  be "always allowed" and YOLO doesn't skip it). Settings can limit the sites it may go to (a page load that would leave them is stopped and the agent
+  asks), keep named secrets (DPAPI-protected; a task writes `{{secret:NAME}}`, the model only sees that placeholder, values are masked in everything
+  it reads, and password fields are covered in the screenshot), and keep a screenshot of every step in a folder for debugging (off by default).
+  When a login, a code or a captcha needs a person it pauses, the person does it in the browser window and presses Allow on the card to go on.
+  A click, a check box or Enter is never repeated on a page that did not change without asking, and a slow page gets a few seconds before "nothing
+  changed" is concluded. The desktop agent and the browser agent can be offered together
+- Tests for the browser agent: `dotnet test tests/Harness.Browser.Tests`; `Harness.DevConsole --browser <url> <task>` runs it from the command line
 - Tests for the desktop agent: `dotnet test tests/Harness.Desktop.Tests`
 - `Harness.DevConsole --desktop` offers the tool from the command line
 
