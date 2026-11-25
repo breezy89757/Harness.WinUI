@@ -214,7 +214,9 @@ public sealed partial class ArtifactPanel : UserControl
         core.Settings.IsPasswordAutosaveEnabled = false;
 
         Directory.CreateDirectory(ArtifactStore.Folder);
-        core.SetVirtualHostNameToFolderMapping(ArtifactStore.HostName, ArtifactStore.Folder, CoreWebView2HostResourceAccessKind.Allow);
+        // Served by the program itself rather than mapped to the folder: with WebView2 158 the folder mapping answers ERR_ACCESS_DENIED for this folder.
+        core.AddWebResourceRequestedFilter($"https://{ArtifactStore.HostName}/*", CoreWebView2WebResourceContext.All);
+        core.WebResourceRequested += OnArtifactResourceRequested;
         core.SetVirtualHostNameToFolderMapping(
             ChatShell.VirtualHostName, Path.Combine(AppContext.BaseDirectory, "wwwroot"), CoreWebView2HostResourceAccessKind.Allow);
 
@@ -259,6 +261,7 @@ public sealed partial class ArtifactPanel : UserControl
         };
         ExportPowerPointButton.Visibility = type == ArtifactType.Slides && version is not null ? Visibility.Visible : Visibility.Collapsed;
         ThemeButton.Visibility = ExportPowerPointButton.Visibility;
+        InstallAppButton.Visibility = type == ArtifactType.Html && version is not null ? Visibility.Visible : Visibility.Collapsed;
         SubtitleText.Text = $"{typeLabel} · {(version is { } v ? Strings.ArtifactVersion(v) : Strings.ArtifactWriting)}";
     }
 
@@ -289,6 +292,61 @@ public sealed partial class ArtifactPanel : UserControl
         }
 
         return null;
+    }
+
+    private static readonly Dictionary<string, string> s_contentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [".html"] = "text/html; charset=utf-8", [".js"] = "text/javascript; charset=utf-8", [".css"] = "text/css; charset=utf-8",
+        [".json"] = "application/json; charset=utf-8", [".svg"] = "image/svg+xml", [".mmd"] = "text/plain; charset=utf-8",
+        [".md"] = "text/plain; charset=utf-8", [".png"] = "image/png", [".jpg"] = "image/jpeg", [".jpeg"] = "image/jpeg",
+        [".gif"] = "image/gif", [".webp"] = "image/webp", [".woff2"] = "font/woff2", [".woff"] = "font/woff",
+    };
+
+    /// <summary>Answers requests to the artifacts host with files from the artifacts folder (and nothing outside it).</summary>
+    private void OnArtifactResourceRequested(CoreWebView2 sender, CoreWebView2WebResourceRequestedEventArgs args)
+    {
+        var environment = sender.Environment;
+        string? path = null;
+        if (Uri.TryCreate(args.Request.Uri, UriKind.Absolute, out var uri) &&
+            uri.Host.Equals(ArtifactStore.HostName, StringComparison.OrdinalIgnoreCase))
+        {
+            var root = Path.GetFullPath(ArtifactStore.Folder) + Path.DirectorySeparatorChar;
+            try
+            {
+                var full = Path.GetFullPath(Path.Combine(root, Uri.UnescapeDataString(uri.AbsolutePath).TrimStart('/')));
+                if (full.StartsWith(root, StringComparison.OrdinalIgnoreCase) && File.Exists(full))
+                    path = full;
+            }
+            catch (ArgumentException)
+            {
+            }
+        }
+
+        try
+        {
+            if (path is not null)
+            {
+                var type = s_contentTypes.GetValueOrDefault(Path.GetExtension(path), "application/octet-stream");
+                args.Response = environment.CreateWebResourceResponse(
+                    new MemoryStream(File.ReadAllBytes(path)).AsRandomAccessStream(), 200, "OK",
+                    $"Content-Type: {type}\r\nCache-Control: no-store");
+                return;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+
+        args.Response = environment.CreateWebResourceResponse(null, 404, "Not Found", "Content-Type: text/plain");
+    }
+
+    /// <summary>The person wants the shown HTML page installed as an app.</summary>
+    public event EventHandler<StoredArtifact>? InstallAppRequested;
+
+    private void InstallApp_Click(object sender, RoutedEventArgs e)
+    {
+        if (_shown is { Type: ArtifactType.Html } artifact)
+            InstallAppRequested?.Invoke(this, artifact);
     }
 
     private void OpenInBrowser_Click(object sender, RoutedEventArgs e)

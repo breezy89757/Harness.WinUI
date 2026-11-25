@@ -51,6 +51,18 @@
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                 <Button
+                    x:Name="InstallAppButton"
+                    Padding="8"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Visibility="Collapsed"
+                    AutomationProperties.AutomationId="ArtifactInstallAppButton"
+                    AutomationProperties.Name="{x:Bind app:Strings.InstallAsApp}"
+                    ToolTipService.ToolTip="{x:Bind app:Strings.InstallAsApp}"
+                    Click="InstallApp_Click">
+                    <FontIcon FontSize="14" Glyph="&#xE718;" />
+                </Button>
+                <Button
                     Padding="8"
                     Background="Transparent"
                     BorderThickness="0"

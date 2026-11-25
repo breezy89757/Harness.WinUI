@@ -100,6 +100,9 @@ public static partial class McpApps
                 .Where(s => s is not null && CspSource().IsMatch(s)).Select(s => s!).Distinct().ToList()
             : [];
 
+    /// <summary>Whether this is a plain origin that is safe to put in a Content-Security-Policy source list.</summary>
+    public static bool IsCspSource(string? origin) => origin is not null && CspSource().IsMatch(origin);
+
     // An origin such as https://cdn.example.com, https://*.example.com or wss://api.example.com:8443.
     [GeneratedRegex(@"^(https?|wss?)://(\*\.)?[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*(:\d{1,5})?/?$")]
     private static partial Regex CspSource();

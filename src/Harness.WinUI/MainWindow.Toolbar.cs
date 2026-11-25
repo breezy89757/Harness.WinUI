@@ -44,6 +44,8 @@ public sealed partial class MainWindow
                 _ => OpenObservability(null), Always),
             new("memory", MemoryButton, "", () => Strings.MemoryTitle,
                 _ => OpenMemory(), Always),
+            new("apps", AppsButton, "\uE718", () => Strings.MyApps,
+                at => _ = ShowMiniAppListAsync(), Always),
         ];
         ApplyToolbar(HiddenToolbarButtons());
 
@@ -106,6 +108,9 @@ public sealed partial class MainWindow
         // The memory button is there only while memory is turned on.
         if (!preferences.MemoryEnabled)
             hidden.Add("memory");
+        // The apps button is there once an app is installed (before that the list is in More).
+        if (new Harness.Core.MiniApps.MiniAppStore().List().Count == 0)
+            hidden.Add("apps");
         return hidden;
     }
 

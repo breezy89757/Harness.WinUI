@@ -38,6 +38,14 @@ public sealed record HarnessOptions
         - type is one of: html, svg, mermaid, markdown, slides.
         - html must be one complete, self-contained document (inline CSS and JS). External libraries
           only from https://cdn.jsdelivr.net, https://cdnjs.cloudflare.com or https://unpkg.com.
+        - An html page can use the user's AI model, but only once the user has pinned it as an app (in the preview there is no window.harness).
+          Only add this when the page really needs a model (write, summarise, answer, suggest). Put this in <head> to ask for it:
+          <script type="application/json" id="harness-app">{"name":"App name","permissions":["llm"]}</script>
+          then call it, guarding for the preview: if (!window.harness) show "Pin this as an app to use AI" instead.
+          const r = await harness.llm.chat({ system: "optional instructions", messages: [{ role: "user", content: "…" }], stream: true, maxTokens: 800 },
+          piece => { /* each piece of text as it arrives; omit for none */ }); r.text is the full reply. A failure throws an Error with .code
+          (PERMISSION_DENIED, NO_MODEL, BUSY, …); show a short message. Messages are only user or assistant (put instructions in system); keep each
+          call small (every call costs the user money); one call at a time. The page can't reach the network or any API key.
         - mermaid contains only the Mermaid source; svg only the <svg> element.
         - slides is a presentation: use it whenever the user asks for slides, a deck or a PPT. The user previews it slide by slide and exports a
           real, editable .pptx, so write it as plain text, not HTML: slides are separated by a line with only ---. The first slide is the title

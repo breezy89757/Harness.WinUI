@@ -563,6 +563,17 @@
                     </Button>
 
                     <Button
+                        x:Name="AppsButton"
+                        AutomationProperties.AutomationId="AppsButton"
+                        AutomationProperties.Name="{x:Bind local:Strings.MyApps}"
+                        VerticalAlignment="Bottom"
+                        Padding="10,8"
+                        ToolTipService.ToolTip="{x:Bind local:Strings.MyApps}"
+                        Click="AppsButton_Click">
+                        <FontIcon FontSize="16" Glyph="&#xE718;" />
+                    </Button>
+
+                    <Button
                         x:Name="MoreButton"
                         AutomationProperties.AutomationId="MoreButton"
                         AutomationProperties.Name="{x:Bind local:Strings.MoreTooltip}"
@@ -641,6 +652,7 @@
             Grid.Column="2"
             Visibility="Collapsed"
             OpenRequested="ArtifactPanel_OpenRequested"
+            InstallAppRequested="ArtifactPanel_InstallAppRequested"
             CloseRequested="ArtifactPanel_CloseRequested" />
 
         <!-- The browser the browser agent drives, in the same place while a run lasts -->

@@ -3,6 +3,17 @@
 ## [Unreleased]
 
 ### Added
+- Pinned apps (experimental): an HTML artifact can be pinned as an app from the artifact panel ("Pin as app"). It opens in a window of its own, from its
+  own origin (`https://{id}.harness.miniapps`) with its own browser profile (localStorage stays between runs and goes when the app is unpinned), so apps
+  never share storage, and with a Content-Security-Policy that allows only the hosts its manifest declares (`<script type="application/json"
+  id="harness-app">`: name, permissions, allowedHosts). Pinned apps are kept in `apps\{id}\` apart from the artifacts folder, one folder per version
+  (a hash of the page); pinning the same artifact again adds a version instead of a second app. A button on the toolbar (once something is pinned, else in More)
+  lists them to open or unpin
+- Pinned apps can use your model: a page that asks for `llm` in its manifest calls `window.harness.llm.chat({ messages, system?, stream?, maxTokens? }, onDelta?)`;
+  the call goes through Harness.WinUI, so the page never sees an API key and can't reach the network. The person is asked once for each version of the app
+  (a changed page is asked again); calls are limited (one at a time, size and output caps), count in the usage totals and are logged, without their text,
+  in `apps\audit.jsonl`. `window.harness.open.link(url)` opens a web link in the browser. The agent is told how to write such pages
+- The artifact panel's preview is served by the program itself instead of a folder mapping: with WebView2 158 the mapping answered ERR_ACCESS_DENIED
 - Operate other programs (experimental, Settings, off by default): the agent gets `operate_desktop(window_title, task)`, which hands one task
   in one program window to a desktop agent that works from start to finish in its own context, apart from the conversation. Each turn it
   is shown the window as a screenshot with numbered boxes plus the same numbers as a list (what Windows UI Automation and Windows' own OCR
