@@ -356,7 +356,14 @@ public static partial class Strings
     public static string TraceRange24Hours => T("Last 24 hours", "過去 24 小時");
     public static string TraceRange7Days => T("Last 7 days", "過去 7 天");
     public static string TraceRange30Days => T("Last 30 days", "過去 30 天");
-    public static string TraceSearch => T("Search messages, tools or models", "搜尋訊息、工具或模型");
+    public static string TraceSearch => T("Search… e.g. app:name -word model:x", "搜尋… 例：app:名稱 -排除字 model:x");
+    public static string TraceSearchHelp => T(
+        "Words must all match (message, tool or model).\n-word  leave out what matches\n\"two words\"  keep words together\napp:name  a pinned app (app: alone = any app)\nmodel:x   tool:x   the model or tool used\nis:app   is:chat   is:error\nExample: app:encourage -timeout model:luna",
+        "每個字都要符合（訊息、工具或模型）。\n-字詞  排除符合的\n\"兩個字\"  引號內視為一個詞\napp:名稱  某個釘選的 App（只寫 app: 代表所有 App）\nmodel:x   tool:x   用到的模型或工具\nis:app   is:chat   is:error\n例：app:鼓勵 -timeout model:luna");
+    public static string TraceSource => T("Source", "來源");
+    public static string TraceSourceAll => T("All sources", "全部來源");
+    public static string TraceSourceChat => T("Chat", "聊天");
+    public static string TraceSourceApps => T("All apps", "所有 App");
     public static string TraceFailedOnly => T("Errors only", "只看錯誤");
     public static string TraceSettings => T("Recording settings", "記錄設定");
     public static string TraceCaptureContent => T("Record message content (prompts, replies, tool arguments and results)", "記錄訊息內容（提示、回覆、工具參數與結果）");

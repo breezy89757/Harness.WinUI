@@ -91,6 +91,43 @@ public sealed partial class ObservabilityWindow : Window
             _ = RefreshAsync();
     }
 
+    private bool _fillingSources;
+
+    private void Source_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_initializing && !_fillingSources)
+            _ = RefreshAsync();
+    }
+
+    /// <summary>The sources to choose from: everything, chat, all apps, then each app that has turns; the choice is kept.</summary>
+    private IReadOnlyList<string> _sourceApps = [];
+
+    private void FillSources(IReadOnlyList<string> appNames)
+    {
+        // Only when the apps changed, and never while the list is open: rebuilding the items under an open drop-down (a choice in it
+        // refreshes the log, which comes here) crashed the window.
+        if (SourceBox.Items.Count > 0 && (SourceBox.IsDropDownOpen || appNames.SequenceEqual(_sourceApps)))
+            return;
+        _sourceApps = appNames;
+
+        var chosen = (SourceBox.SelectedItem as ComboBoxItem)?.Tag as string ?? string.Empty;
+        _fillingSources = true;
+        try
+        {
+            SourceBox.Items.Clear();
+            SourceBox.Items.Add(new ComboBoxItem { Content = Strings.TraceSourceAll, Tag = string.Empty });
+            SourceBox.Items.Add(new ComboBoxItem { Content = Strings.TraceSourceChat, Tag = "is:chat" });
+            SourceBox.Items.Add(new ComboBoxItem { Content = Strings.TraceSourceApps, Tag = "is:app" });
+            foreach (var name in appNames)
+                SourceBox.Items.Add(new ComboBoxItem { Content = name, Tag = $"app:\"{name.Replace("\"", string.Empty)}\"" });
+            SourceBox.SelectedItem = SourceBox.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == chosen) ?? SourceBox.Items[0];
+        }
+        finally
+        {
+            _fillingSources = false;
+        }
+    }
+
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         _searchDelay.Stop();
@@ -113,12 +150,15 @@ public sealed partial class ObservabilityWindow : Window
             await RefreshStatsAsync(recorder, days);
             return;
         }
-        var search = SearchBox.Text;
         var failedOnly = FailedOnlyBox.IsChecked == true;
+        var since = DateTimeOffset.UtcNow.AddDays(-days);
         IReadOnlyList<TurnSummary> turns;
         try
         {
-            turns = await Task.Run(() => recorder.Store.Turns(DateTimeOffset.UtcNow.AddDays(-days), search, failedOnly));
+            // The source list first (an app that now has turns shows up in it); the chosen source is a condition added to the search.
+            FillSources(await Task.Run(() => recorder.Store.AppNames(since)));
+            var search = TraceQuery.Join(SearchBox.Text, (SourceBox.SelectedItem as ComboBoxItem)?.Tag as string ?? string.Empty).Trim();
+            turns = await Task.Run(() => recorder.Store.Turns(since, search, failedOnly));
         }
         catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException)
         {

@@ -113,12 +113,24 @@ public sealed partial class TraceStore
 
     /// <summary>
     /// Turns since <paramref name="since"/>, newest first, with their model and tool calls totalled.
-    /// <paramref name="search"/> matches the user's message, a tool name or the model.
+    /// <paramref name="search"/> is a <see cref="TraceQuery"/>: words match the user's message, a tool name or the model; a leading
+    /// <c>-</c> excludes; <c>app:</c>, <c>model:</c>, <c>tool:</c> and <c>is:</c> narrow.
     /// </summary>
     public IReadOnlyList<TurnSummary> Turns(DateTimeOffset since, string? search = null, bool failedOnly = false, int limit = 500)
     {
         using var connection = Open();
         using var command = connection.CreateCommand();
+        var conditions = new StringBuilder();
+        var query = TraceQuery.Parse(search);
+        for (var i = 0; i < query.Terms.Count; i++)
+        {
+            var term = query.Terms[i];
+            var parameter = "$q" + i.ToString(CultureInfo.InvariantCulture);
+            var clause = Clause(term, parameter);
+            conditions.Append(Environment.NewLine).Append("AND ").Append(term.Negated ? $"NOT ({clause})" : clause);
+            command.Parameters.AddWithValue(parameter, Like(term.Value));
+        }
+
         command.CommandText = $"""
             SELECT t.trace_id, t.started_at, t.duration_ms, t.failed, t.status, t.title, t.conversation_id,
                    (SELECT c.model FROM spans c WHERE c.trace_id = t.trace_id AND c.operation = 'chat' AND c.model IS NOT NULL ORDER BY c.started_at DESC LIMIT 1),
@@ -131,18 +143,12 @@ public sealed partial class TraceStore
                    (SELECT c.currency FROM spans c WHERE c.trace_id = t.trace_id AND c.currency IS NOT NULL LIMIT 1)
             FROM spans t
             WHERE t.operation = 'turn' AND t.started_at >= $since
-              {(failedOnly ? "AND (t.failed = 1 OR EXISTS (SELECT 1 FROM spans c WHERE c.trace_id = t.trace_id AND c.failed = 1 AND COALESCE(c.status, '') <> 'cancelled'))" : "")}
-              {(string.IsNullOrWhiteSpace(search) ? "" : """
-                  AND (t.title LIKE $search ESCAPE '\' OR EXISTS (SELECT 1 FROM spans c WHERE c.trace_id = t.trace_id
-                       AND (c.tool_name LIKE $search ESCAPE '\' OR c.model LIKE $search ESCAPE '\')))
-                  """)}
+              {(failedOnly ? "AND " + Failed : "")}{conditions}
             ORDER BY t.started_at DESC
             LIMIT $limit
             """;
         command.Parameters.AddWithValue("$since", since.UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
         command.Parameters.AddWithValue("$limit", limit);
-        if (!string.IsNullOrWhiteSpace(search))
-            command.Parameters.AddWithValue("$search", "%" + search.Trim().Replace(@"\", @"\\").Replace("%", @"\%").Replace("_", @"\_") + "%");
 
         var turns = new List<TurnSummary>();
         using var reader = command.ExecuteReader();
@@ -156,6 +162,54 @@ public sealed partial class TraceStore
                 reader.IsDBNull(13) ? null : reader.GetDouble(13), Text(reader, 14)));
         }
         return turns;
+    }
+
+    private const string Failed =
+        "(t.failed = 1 OR EXISTS (SELECT 1 FROM spans c WHERE c.trace_id = t.trace_id AND c.failed = 1 AND COALESCE(c.status, '') <> 'cancelled'))";
+
+    private const string FromApp = "COALESCE(t.conversation_id, '') LIKE 'miniapp:%'";
+
+    /// <summary>The SQL for one search condition; <paramref name="p"/> holds its value as a LIKE pattern (see <see cref="Like"/>).</summary>
+    private static string Clause(TraceTerm term, string p) => term.Field switch
+    {
+        "app" => term.Value.Length == 0
+            ? FromApp
+            : $@"({FromApp} AND (COALESCE(t.name, '') LIKE 'app:' || {p} ESCAPE '^' OR COALESCE(t.title, '') LIKE '[' || {p} ESCAPE '^'))",
+        "model" => $@"EXISTS (SELECT 1 FROM spans c WHERE c.trace_id = t.trace_id AND c.model LIKE {p} ESCAPE '^')",
+        "tool" => $@"EXISTS (SELECT 1 FROM spans c WHERE c.trace_id = t.trace_id AND c.tool_name LIKE {p} ESCAPE '^')",
+        "is" => term.Value switch
+        {
+            "app" => FromApp,
+            "chat" => $"NOT ({FromApp})",
+            _ => Failed,
+        },
+        _ => $@"(COALESCE(t.title, '') LIKE {p} ESCAPE '^' OR EXISTS (SELECT 1 FROM spans c WHERE c.trace_id = t.trace_id
+                   AND (c.tool_name LIKE {p} ESCAPE '^' OR c.model LIKE {p} ESCAPE '^')))",
+    };
+
+    /// <summary>A LIKE pattern that finds the text anywhere in a value (its own % and _ taken literally).</summary>
+    private static string Like(string value) =>
+        "%" + value.Trim().Replace("^", "^^").Replace("%", "^%").Replace("_", "^_") + "%";
+
+    /// <summary>The names of the pinned apps that have turns since <paramref name="since"/>, for the filter list.</summary>
+    public IReadOnlyList<string> AppNames(DateTimeOffset since)
+    {
+        using var connection = Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT DISTINCT n FROM (
+                SELECT substr(name, 5) AS n FROM spans WHERE operation = 'turn' AND name LIKE 'app:%' AND started_at >= $since
+                UNION
+                SELECT substr(title, 2, instr(title, ']') - 2) AS n FROM spans
+                    WHERE operation = 'turn' AND conversation_id LIKE 'miniapp:%' AND title LIKE '[%]%' AND started_at >= $since)
+            WHERE n <> '' ORDER BY n
+            """;
+        command.Parameters.AddWithValue("$since", since.UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
+        List<string> names = [];
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+            names.Add(reader.GetString(0));
+        return names;
     }
 
     /// <summary>Every span of one turn, with content, in start order.</summary>

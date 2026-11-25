@@ -32,18 +32,27 @@
                 <SelectorBarItem x:Name="LogTab" Text="{x:Bind local:Strings.TraceViewLog}" IsSelected="True" />
                 <SelectorBarItem x:Name="StatsTab" Text="{x:Bind local:Strings.TraceViewStats}" />
             </SelectorBar>
-            <ComboBox
-                x:Name="RangeBox"
-                Grid.Column="1"
-                MinWidth="150"
-                VerticalAlignment="Center"
-                AutomationProperties.AutomationId="TraceRangeBox"
-                AutomationProperties.Name="{x:Bind local:Strings.TraceRange24Hours}"
-                SelectionChanged="Filter_Changed">
-                <ComboBoxItem Content="{x:Bind local:Strings.TraceRange24Hours}" Tag="1" />
-                <ComboBoxItem Content="{x:Bind local:Strings.TraceRange7Days}" Tag="7" />
-                <ComboBoxItem Content="{x:Bind local:Strings.TraceRange30Days}" Tag="30" />
-            </ComboBox>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <ComboBox
+                    x:Name="RangeBox"
+                    MinWidth="150"
+                    VerticalAlignment="Center"
+                    AutomationProperties.AutomationId="TraceRangeBox"
+                    AutomationProperties.Name="{x:Bind local:Strings.TraceRange24Hours}"
+                    SelectionChanged="Filter_Changed">
+                    <ComboBoxItem Content="{x:Bind local:Strings.TraceRange24Hours}" Tag="1" />
+                    <ComboBoxItem Content="{x:Bind local:Strings.TraceRange7Days}" Tag="7" />
+                    <ComboBoxItem Content="{x:Bind local:Strings.TraceRange30Days}" Tag="30" />
+                </ComboBox>
+                <ComboBox
+                    x:Name="SourceBox"
+                    MinWidth="140"
+                    VerticalAlignment="Center"
+                    AutomationProperties.AutomationId="TraceSourceBox"
+                    AutomationProperties.Name="{x:Bind local:Strings.TraceSource}"
+                    ToolTipService.ToolTip="{x:Bind local:Strings.TraceSource}"
+                    SelectionChanged="Source_Changed" />
+            </StackPanel>
             <CheckBox
                 x:Name="FailedOnlyBox"
                 Grid.Column="2"
@@ -58,6 +67,7 @@
                 HorizontalAlignment="Left"
                 VerticalAlignment="Center"
                 PlaceholderText="{x:Bind local:Strings.TraceSearch}"
+                ToolTipService.ToolTip="{x:Bind local:Strings.TraceSearchHelp}"
                 AutomationProperties.AutomationId="TraceSearchBox"
                 AutomationProperties.Name="{x:Bind local:Strings.TraceSearch}"
                 TextChanged="SearchBox_TextChanged" />

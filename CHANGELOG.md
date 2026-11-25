@@ -13,6 +13,9 @@
   the call goes through Harness.WinUI, so the page never sees an API key and can't reach the network. The person is asked once for each version of the app
   (a changed page is asked again); calls are limited (one at a time, size and output caps), count in the usage totals and are logged, without their text,
   in `apps\audit.jsonl`. `window.harness.open.link(url)` opens a web link in the browser. The agent is told how to write such pages
+- Observability: the search box takes conditions: words must all match, `-word` leaves out what matches, quotes keep words together, `app:name` (a pinned
+  app; `app:` alone is any app), `model:`, `tool:`, `is:app`, `is:chat`, `is:error` (for example `app:鼓勵 -timeout model:luna`); a Source list beside the
+  time range picks everything, chat, all apps or one app. A pinned app's model calls are turns of their own there, named after the app
 - The artifact panel's preview is served by the program itself instead of a folder mapping: with WebView2 158 the mapping answered ERR_ACCESS_DENIED
 - Operate other programs (experimental, Settings, off by default): the agent gets `operate_desktop(window_title, task)`, which hands one task
   in one program window to a desktop agent that works from start to finish in its own context, apart from the conversation. Each turn it
